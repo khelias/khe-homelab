@@ -1,135 +1,122 @@
 # KHE Homelab
 
-Personal family homelab infrastructure managed as code. Everything runs on Docker Compose behind Proxmox VE.
-
-## Hardware
-
-| Component | Model |
-|-----------|-------|
-| CPU | Intel i7-12700K (12C/20T, iGPU UHD 770) |
-| RAM | 32GB DDR5 |
-| Motherboard | Z690 ATX |
-| Boot disk | 2TB Kingston KC3000 NVMe |
-| Data disks | 2x 12TB WD Ultrastar (ZFS Mirror) |
-| PSU | Seasonic 850W Gold |
-| Network | Intel 2.5G LAN → Asus RT-AX55 |
+Personal family homelab — self-hosted cloud, media, and AI on a single machine. Infrastructure as Code with Docker Compose on Proxmox VE.
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────┐
-│                  Proxmox VE                      │
-│              (192.168.0.10)                       │
-│                                                   │
-│  ┌──────────────────────────────────────────┐    │
-│  │        Docker VM (192.168.0.11)           │    │
-│  │                                            │    │
-│  │  ┌─── Core ────────────────────────────┐  │    │
-│  │  │ Nginx Proxy Manager  (:80/:443)     │  │    │
-│  │  │ AdGuard Home         (:53/:8080)    │  │    │
-│  │  │ Cloudflare Tunnel                   │  │    │
-│  │  │ Vaultwarden                          │  │    │
-│  │  │ Dockge               (:5001)        │  │    │
-│  │  │ Uptime Kuma          (:3001)        │  │    │
-│  │  │ Homepage             (:3000)        │  │    │
-│  │  └────────────────────────────────────-┘  │    │
-│  │  ┌─── Media ──────────────────────────┐   │    │
-│  │  │ Immich               (:2283)       │   │    │
-│  │  │ Jellyfin             (:8096)       │   │    │
-│  │  │ Audiobookshelf       (:13378)      │   │    │
-│  │  └───────────────────────────────────-┘   │    │
-│  │  ┌─── Productivity ──────────────────┐    │    │
-│  │  │ Nextcloud            (:8888)       │    │    │
-│  │  │ Paperless-ngx        (:8010)       │    │    │
-│  │  └───────────────────────────────────-┘   │    │
-│  │  ┌─── AI ────────────────────────────┐    │    │
-│  │  │ Ollama               (:11434)      │    │    │
-│  │  │ n8n                  (:5678)       │    │    │
-│  │  │ OpenClaw             (:18789)     │    │    │
-│  │  └───────────────────────────────────-┘   │    │
-│  └──────────────────────────────────────────┘    │
-│                                                   │
-│  NVMe: Proxmox OS + VM disks                     │
-│  HDD:  ZFS Mirror (tank) → NFS → /srv/data       │
-└─────────────────────────────────────────────────┘
+                        ┌─ Cloudflare Tunnel ─── khe.ee ──── Internet
+                        │
+┌───────────────────────┼──────────────────────────────────────────┐
+│  Proxmox VE           │                        192.168.0.10      │
+│  (NVMe boot)          │                                          │
+│                       │                                          │
+│  ┌────────────────────┼────────────────────────────────────────┐ │
+│  │  Docker VM         │                        192.168.0.11    │ │
+│  │                    │                                        │ │
+│  │  ┌─────────────────┴──────────────────────────────────────┐ │ │
+│  │  │  CORE                                                  │ │ │
+│  │  │  Nginx Proxy Manager · AdGuard Home · Cloudflare       │ │ │
+│  │  │  Vaultwarden · Dockge · Uptime Kuma · Homepage         │ │ │
+│  │  └────────────────────────────────────────────────────────┘ │ │
+│  │  ┌──────────────────┐ ┌─────────────────┐ ┌──────────────┐ │ │
+│  │  │  MEDIA           │ │  PRODUCTIVITY   │ │  AI          │ │ │
+│  │  │  Immich          │ │  Nextcloud      │ │  Ollama      │ │ │
+│  │  │  Jellyfin        │ │  Paperless-ngx  │ │  n8n         │ │ │
+│  │  │  Audiobookshelf  │ │                 │ │  OpenClaw    │ │ │
+│  │  └──────────────────┘ └─────────────────┘ └──────────────┘ │ │
+│  └────────────────────────────────────────────────────────────┘ │
+│                                                                  │
+│  ┌──────────────────────────┐  ┌───────────────────────────────┐ │
+│  │  NVMe 2TB (Kingston)    │  │  HDD 2x12TB (WD Ultrastar)   │ │
+│  │  Proxmox OS + VM disks  │  │  ZFS Mirror → NFS → /srv     │ │
+│  │  PostgreSQL databases   │  │  Photos, media, files         │ │
+│  └──────────────────────────┘  └───────────────────────────────┘ │
+└──────────────────────────────────────────────────────────────────┘
 ```
+
+## Hardware
+
+| Component | Spec |
+|-----------|------|
+| CPU | Intel i7-12700K (12C/20T, Quick Sync iGPU) |
+| RAM | 32GB DDR5 |
+| Boot | 2TB Kingston KC3000 NVMe |
+| Storage | 2x 12TB WD Ultrastar (ZFS Mirror) |
+| PSU | Seasonic 850W Gold |
+| Network | Intel 2.5G LAN → Asus RT-AX55 |
+
+## Services
+
+| Service | Domain | What it does |
+|---------|--------|-------------|
+| **Homepage** | `khe.ee` | Family dashboard |
+| **Nextcloud** | `cloud.khe.ee` | Files, calendar, contacts (CalDAV/CardDAV) |
+| **Immich** | `photos.khe.ee` | Photo library (Google Photos replacement) |
+| **Vaultwarden** | `vault.khe.ee` | Password manager with Passkey support |
+| **Jellyfin** | `jellyfin.khe.ee` | Media server (kids' cartoons, movies) |
+| **Paperless-ngx** | `docs.khe.ee` | Document archive with OCR (Estonian + English) |
+| **Audiobookshelf** | `books.khe.ee` | Audiobooks and podcasts |
+| **n8n** | `n8n.khe.ee` | Workflow automation |
+| **Uptime Kuma** | `status.khe.ee` | Service monitoring and alerts |
+| Ollama | — | Local AI models (Llama, Qwen) |
+| OpenClaw | — | Personal AI DevOps agent |
+| AdGuard Home | `adguard.khe.ee` | DNS ad-blocking + split-horizon DNS |
+| Dockge | `dockge.khe.ee` | Docker Compose management UI |
+| Nginx Proxy Manager | — | Reverse proxy + SSL |
+| Cloudflare Tunnel | — | Secure external access (no open ports) |
 
 ## Network
 
-| IP | Device |
-|----|--------|
-| 192.168.0.1 | Asus RT-AX55 (gateway) |
-| 192.168.0.10 | Proxmox host (pve.khe.ee) |
-| 192.168.0.11 | Docker VM |
-| 192.168.0.100–254 | DHCP (phones, laptops, etc.) |
+```
+192.168.0.1       Asus RT-AX55 (gateway, DHCP .100-.254)
+192.168.0.10      Proxmox host (pve.khe.ee)
+192.168.0.11      Docker VM
+192.168.0.2-99    Reserved for static devices
+```
 
-External access via Cloudflare Tunnel (no open ports on router).
+All external traffic goes through Cloudflare Tunnel — zero ports open on the router.
+Local traffic uses AdGuard split-horizon DNS to stay on LAN.
 
-## Domain Mapping (khe.ee)
-
-| Subdomain | Service |
-|-----------|---------|
-| cloud.khe.ee | Nextcloud |
-| photos.khe.ee | Immich |
-| vault.khe.ee | Vaultwarden |
-| jellyfin.khe.ee | Jellyfin |
-| docs.khe.ee | Paperless-ngx |
-| books.khe.ee | Audiobookshelf |
-| n8n.khe.ee | n8n |
-| status.khe.ee | Uptime Kuma |
-| dockge.khe.ee | Dockge |
-| adguard.khe.ee | AdGuard Home |
-| khe.ee | Homepage (dashboard) |
-
-## Setup Order
+## Setup
 
 ```bash
-# 1. Install Proxmox VE on NVMe
-# 2. Post-install hardening (on Proxmox host)
-./scripts/proxmox-post-install.sh
+# On Proxmox host
+./scripts/proxmox-post-install.sh     # 1. Disable enterprise repo, install tools, enable IOMMU
+./scripts/create-zfs-pool.sh          # 2. Create ZFS mirror from 2x 12TB HDDs
+./scripts/create-docker-vm.sh         # 3. Create Ubuntu VM on NVMe
+./scripts/setup-nfs-share.sh          # 4. Export ZFS pool via NFS
 
-# 3. Create ZFS data pool from HDDs (on Proxmox host)
-./scripts/create-zfs-pool.sh
+# Inside Docker VM
+./scripts/setup-docker-host.sh        # 5. Install Docker, tools, create networks
+./scripts/mount-nfs-in-vm.sh          # 6. Mount NFS shares at /srv
+./scripts/harden-docker-vm.sh         # 7. UFW firewall, fail2ban, SSH hardening
+./scripts/deploy.sh up                # 8. Start all 15 services
+```
 
-# 4. Create Docker VM (on Proxmox host)
-./scripts/create-docker-vm.sh
+## Day-to-day
 
-# 5. Install Ubuntu Server in VM via Proxmox console
-
-# 6. Set up NFS share (on Proxmox host)
-./scripts/setup-nfs-share.sh
-
-# 7. Inside VM: install Docker and prepare host
-./scripts/setup-docker-host.sh
-
-# 8. Inside VM: mount NFS shares
-./scripts/mount-nfs-in-vm.sh
-
-# 9. Harden the VM (firewall, fail2ban, SSH)
-./scripts/harden-docker-vm.sh
-
-# 10. Deploy services
-./scripts/deploy.sh up
+```bash
+./scripts/deploy.sh status   # What's running?
+./scripts/deploy.sh pull     # Pull latest images
+./scripts/deploy.sh up       # (Re)start everything
+./scripts/deploy.sh down     # Stop everything
+./scripts/backup.sh          # Backup databases + configs
 ```
 
 ## Project Structure
 
 ```
 services/
-  core/           nginx-proxy-manager, adguard, cloudflare-tunnel, vaultwarden, dockge, uptime-kuma, homepage
-  media/          immich, jellyfin, audiobookshelf
-  productivity/   nextcloud, paperless-ngx
-  ai/             ollama, n8n, openclaw
-infrastructure/   proxmox and network documentation
-scripts/          setup, deploy, and backup scripts
+├── core/            NPM, AdGuard, Cloudflare, Vaultwarden, Dockge, Uptime Kuma, Homepage
+├── media/           Immich, Jellyfin, Audiobookshelf
+├── productivity/    Nextcloud, Paperless-ngx
+└── ai/              Ollama, n8n, OpenClaw
+
+infrastructure/      Proxmox and network documentation
+scripts/             Setup, deploy, backup, and hardening scripts
 ```
 
-## Operations
+---
 
-```bash
-./scripts/deploy.sh up       # Start all services
-./scripts/deploy.sh down     # Stop all services
-./scripts/deploy.sh status   # Show running containers
-./scripts/deploy.sh pull     # Pull latest images
-./scripts/backup.sh          # Backup databases and configs
-```
+*Built with [Claude Code](https://claude.ai/claude-code). Version tracking by [Renovate](https://github.com/renovatebot/renovate).*
