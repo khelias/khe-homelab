@@ -38,7 +38,6 @@ qm create $VM_ID \
   --cores $VM_CORES \
   --memory $VM_MEMORY \
   --cpu host \
-  --bios ovmf \
   --machine q35 \
   --net0 virtio,bridge=vmbr0 \
   --scsihw virtio-scsi-single \
@@ -46,24 +45,21 @@ qm create $VM_ID \
   --onboot 1 \
   --startup order=1
 
-# 3. Add EFI disk
-qm set $VM_ID --efidisk0 $VM_STORAGE:0,efitype=4m
-
-# 4. Import cloud image as main disk
+# 3. Import cloud image as main disk
 echo "Importing cloud image as VM disk..."
 qm set $VM_ID --scsi0 $VM_STORAGE:0,import-from=$CLOUD_IMAGE_PATH,discard=on,iothread=1,ssd=1
 
-# 5. Resize disk to desired size
+# 4. Resize disk to desired size
 echo "Resizing disk to $VM_DISK_SIZE..."
 qm disk resize $VM_ID scsi0 $VM_DISK_SIZE
 
-# 6. Add cloud-init drive
-qm set $VM_ID --ide2 $VM_STORAGE:cloudinit
+# 5. Add cloud-init drive on SCSI (NOT IDE - genericcloud image lacks IDE drivers)
+qm set $VM_ID --scsi1 $VM_STORAGE:cloudinit
 
-# 7. Set boot order (disk first, no ISO needed)
+# 6. Set boot order (disk first, no ISO needed)
 qm set $VM_ID --boot order=scsi0
 
-# 8. Add serial console for cloud-init output
+# 7. Add serial console for cloud-init output
 qm set $VM_ID --serial0 socket --vga serial0
 
 # 9. Configure cloud-init
