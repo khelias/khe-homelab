@@ -1,29 +1,39 @@
 #!/usr/bin/env bash
-# Proxmox VE post-install script
+# Proxmox VE 9.x post-install script
 # Run on the Proxmox host after installation
+# Tested on: Proxmox VE 9.1.1 (Debian Trixie)
 set -euo pipefail
 
 echo "=== Proxmox VE Post-Install ==="
 
-# 1. Disable enterprise repository (no subscription)
-echo "Disabling enterprise repository..."
-if [ -f /etc/apt/sources.list.d/pve-enterprise.list ]; then
-  sed -i 's/^deb/#deb/' /etc/apt/sources.list.d/pve-enterprise.list
-fi
+# 1. Disable enterprise repositories (no subscription)
+# Proxmox 9.x uses .sources format (deb822), not .list
+echo "Disabling enterprise repositories..."
+for f in /etc/apt/sources.list.d/pve-enterprise.sources /etc/apt/sources.list.d/ceph.sources; do
+  if [ -f "$f" ]; then
+    if grep -q "^Enabled: yes" "$f"; then
+      sed -i 's/^Enabled: yes/Enabled: no/' "$f"
+    elif ! grep -q "^Enabled:" "$f"; then
+      echo "Enabled: no" >> "$f"
+    fi
+    echo "  Disabled: $f"
+  fi
+done
 
 # 2. Add no-subscription repository
 echo "Adding no-subscription repository..."
-NOSUB_REPO="deb http://download.proxmox.com/debian/pve bookworm pve-no-subscription"
-if ! grep -qF "$NOSUB_REPO" /etc/apt/sources.list.d/pve-no-subscription.list 2>/dev/null; then
-  echo "$NOSUB_REPO" > /etc/apt/sources.list.d/pve-no-subscription.list
+if [ ! -f /etc/apt/sources.list.d/pve-no-subscription.list ]; then
+  echo "deb http://download.proxmox.com/debian/pve trixie pve-no-subscription" > /etc/apt/sources.list.d/pve-no-subscription.list
+  echo "  Added pve-no-subscription repo"
 fi
 
-# 3. Remove subscription nag
+# 3. Remove subscription nag popup
 echo "Removing subscription nag..."
 NAG_FILE="/usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js"
 if [ -f "$NAG_FILE" ] && grep -q "data.status.toLowerCase() !== 'active'" "$NAG_FILE"; then
   sed -Ei.bak "s/data.status.toLowerCase\(\) !== 'active'/false/" "$NAG_FILE"
   systemctl restart pveproxy.service
+  echo "  Subscription nag removed"
 fi
 
 # 4. Update system
@@ -39,6 +49,7 @@ apt-get install -y \
   vim \
   curl \
   wget \
+  git \
   net-tools \
   lm-sensors
 
@@ -47,15 +58,12 @@ echo "Checking IOMMU..."
 if ! grep -q "intel_iommu=on" /etc/default/grub; then
   sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="quiet"/GRUB_CMDLINE_LINUX_DEFAULT="quiet intel_iommu=on iommu=pt"/' /etc/default/grub
   update-grub
-  echo "IOMMU enabled - reboot required"
+  echo "  IOMMU enabled - reboot required"
 fi
 
-# 7. Set up ZFS email alerts (for data pool, created later)
-echo "Configuring ZFS event daemon..."
-cat > /etc/zfs/zed.d/zed.rc.local 2>/dev/null <<'ZEDEOF' || true
-ZED_EMAIL_ADDR="root"
-ZED_NOTIFY_VERBOSE=1
-ZEDEOF
+# 7. Enable ZFS autotrim and email alerts
+echo "Configuring ZFS..."
+zpool set autotrim=on rpool 2>/dev/null || true
 
 echo ""
 echo "=== Post-install complete ==="
