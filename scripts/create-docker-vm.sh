@@ -1,30 +1,36 @@
 #!/usr/bin/env bash
-# Create the main Docker VM on Proxmox
+# Create the main Docker VM on Proxmox using Debian 12 cloud image + cloud-init
 # Run on the Proxmox host
+# Fully automated - no interactive installer needed
 set -euo pipefail
 
 VM_ID=100
 VM_NAME="docker-vm"
 VM_CORES=8
 VM_MEMORY=24576  # 24GB
-VM_DISK="32"     # OS disk size in GB (no suffix for Proxmox LVM)
-VM_STORAGE="local-lvm"   # NVMe storage for fast VM disks
-ISO_STORAGE="local"
+VM_DISK_SIZE="32G"
+VM_STORAGE="local-lvm"
+VM_IP="192.168.0.11/24"
+VM_GATEWAY="192.168.0.1"
+VM_DNS="192.168.0.1"
+VM_USER="khe"
+
+CLOUD_IMAGE_URL="https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-genericcloud-amd64.qcow2"
+CLOUD_IMAGE_PATH="/var/lib/vz/template/cloud/debian-12-genericcloud-amd64.qcow2"
 
 echo "=== Creating Docker VM (ID: $VM_ID) ==="
 
-# Download Ubuntu Server 24.04 LTS if not present
-ISO_FILE="ubuntu-24.04.2-live-server-amd64.iso"
-ISO_PATH="/var/lib/vz/template/iso/$ISO_FILE"
-# Download ISO if missing or empty (previous failed download)
-if [ ! -s "$ISO_PATH" ]; then
-  rm -f "$ISO_PATH"
-  echo "Downloading Ubuntu Server 24.04 LTS (~3GB)..."
-  wget -O "$ISO_PATH" \
-    "https://releases.ubuntu.com/24.04.2/$ISO_FILE"
+# 1. Download Debian 12 cloud image if missing or empty
+mkdir -p /var/lib/vz/template/cloud
+if [ ! -s "$CLOUD_IMAGE_PATH" ]; then
+  rm -f "$CLOUD_IMAGE_PATH"
+  echo "Downloading Debian 12 cloud image..."
+  wget -O "$CLOUD_IMAGE_PATH" "$CLOUD_IMAGE_URL"
 fi
 
-# Create VM
+echo "Image ready: $(ls -lh "$CLOUD_IMAGE_PATH" | awk '{print $5}')"
+
+# 2. Create VM with cloud-init support
 echo "Creating VM..."
 qm create $VM_ID \
   --name $VM_NAME \
@@ -40,31 +46,56 @@ qm create $VM_ID \
   --onboot 1 \
   --startup order=1
 
-# Add EFI disk
+# 3. Add EFI disk
 qm set $VM_ID --efidisk0 $VM_STORAGE:0,efitype=4m
 
-# Add OS disk
-qm set $VM_ID --scsi0 $VM_STORAGE:$VM_DISK,discard=on,iothread=1,ssd=1
+# 4. Import cloud image as main disk
+echo "Importing cloud image as VM disk..."
+qm set $VM_ID --scsi0 $VM_STORAGE:0,import-from=$CLOUD_IMAGE_PATH,discard=on,iothread=1,ssd=1
 
-# Attach ISO
-qm set $VM_ID --ide2 $ISO_STORAGE:iso/$ISO_FILE,media=cdrom
+# 5. Resize disk to desired size
+echo "Resizing disk to $VM_DISK_SIZE..."
+qm disk resize $VM_ID scsi0 $VM_DISK_SIZE
 
-# Set boot order
-qm set $VM_ID --boot order="ide2;scsi0"
+# 6. Add cloud-init drive
+qm set $VM_ID --ide2 $VM_STORAGE:cloudinit
 
-# Passthrough iGPU for Quick Sync (Intel UHD 770)
-# Uncomment after confirming IOMMU is working:
-# qm set $VM_ID --hostpci0 0000:00:02.0,mdev=i915-GVTg_V5_4
+# 7. Set boot order (disk first, no ISO needed)
+qm set $VM_ID --boot order=scsi0
 
-# NOTE: Data storage is provided via NFS from Proxmox ZFS pool,
-# not as a virtual disk. See scripts/setup-nfs-share.sh
+# 8. Add serial console for cloud-init output
+qm set $VM_ID --serial0 socket --vga serial0
+
+# 9. Configure cloud-init
+echo "Configuring cloud-init..."
+qm set $VM_ID --ciuser $VM_USER
+qm set $VM_ID --ipconfig0 ip=$VM_IP,gw=$VM_GATEWAY
+qm set $VM_ID --nameserver $VM_DNS
+qm set $VM_ID --searchdomain khe.ee
+
+# Import SSH key from Proxmox host
+if [ -f /root/.ssh/authorized_keys ]; then
+  qm set $VM_ID --sshkeys /root/.ssh/authorized_keys
+  echo "SSH keys imported from Proxmox host"
+elif [ -f /root/.ssh/id_ed25519.pub ]; then
+  qm set $VM_ID --sshkeys /root/.ssh/id_ed25519.pub
+  echo "SSH key imported"
+fi
+
+# 10. Start VM
+echo "Starting VM..."
+qm start $VM_ID
 
 echo ""
-echo "=== VM $VM_ID created ==="
+echo "=== VM $VM_ID created and started ==="
+echo "Cloud-init is configuring the VM on first boot (30-60 seconds)."
+echo ""
+echo "Once ready, SSH in:"
+echo "  ssh $VM_USER@${VM_IP%/*}"
+echo ""
 echo "Next steps:"
-echo "  1. Start VM: qm start $VM_ID"
-echo "  2. Open console in Proxmox web UI"
-echo "  3. Install Ubuntu Server 24.04"
-echo "  4. Run setup-nfs-share.sh on Proxmox host"
-echo "  5. Run setup-docker-host.sh inside the VM"
-echo "  6. Run mount-nfs-in-vm.sh inside the VM"
+echo "  1. Wait for cloud-init to finish: ssh $VM_USER@${VM_IP%/*} 'cloud-init status --wait'"
+echo "  2. Run setup-nfs-share.sh on Proxmox host"
+echo "  3. Run setup-docker-host.sh inside the VM"
+echo "  4. Run mount-nfs-in-vm.sh inside the VM"
+echo "  5. Run harden-docker-vm.sh inside the VM"

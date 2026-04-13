@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Docker host setup script
-# Run INSIDE the Ubuntu VM after OS installation
+# Run INSIDE the Debian VM after cloud-init completes
 set -euo pipefail
 
 echo "=== Docker Host Setup ==="

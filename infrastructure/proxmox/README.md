@@ -49,7 +49,12 @@ Why NFS over virtual disk (zvol):
 - Easy to share with future VMs
 
 ## VM Layout
-| VM ID | Name       | Purpose              | vCPU | RAM   | OS Disk |
-|-------|------------|----------------------|------|-------|---------|
-| 100   | docker-vm  | Main Docker host     | 8    | 24GB  | NVMe (local-lvm) |
-| 101   | playground | Testing/experiments  | 4    | 8GB   | NVMe (local-lvm) |
+| VM ID | Name       | Purpose              | vCPU | RAM   | OS | OS Disk |
+|-------|------------|----------------------|------|-------|----|---------|
+| 100   | docker-vm  | Main Docker host     | 8    | 24GB  | Debian 12 (cloud-init) | NVMe (local-lvm) 32GB |
+| 101   | playground | Testing/experiments  | 4    | 8GB   | Debian 12 (cloud-init) | NVMe (local-lvm) |
+
+## VM Provisioning
+VMs are created using Debian 12 cloud images with cloud-init (no interactive installer).
+Cloud-init configures: hostname, static IP, SSH keys, user account.
+See `../../scripts/create-docker-vm.sh`
