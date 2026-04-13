@@ -15,8 +15,8 @@ VM_GATEWAY="192.168.0.1"
 VM_DNS="192.168.0.1"
 VM_USER="khe"
 
-CLOUD_IMAGE_URL="https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-genericcloud-amd64.qcow2"
-CLOUD_IMAGE_PATH="/var/lib/vz/template/cloud/debian-12-genericcloud-amd64.qcow2"
+CLOUD_IMAGE_URL="https://cloud.debian.org/images/cloud/trixie/latest/debian-13-genericcloud-amd64.qcow2"
+CLOUD_IMAGE_PATH="/var/lib/vz/template/cloud/debian-13-genericcloud-amd64.qcow2"
 
 echo "=== Creating Docker VM (ID: $VM_ID) ==="
 

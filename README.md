@@ -71,7 +71,7 @@ Local traffic uses AdGuard split-horizon DNS to stay on LAN.
 # On Proxmox host
 ./scripts/proxmox-post-install.sh     # 1. Disable enterprise repo, install tools, enable IOMMU
 ./scripts/create-zfs-pool.sh          # 2. Create ZFS mirror from 2x 12TB HDDs
-./scripts/create-docker-vm.sh         # 3. Create Debian 12 VM (cloud-init, fully automated)
+./scripts/create-docker-vm.sh         # 3. Create Debian 13 VM (cloud-init, fully automated)
 ./scripts/setup-nfs-share.sh          # 4. Export ZFS pool via NFS
 
 # Inside Docker VM (ssh kaido@192.168.0.11)
