@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Create the main Docker VM on Proxmox using Debian 12 cloud image + cloud-init
+# Create the main Docker VM on Proxmox using Debian 13 cloud image + cloud-init
 # Run on the Proxmox host
 # Fully automated - no interactive installer needed
 set -euo pipefail
@@ -20,11 +20,11 @@ CLOUD_IMAGE_PATH="/var/lib/vz/template/cloud/debian-13-genericcloud-amd64.qcow2"
 
 echo "=== Creating Docker VM (ID: $VM_ID) ==="
 
-# 1. Download Debian 12 cloud image if missing or empty
+# 1. Download Debian 13 cloud image if missing or empty
 mkdir -p /var/lib/vz/template/cloud
 if [ ! -s "$CLOUD_IMAGE_PATH" ]; then
   rm -f "$CLOUD_IMAGE_PATH"
-  echo "Downloading Debian 12 cloud image..."
+  echo "Downloading Debian 13 cloud image..."
   wget -O "$CLOUD_IMAGE_PATH" "$CLOUD_IMAGE_URL"
 fi
 
