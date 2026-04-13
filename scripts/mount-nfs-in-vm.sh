@@ -35,11 +35,12 @@ echo "=== Mount verification ==="
 df -h /srv/data /srv/backups
 echo ""
 echo "Test write access:"
-touch /srv/data/.nfs-test && rm /srv/data/.nfs-test && echo "  /srv/data: OK"
-touch /srv/backups/.nfs-test && rm /srv/backups/.nfs-test && echo "  /srv/backups: OK"
+sudo touch /srv/data/.nfs-test && sudo rm /srv/data/.nfs-test && echo "  /srv/data: OK"
+sudo touch /srv/backups/.nfs-test && sudo rm /srv/backups/.nfs-test && echo "  /srv/backups: OK"
 echo ""
 # 6. Create data subdirectories on the NFS mount
 echo "Creating data directories on NFS..."
-mkdir -p /srv/data/{immich/upload,nextcloud,paperless/{media,consume,export},media/{audiobooks,podcasts,kids-cartoons}}
+sudo mkdir -p /srv/data/{immich/upload,nextcloud,paperless/{media,consume,export},media/{audiobooks,podcasts,kids-cartoons}}
+sudo chown -R "$USER:$USER" /srv/data
 
 echo "NFS mounts ready. Docker services can now use /srv/data/*"

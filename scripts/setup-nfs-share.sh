@@ -20,14 +20,18 @@ done
 # Set mountpoint so everything lives under /srv
 zfs set mountpoint=/srv tank 2>/dev/null || true
 
-# 3. Configure NFS exports (only allow Docker VM)
+# 3. Set ownership for VM user (UID 1000)
+echo "Setting directory ownership..."
+chown -R 1000:1000 /srv/data /srv/backups
+
+# 4. Configure NFS exports (only allow Docker VM)
 echo "Configuring NFS exports..."
 cat > /etc/exports <<EXPORTS
 /srv/data    ${DOCKER_VM_IP}/32(rw,sync,no_subtree_check,no_root_squash)
 /srv/backups ${DOCKER_VM_IP}/32(rw,sync,no_subtree_check,no_root_squash)
 EXPORTS
 
-# 4. Apply and start
+# 5. Apply and start
 exportfs -ra
 systemctl enable --now nfs-kernel-server
 
