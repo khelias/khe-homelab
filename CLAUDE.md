@@ -36,4 +36,16 @@ scripts/           # Deployment and maintenance scripts
 - Data disk: ZFS mirror pool "tank" (2x 12TB WD Ultrastar) → NFS → /srv
 - DBs (PostgreSQL): named Docker volumes on VM's NVMe disk (fast I/O)
 - Large files (photos, media): NFS mount from ZFS pool (snapshots, compression)
-- Hardware transcoding: Intel Quick Sync (i7-12700K iGPU passthrough)
+- Hardware transcoding: Intel Quick Sync (i7-12700K iGPU passthrough) - NOT YET SET UP
+- VM user: khe, SSH key auth only
+- Cloudflare Tunnel: khe-homelab (token in VM .env file)
+
+## Current Status (2026-04-14)
+Working: Immich, Jellyfin, Vaultwarden, Paperless, Audiobookshelf, n8n,
+Uptime Kuma, Homepage, Ollama, Dockge, AdGuard, NPM, Cloudflare Tunnel.
+
+BROKEN: Nextcloud - PostgreSQL permission bug (oc_migrations insufficient privilege).
+Tried PG18, PG16, PG15 + NC33, NC30 - all fail. Needs investigation.
+
+TODO: Nextcloud fix, iGPU passthrough, AdGuard split-horizon DNS,
+fan curve, Immich Google Takeout import, OpenClaw onboarding, Proxmox 2FA.
