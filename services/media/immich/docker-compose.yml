@@ -1,6 +1,6 @@
 services:
   immich-server:
-    image: ghcr.io/immich-app/immich-server:v2.7.4
+    image: ghcr.io/immich-app/immich-server:v2.7.5
     container_name: immich-server
     restart: unless-stopped
     volumes:
@@ -27,7 +27,7 @@ services:
       - /dev/dri:/dev/dri
 
   immich-machine-learning:
-    image: ghcr.io/immich-app/immich-machine-learning:v2.7.4
+    image: ghcr.io/immich-app/immich-machine-learning:v2.7.5
     container_name: immich-machine-learning
     restart: unless-stopped
     volumes:
