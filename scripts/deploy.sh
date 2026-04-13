@@ -23,12 +23,31 @@ DEPLOY_ORDER=(
   "ai/openclaw"
 )
 
+# Services that require external setup before they can run
+# Remove from this list once configured
+SKIP_SERVICES=(
+  "core/cloudflare-tunnel"   # Needs Cloudflare tunnel token
+  "ai/openclaw"              # Needs interactive onboarding
+)
+
 ACTION="${1:-up}"
+
+is_skipped() {
+  local service="$1"
+  for skip in "${SKIP_SERVICES[@]}"; do
+    [ "$service" = "$skip" ] && return 0
+  done
+  return 1
+}
 
 case "$ACTION" in
   up)
     echo "=== Deploying all services ==="
     for service in "${DEPLOY_ORDER[@]}"; do
+      if is_skipped "$service"; then
+        echo "Skipping $service (not configured yet)"
+        continue
+      fi
       dir="$SERVICES_DIR/$service"
       if [ -f "$dir/docker-compose.yml" ]; then
         echo "Starting $service..."
