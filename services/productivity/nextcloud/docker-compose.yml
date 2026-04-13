@@ -30,7 +30,7 @@ services:
       - nextcloud-internal
 
   nextcloud-db:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     container_name: nextcloud-db
     restart: unless-stopped
     environment:
@@ -48,7 +48,7 @@ services:
       - nextcloud-internal
 
   nextcloud-redis:
-    image: redis:7.4-alpine
+    image: redis:8.6-alpine
     container_name: nextcloud-redis
     restart: unless-stopped
     healthcheck:
