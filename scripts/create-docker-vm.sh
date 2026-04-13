@@ -7,7 +7,7 @@ VM_ID=100
 VM_NAME="docker-vm"
 VM_CORES=8
 VM_MEMORY=24576  # 24GB
-VM_DISK="32G"    # OS disk
+VM_DISK="32"     # OS disk size in GB (no suffix for Proxmox LVM)
 VM_STORAGE="local-lvm"   # NVMe storage for fast VM disks
 ISO_STORAGE="local"
 
