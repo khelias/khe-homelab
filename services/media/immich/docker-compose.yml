@@ -22,9 +22,9 @@ services:
     networks:
       - proxy
       - immich-internal
-    # Intel Quick Sync hardware transcoding
-    devices:
-      - /dev/dri:/dev/dri
+    # Intel Quick Sync hardware transcoding (enable after GPU passthrough)
+    # devices:
+    #   - /dev/dri:/dev/dri
 
   immich-machine-learning:
     image: ghcr.io/immich-app/immich-machine-learning:v2.7.4

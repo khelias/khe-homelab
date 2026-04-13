@@ -18,9 +18,9 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-    # Intel Quick Sync hardware transcoding
-    devices:
-      - /dev/dri:/dev/dri
+    # Intel Quick Sync hardware transcoding (enable after GPU passthrough)
+    # devices:
+    #   - /dev/dri:/dev/dri
 
 volumes:
   jellyfin_config:
