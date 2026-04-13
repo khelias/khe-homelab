@@ -1,0 +1,28 @@
+services:
+  adguard:
+    image: adguard/adguardhome:v0.107.55
+    container_name: adguard
+    restart: unless-stopped
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "3003:3000"    # Initial setup UI (temporary, remove after setup)
+      - "8080:80"      # Admin UI
+    volumes:
+      - adguard_work:/opt/adguardhome/work
+      - adguard_conf:/opt/adguardhome/conf
+    networks:
+      - proxy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  adguard_work:
+  adguard_conf:
+
+networks:
+  proxy:
+    external: true

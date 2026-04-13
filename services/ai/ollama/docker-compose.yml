@@ -1,0 +1,27 @@
+services:
+  ollama:
+    image: ollama/ollama:0.5.13
+    container_name: ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - proxy
+      - ai-internal
+    # GPU passthrough (when available)
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - capabilities: [gpu]
+
+volumes:
+  ollama_data:
+
+networks:
+  proxy:
+    external: true
+  ai-internal:
+    external: true

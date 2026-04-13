@@ -1,0 +1,27 @@
+# Environment and secrets
+.env
+*.env
+!.env.example
+
+# Runtime data
+data/
+volumes/
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Backup files (can be large)
+backups/*.tar.gz
+backups/*.sql
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Proxmox exports
+*.vma
+*.vma.zst

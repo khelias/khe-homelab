@@ -1,0 +1,31 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "docker:enableMajor"
+  ],
+  "labels": ["dependencies"],
+  "timezone": "Europe/Tallinn",
+  "schedule": ["every weekend"],
+  "packageRules": [
+    {
+      "description": "Group all Docker image updates",
+      "matchManagers": ["docker-compose"],
+      "groupName": "docker images",
+      "groupSlug": "docker-updates"
+    },
+    {
+      "description": "Automerge patch updates for non-critical services",
+      "matchManagers": ["docker-compose"],
+      "matchUpdateTypes": ["patch"],
+      "matchPackageNames": ["jellyfin/jellyfin", "ghcr.io/advplyr/audiobookshelf", "ollama/ollama"],
+      "automerge": true
+    },
+    {
+      "description": "Major updates need manual review",
+      "matchManagers": ["docker-compose"],
+      "matchUpdateTypes": ["major"],
+      "labels": ["dependencies", "breaking"]
+    }
+  ]
+}

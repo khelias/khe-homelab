@@ -1,0 +1,73 @@
+services:
+  paperless:
+    image: ghcr.io/paperless-ngx/paperless-ngx:2.20.13
+    container_name: paperless
+    restart: unless-stopped
+    depends_on:
+      paperless-db:
+        condition: service_healthy
+      paperless-redis:
+        condition: service_healthy
+    environment:
+      - PAPERLESS_REDIS=redis://paperless-redis:6379
+      - PAPERLESS_DBENGINE=postgresql
+      - PAPERLESS_DBHOST=paperless-db
+      - PAPERLESS_DBNAME=${POSTGRES_DB:-paperless}
+      - PAPERLESS_DBUSER=${POSTGRES_USER:-paperless}
+      - PAPERLESS_DBPASS=${POSTGRES_PASSWORD}
+      - PAPERLESS_URL=https://${PAPERLESS_DOMAIN}
+      - PAPERLESS_SECRET_KEY=${PAPERLESS_SECRET_KEY}
+      - PAPERLESS_OCR_LANGUAGE=est+eng
+      - PAPERLESS_TIME_ZONE=Europe/Tallinn
+      - PAPERLESS_ADMIN_USER=${PAPERLESS_ADMIN_USER}
+      - PAPERLESS_ADMIN_PASSWORD=${PAPERLESS_ADMIN_PASSWORD}
+    volumes:
+      - paperless_data:/usr/src/paperless/data
+      - ${MEDIA_PATH}:/usr/src/paperless/media
+      - ${CONSUME_PATH}:/usr/src/paperless/consume
+      - ${EXPORT_PATH}:/usr/src/paperless/export
+    ports:
+      - "8010:8000"
+    networks:
+      - proxy
+      - paperless-internal
+
+  paperless-db:
+    image: postgres:16-alpine
+    container_name: paperless-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-paperless}
+      - POSTGRES_USER=${POSTGRES_USER:-paperless}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - paperless_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-paperless}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - paperless-internal
+
+  paperless-redis:
+    image: redis:7.4-alpine
+    container_name: paperless-redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - paperless-internal
+
+volumes:
+  paperless_data:
+  paperless_pgdata:
+
+networks:
+  proxy:
+    external: true
+  paperless-internal:
+    driver: bridge

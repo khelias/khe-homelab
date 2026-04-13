@@ -1,0 +1,14 @@
+services:
+  cloudflare-tunnel:
+    image: cloudflare/cloudflared:2024.12.2
+    container_name: cloudflare-tunnel
+    restart: unless-stopped
+    command: tunnel run
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+    networks:
+      - proxy
+
+networks:
+  proxy:
+    external: true

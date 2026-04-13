@@ -1,0 +1,22 @@
+services:
+  dockge:
+    image: louislam/dockge:1.4.2
+    container_name: dockge
+    restart: unless-stopped
+    ports:
+      - "5001:5001"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - dockge_data:/app/data
+      - /srv/dockge/stacks:/srv/dockge/stacks
+    environment:
+      - DOCKGE_STACKS_DIR=/srv/dockge/stacks
+    networks:
+      - proxy
+
+volumes:
+  dockge_data:
+
+networks:
+  proxy:
+    external: true
