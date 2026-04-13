@@ -1,6 +1,6 @@
 services:
   nextcloud:
-    image: nextcloud:33.0-apache
+    image: nextcloud:30-apache
     container_name: nextcloud
     restart: unless-stopped
     environment:
@@ -30,7 +30,7 @@ services:
       - nextcloud-internal
 
   nextcloud-db:
-    image: postgres:16.8-alpine  # Pin to tested version
+    image: postgres:16-alpine
     container_name: nextcloud-db
     restart: unless-stopped
     environment:
