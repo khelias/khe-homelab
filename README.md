@@ -5,57 +5,22 @@ Personal family homelab — self-hosted cloud, media, and AI on a single machine
 ## Architecture
 
 ```mermaid
-graph TB
-    Internet((Internet)) -->|khe.ee| CF[Cloudflare Tunnel]
+graph LR
+    Internet((Internet)) -->|khe.ee| CF[Cloudflare\nTunnel]
+    CF --> NPM[Nginx Proxy\nManager]
 
-    subgraph PVE["Proxmox VE — 192.168.0.10"]
-        subgraph VM["Docker VM — 192.168.0.11"]
-            CF --> NPM[Nginx Proxy Manager]
+    NPM --> Core[Core\nAdGuard · Vaultwarden\nDockge · Uptime Kuma\nHomepage]
+    NPM --> Media[Media\nImmich · Jellyfin\nAudiobookshelf]
+    NPM --> Prod[Productivity\nNextcloud · Paperless-ngx]
+    NPM --> AI[AI\nOllama · n8n · OpenClaw]
 
-            subgraph Core["Core"]
-                NPM
-                AdGuard[AdGuard Home]
-                VW[Vaultwarden]
-                Dockge
-                UK[Uptime Kuma]
-                HP[Homepage]
-            end
-
-            subgraph Media["Media"]
-                Immich
-                Jellyfin
-                ABS[Audiobookshelf]
-            end
-
-            subgraph Productivity["Productivity"]
-                NC[Nextcloud]
-                PL[Paperless-ngx]
-            end
-
-            subgraph AI["AI"]
-                Ollama
-                n8n
-                OC[OpenClaw]
-            end
-
-            NPM --> Immich & Jellyfin & ABS
-            NPM --> NC & PL
-            NPM --> VW & UK & HP
-            NPM --> n8n
-            Ollama <--> OC
-            Ollama <--> n8n
-        end
-
-        subgraph Storage["Storage"]
-            NVMe["NVMe 2TB — Kingston KC3000\nProxmox OS · VM disks · PostgreSQL"]
-            HDD["2x 12TB HDD — WD Ultrastar\nZFS Mirror · Photos · Media · Files"]
-        end
-
-        HDD -- NFS --> VM
-    end
-
-    Router["Asus RT-AX55\n192.168.0.1"] <--> PVE
+    HDD[(ZFS Mirror\n2x 12TB)] -->|NFS| Media
+    HDD -->|NFS| Prod
+    NVMe[(NVMe 2TB)] -.->|VM disks\nDatabases| Core
 ```
+
+> **Proxmox VE** (192.168.0.10) runs a single **Docker VM** (192.168.0.11) with 15 services.
+> Fast storage (NVMe) for OS and databases, bulk storage (ZFS mirror) via NFS for photos, media, and files.
 
 ## Hardware
 
