@@ -16,8 +16,10 @@ echo "=== Creating Docker VM (ID: $VM_ID) ==="
 # Download Ubuntu Server 24.04 LTS if not present
 ISO_FILE="ubuntu-24.04.2-live-server-amd64.iso"
 ISO_PATH="/var/lib/vz/template/iso/$ISO_FILE"
-if [ ! -f "$ISO_PATH" ]; then
-  echo "Downloading Ubuntu Server 24.04 LTS..."
+# Download ISO if missing or empty (previous failed download)
+if [ ! -s "$ISO_PATH" ]; then
+  rm -f "$ISO_PATH"
+  echo "Downloading Ubuntu Server 24.04 LTS (~3GB)..."
   wget -O "$ISO_PATH" \
     "https://releases.ubuntu.com/24.04.2/$ISO_FILE"
 fi
