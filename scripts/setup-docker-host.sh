@@ -14,8 +14,8 @@ echo "Installing Docker..."
 curl -fsSL https://get.docker.com | sudo sh
 sudo usermod -aG docker "$USER"
 
-# 3. Install Docker Compose plugin (already included with Docker)
-docker compose version
+# 3. Verify Docker Compose plugin (included with Docker)
+sudo docker compose version
 
 # 4. Install QEMU guest agent
 echo "Installing QEMU guest agent..."
@@ -38,10 +38,10 @@ echo "Creating local directory structure..."
 sudo mkdir -p /srv/dockge/stacks
 sudo chown -R "$USER:$USER" /srv/dockge
 
-# 7. Create shared Docker network
+# 7. Create shared Docker networks
 echo "Creating shared Docker networks..."
-docker network create proxy 2>/dev/null || true
-docker network create ai-internal 2>/dev/null || true
+sudo docker network create proxy 2>/dev/null || true
+sudo docker network create ai-internal 2>/dev/null || true
 
 # 8. Configure automatic security updates
 echo "Setting up unattended upgrades..."
