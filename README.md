@@ -4,35 +4,57 @@ Personal family homelab — self-hosted cloud, media, and AI on a single machine
 
 ## Architecture
 
-```
-                        ┌─ Cloudflare Tunnel ─── khe.ee ──── Internet
-                        │
-┌───────────────────────┼──────────────────────────────────────────┐
-│  Proxmox VE           │                        192.168.0.10      │
-│  (NVMe boot)          │                                          │
-│                       │                                          │
-│  ┌────────────────────┼────────────────────────────────────────┐ │
-│  │  Docker VM         │                        192.168.0.11    │ │
-│  │                    │                                        │ │
-│  │  ┌─────────────────┴──────────────────────────────────────┐ │ │
-│  │  │  CORE                                                  │ │ │
-│  │  │  Nginx Proxy Manager · AdGuard Home · Cloudflare       │ │ │
-│  │  │  Vaultwarden · Dockge · Uptime Kuma · Homepage         │ │ │
-│  │  └────────────────────────────────────────────────────────┘ │ │
-│  │  ┌──────────────────┐ ┌─────────────────┐ ┌──────────────┐ │ │
-│  │  │  MEDIA           │ │  PRODUCTIVITY   │ │  AI          │ │ │
-│  │  │  Immich          │ │  Nextcloud      │ │  Ollama      │ │ │
-│  │  │  Jellyfin        │ │  Paperless-ngx  │ │  n8n         │ │ │
-│  │  │  Audiobookshelf  │ │                 │ │  OpenClaw    │ │ │
-│  │  └──────────────────┘ └─────────────────┘ └──────────────┘ │ │
-│  └────────────────────────────────────────────────────────────┘ │
-│                                                                  │
-│  ┌──────────────────────────┐  ┌───────────────────────────────┐ │
-│  │  NVMe 2TB (Kingston)    │  │  HDD 2x12TB (WD Ultrastar)   │ │
-│  │  Proxmox OS + VM disks  │  │  ZFS Mirror → NFS → /srv     │ │
-│  │  PostgreSQL databases   │  │  Photos, media, files         │ │
-│  └──────────────────────────┘  └───────────────────────────────┘ │
-└──────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TB
+    Internet((Internet)) -->|khe.ee| CF[Cloudflare Tunnel]
+
+    subgraph PVE["Proxmox VE — 192.168.0.10"]
+        subgraph VM["Docker VM — 192.168.0.11"]
+            CF --> NPM[Nginx Proxy Manager]
+
+            subgraph Core["Core"]
+                NPM
+                AdGuard[AdGuard Home]
+                VW[Vaultwarden]
+                Dockge
+                UK[Uptime Kuma]
+                HP[Homepage]
+            end
+
+            subgraph Media["Media"]
+                Immich
+                Jellyfin
+                ABS[Audiobookshelf]
+            end
+
+            subgraph Productivity["Productivity"]
+                NC[Nextcloud]
+                PL[Paperless-ngx]
+            end
+
+            subgraph AI["AI"]
+                Ollama
+                n8n
+                OC[OpenClaw]
+            end
+
+            NPM --> Immich & Jellyfin & ABS
+            NPM --> NC & PL
+            NPM --> VW & UK & HP
+            NPM --> n8n
+            Ollama <--> OC
+            Ollama <--> n8n
+        end
+
+        subgraph Storage["Storage"]
+            NVMe["NVMe 2TB — Kingston KC3000\nProxmox OS · VM disks · PostgreSQL"]
+            HDD["2x 12TB HDD — WD Ultrastar\nZFS Mirror · Photos · Media · Files"]
+        end
+
+        HDD -- NFS --> VM
+    end
+
+    Router["Asus RT-AX55\n192.168.0.1"] <--> PVE
 ```
 
 ## Hardware
