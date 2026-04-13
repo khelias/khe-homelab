@@ -51,7 +51,7 @@ echo "UFW enabled."
 echo "Setting up fail2ban..."
 sudo apt-get install -y fail2ban
 
-sudo cat > /etc/fail2ban/jail.local <<'JAIL'
+sudo tee /etc/fail2ban/jail.local > /dev/null <<'JAIL'
 [DEFAULT]
 bantime = 1h
 findtime = 10m

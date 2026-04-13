@@ -53,7 +53,14 @@ apt-get install -y \
   net-tools \
   lm-sensors
 
-# 6. Enable IOMMU (for future GPU passthrough)
+# 6. Fix locale
+echo "Configuring locale..."
+sed -i 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen
+locale-gen
+update-locale LANG=en_US.UTF-8
+echo "  Locale set to en_US.UTF-8"
+
+# 7. Enable IOMMU (for future GPU passthrough)
 echo "Checking IOMMU..."
 if ! grep -q "intel_iommu=on" /etc/default/grub; then
   sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="quiet"/GRUB_CMDLINE_LINUX_DEFAULT="quiet intel_iommu=on iommu=pt"/' /etc/default/grub
@@ -61,7 +68,7 @@ if ! grep -q "intel_iommu=on" /etc/default/grub; then
   echo "  IOMMU enabled - reboot required"
 fi
 
-# 7. Enable ZFS autotrim and email alerts
+# 8. Enable ZFS autotrim
 echo "Configuring ZFS..."
 zpool set autotrim=on rpool 2>/dev/null || true
 
