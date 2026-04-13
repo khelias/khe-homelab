@@ -30,7 +30,7 @@ services:
       - nextcloud-internal
 
   nextcloud-db:
-    image: postgres:16-alpine  # Nextcloud doesn't support PG18 yet
+    image: postgres:16.8-alpine  # Pin to tested version
     container_name: nextcloud-db
     restart: unless-stopped
     environment:
