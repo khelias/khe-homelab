@@ -95,7 +95,7 @@ OpenClaw: DONE — running at https://openclaw.khe.ee via CF tunnel + CF Access 
     SOUL.md (personality), USER.md (homelab context), AGENTS.md (safety rules)
   - docker-essentials skill installed (ClawHub) for container management
 
-study-game: DONE — nginx:1.28-alpine serves /srv/data/study-game/dist via proxy network
+study-game: DONE — nginx:1.30-alpine serves /srv/data/study-game/dist via proxy network
   - Auto-deploy via GitHub Actions self-hosted runner (registered on VM as khe user)
   - Runner path: /home/khe/actions-runner, service: actions.runner.khelias-study-game.*
   - Push to main → build → copy dist to /srv/data/study-game/dist → live at games.khe.ee
@@ -105,6 +105,10 @@ Healthchecks: study-game uses 127.0.0.1 (not localhost — busybox wget DNS issu
 
 Ollama: CPU-only, qwen2.5:7b loaded. Performance tuning:
   OLLAMA_NUM_THREAD=8, OLLAMA_KEEP_ALIVE=-1, OLLAMA_FLASH_ATTENTION=1
+  Resource limits: 10G RAM, 6 CPUs (leaves 2 vCPUs for other services)
+
+Immich machine-learning: OpenVINO image (CPU inference).
+  Resource limits: 4G RAM, 4 CPUs. start_period: 120s (model load on first start).
 
 TODO:
 - Ollama: research best local LLM for CPU-only i7-12700K (no GPU yet)
