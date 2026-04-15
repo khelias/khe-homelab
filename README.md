@@ -6,17 +6,18 @@ Personal family homelab — self-hosted cloud, media, and AI on a single machine
 
 ```mermaid
 graph LR
-    Internet((Internet)) --> CF[Cloudflare Tunnel]
-    LAN((LAN)) --> NPM[Nginx Proxy Manager]
+    Internet((Internet)) --> CF[Cloudflare\nTunnel]
 
-    CF & NPM --> Landing[khe.ee\nLanding Page]
-    CF & NPM --> Core[Vaultwarden · Uptime Kuma]
-    CF & NPM --> Media[Immich · Jellyfin · Audiobookshelf]
-    CF & NPM --> Prod[Nextcloud · Paperless-ngx]
+    CF --> Landing[khe.ee\nLanding Page]
     CF -->|CF Access| Dashboard[dash.khe.ee\nHomepage]
-    NPM --> Dashboard
+    CF --> Core[Vaultwarden · Uptime Kuma]
+    CF --> Media[Immich · Jellyfin · Audiobookshelf]
+    CF --> Prod[Nextcloud · Paperless-ngx]
     CF -->|CF Access| AI[n8n · OpenClaw · Ollama]
     CF --> Apps[study-game]
+
+    Landing & Dashboard & Core & Media & Prod --- NPM[Nginx Proxy\nManager]
+    NPM --- LAN((LAN))
 
     HDD[(ZFS Mirror\n2× 12TB)] -->|NFS| Media
     HDD -->|NFS| Prod
