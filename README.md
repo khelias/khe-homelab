@@ -5,7 +5,7 @@ Personal family homelab — self-hosted cloud, media, and AI on a single machine
 ## Architecture
 
 ```mermaid
-graph TD
+graph LR
     Internet((Internet)) --> CF[Cloudflare Tunnel]
     LAN((LAN)) --> NPM[Nginx Proxy Manager]
 
