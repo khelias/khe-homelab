@@ -28,9 +28,11 @@ services:
       - /dev/dri:/dev/dri
 
   immich-machine-learning:
-    image: ghcr.io/immich-app/immich-machine-learning:v2.7.5
+    image: ghcr.io/immich-app/immich-machine-learning:v2.7.5-openvino
     container_name: immich-machine-learning
     restart: unless-stopped
+    devices:
+      - /dev/dri:/dev/dri
     volumes:
       - immich_ml_cache:/cache
     networks:

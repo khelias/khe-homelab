@@ -7,5 +7,13 @@
     "targetVideoCodec": "h264",
     "crf": 23,
     "preset": "fast"
+  },
+  "machineLearning": {
+    "clip": {
+      "enabled": true
+    },
+    "facialRecognition": {
+      "enabled": true
+    }
   }
 }
