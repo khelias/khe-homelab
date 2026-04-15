@@ -8,7 +8,7 @@ services:
       - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
       - TZ=Europe/Tallinn
     healthcheck:
-      test: ["CMD", "cloudflared", "tunnel", "info"]
+      test: ["CMD", "curl", "-sf", "http://127.0.0.1:2000/metrics"]
       interval: 60s
       timeout: 10s
       retries: 3
