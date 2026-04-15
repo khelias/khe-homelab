@@ -1,7 +1,7 @@
 title: KHE Homelab
 theme: dark
 color: zinc
-headerStyle: clean
+headerStyle: underlined
 useEqualHeights: true
 layout:
   Pilv:

@@ -1,7 +1,3 @@
-- greeting:
-    text_size: xl
-    text: KHE Homelab
-
 - datetime:
     text_size: l
     format:
