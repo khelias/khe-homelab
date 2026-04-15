@@ -1,11 +1,3 @@
-- resources:
-    label: Docker VM
-    cpu: true
-    memory: true
-    disk: /srv
-    cacheInterval: 10
-    expanded: true
-
 - greeting:
     text_size: xl
     text: KHE Homelab
@@ -16,6 +8,26 @@
       dateStyle: long
       timeStyle: short
       hour12: false
+
+- openmeteo:
+    label: Tallinn
+    latitude: 59.437
+    longitude: 24.7536
+    timezone: Europe/Tallinn
+    units: metric
+    cache: 15
+
+- resources:
+    label: Docker VM
+    cpu: true
+    memory: true
+    cacheInterval: 10
+    expanded: true
+
+- resources:
+    label: ZFS pool (/srv)
+    disk: /srv
+    expanded: true
 
 - search:
     provider: google

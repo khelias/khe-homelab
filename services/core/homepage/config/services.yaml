@@ -71,9 +71,15 @@
         container: n8n
     - Ollama:
         icon: ollama
-        description: Lokaalne AI
+        description: Lokaalne AI (qwen2.5:7b)
         server: my-docker
         container: ollama
+    - OpenClaw:
+        icon: mdi-robot-outline
+        href: https://openclaw.khe.ee
+        description: DevOps agent (Skippy)
+        server: my-docker
+        container: openclaw
 
 - Virtualisatsioon:
     - Proxmox:
@@ -100,6 +106,10 @@
         description: Monitooring
         server: my-docker
         container: uptime-kuma
+        widget:
+          type: uptimekuma
+          url: http://uptime-kuma:3001
+          slug: homelab
     - Dockge:
         icon: dockge
         href: http://192.168.0.11:5001
