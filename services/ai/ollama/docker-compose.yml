@@ -10,7 +10,6 @@ services:
     volumes:
       - ollama_data:/root/.ollama
     networks:
-      - proxy
       - ai-internal
     healthcheck:
       test: ["CMD", "ollama", "list"]
@@ -28,7 +27,5 @@ volumes:
   ollama_data:
 
 networks:
-  proxy:
-    external: true
   ai-internal:
     external: true
