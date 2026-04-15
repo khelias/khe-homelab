@@ -29,9 +29,24 @@ dns:
   cache_ttl_max: 0
 filtering:
   rewrites:
-    - domain: "*.khe.ee"
-      answer: 192.168.0.11
+    # openclaw.khe.ee and games.khe.ee intentionally omitted — resolve via Cloudflare (HTTPS/secure context needed)
     - domain: khe.ee
+      answer: 192.168.0.11
+    - domain: cloud.khe.ee
+      answer: 192.168.0.11
+    - domain: vault.khe.ee
+      answer: 192.168.0.11
+    - domain: docs.khe.ee
+      answer: 192.168.0.11
+    - domain: photos.khe.ee
+      answer: 192.168.0.11
+    - domain: jellyfin.khe.ee
+      answer: 192.168.0.11
+    - domain: books.khe.ee
+      answer: 192.168.0.11
+    - domain: n8n.khe.ee
+      answer: 192.168.0.11
+    - domain: status.khe.ee
       answer: 192.168.0.11
   safe_browsing_enabled: false
   parental_enabled: false
