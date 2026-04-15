@@ -1,13 +1,13 @@
 services:
   nextcloud:
-    image: nextcloud:30-apache
+    image: nextcloud:33-apache
     container_name: nextcloud
     restart: unless-stopped
     environment:
       - POSTGRES_HOST=nextcloud-db
-      - POSTGRES_DB=${POSTGRES_DB:-nextcloud}
-      - POSTGRES_USER=${POSTGRES_USER:-nextcloud}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=nextcloud
+      - POSTGRES_USER=nextcloud
+      - POSTGRES_PASSWORD=${NEXTCLOUD_DB_PASSWORD}
       - REDIS_HOST=nextcloud-redis
       - REDIS_HOST_PORT=6379
       - NEXTCLOUD_ADMIN_USER=${NEXTCLOUD_ADMIN_USER}
@@ -34,13 +34,13 @@ services:
     container_name: nextcloud-db
     restart: unless-stopped
     environment:
-      - POSTGRES_DB=${POSTGRES_DB:-nextcloud}
-      - POSTGRES_USER=${POSTGRES_USER:-nextcloud}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - NEXTCLOUD_DB_PASSWORD=${NEXTCLOUD_DB_PASSWORD}
     volumes:
       - nextcloud_pgdata:/var/lib/postgresql/data
+      - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-nextcloud}"]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
