@@ -1,0 +1,17 @@
+title: KHE Homelab
+theme: dark
+color: slate
+headerStyle: clean
+layout:
+  Pilv:
+    style: row
+    columns: 3
+  Meedia:
+    style: row
+    columns: 3
+  AI:
+    style: row
+    columns: 2
+  Haldus:
+    style: row
+    columns: 3

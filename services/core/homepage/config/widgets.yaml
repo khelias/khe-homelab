@@ -1,0 +1,28 @@
+- resources:
+    label: Docker VM
+    cpu: true
+    memory: true
+    disk: /srv
+    cacheInterval: 10
+    expanded: true
+
+- proxmox:
+    url: https://192.168.0.10:8006
+    username: "{{HOMEPAGE_VAR_PROXMOX_TOKEN_ID}}"
+    password: "{{HOMEPAGE_VAR_PROXMOX_TOKEN_SECRET}}"
+    node: pve
+
+- greeting:
+    text_size: xl
+    text: KHE Homelab
+
+- datetime:
+    text_size: l
+    format:
+      dateStyle: long
+      timeStyle: short
+      hour12: false
+
+- search:
+    provider: google
+    target: _blank
