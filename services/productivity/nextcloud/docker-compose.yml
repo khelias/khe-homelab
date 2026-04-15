@@ -34,6 +34,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 60s
 
   nextcloud-db:
     image: postgres:16-alpine
@@ -51,6 +52,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
     networks:
       - nextcloud-internal
 
@@ -65,6 +67,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
     networks:
       - nextcloud-internal
 
