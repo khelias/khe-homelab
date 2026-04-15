@@ -5,27 +5,22 @@ Personal family homelab — self-hosted cloud, media, and AI on a single machine
 ## Architecture
 
 ```mermaid
-graph LR
-    Internet((Internet)) -->|khe.ee| CF[Cloudflare\nTunnel]
-    LAN((LAN)) -->|AdGuard DNS| NPM[Nginx Proxy\nManager]
+graph TD
+    Internet((Internet)) --> CF[Cloudflare Tunnel]
+    LAN((LAN)) --> NPM[Nginx Proxy Manager]
 
-    CF --> Landing[Landing Page\nkhe.ee — public]
-    CF -->|CF Access| Dashboard[Homepage\ndash.khe.ee]
-    CF --> Core[Core\nVaultwarden · Uptime Kuma]
-    CF --> Media[Media\nImmich · Jellyfin\nAudiobookshelf]
-    CF --> Prod[Productivity\nNextcloud · Paperless-ngx]
-    CF -->|CF Access| AI[AI\nn8n · OpenClaw]
-    CF --> Apps[Apps\nstudy-game]
-
-    NPM --> Landing
+    CF & NPM --> Landing[khe.ee\nLanding Page]
+    CF & NPM --> Core[Vaultwarden · Uptime Kuma]
+    CF & NPM --> Media[Immich · Jellyfin · Audiobookshelf]
+    CF & NPM --> Prod[Nextcloud · Paperless-ngx]
+    CF -->|CF Access| Dashboard[dash.khe.ee\nHomepage]
     NPM --> Dashboard
-    NPM --> Core
-    NPM --> Media
-    NPM --> Prod
+    CF -->|CF Access| AI[n8n · OpenClaw · Ollama]
+    CF --> Apps[study-game]
 
     HDD[(ZFS Mirror\n2× 12TB)] -->|NFS| Media
     HDD -->|NFS| Prod
-    NVMe[(NVMe 2TB)] -.->|VM disks\nDatabases| Core
+    NVMe[(NVMe 2TB)] -.->|DBs| Core
 ```
 
 > **Proxmox VE** (192.168.0.10) runs a single **Docker VM** (192.168.0.11) with 17 services.
