@@ -54,6 +54,16 @@ Why NFS over virtual disk (zvol):
 | 100   | docker-vm  | Main Docker host     | 8    | 24GB  | Debian 13 (cloud-init) | NVMe (local-lvm) 32GB |
 | 101   | playground | Testing/experiments  | 4    | 8GB   | Debian 13 (cloud-init) | NVMe (local-lvm) |
 
+## Security
+
+### Two-Factor Authentication (2FA)
+Configured for `root@pam` (2026-04-15):
+- **TOTP**: Microsoft Authenticator
+- **Recovery keys**: generated (store in Vaultwarden or offline)
+- **SSH**: key-only auth (unaffected by web UI 2FA — always available as fallback)
+
+Setup: Datacenter → Permissions → Two Factor Authentication → Add TOTP / Recovery Keys
+
 ## VM Provisioning
 VMs are created using Debian 13 (Trixie) cloud images with cloud-init (no interactive installer).
 Cloud-init configures: hostname, static IP, SSH keys, user account.
