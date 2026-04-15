@@ -2,6 +2,13 @@
   "server": {
     "externalDomain": "https://photos.khe.ee"
   },
+  "backup": {
+    "database": {
+      "cronExpression": "0 02 * * *",
+      "enabled": true,
+      "keepLastAmount": 14
+    }
+  },
   "storageTemplate": {
     "enabled": true,
     "template": "{{y}}/{{y}}-{{MM}}-{{dd}}/{{filename}}"
@@ -13,21 +20,68 @@
   "map": {
     "enabled": true
   },
+  "reverseGeocoding": {
+    "enabled": true
+  },
+  "image": {
+    "colorspace": "p3",
+    "preview": {
+      "format": "jpeg",
+      "quality": 80,
+      "size": 1440
+    },
+    "thumbnail": {
+      "format": "webp",
+      "quality": 80,
+      "size": 250
+    }
+  },
   "ffmpeg": {
     "accel": "qsv",
     "accelDecode": true,
     "preferredHwDevice": "auto",
     "transcode": "optimal",
     "targetVideoCodec": "h264",
+    "acceptedVideoCodecs": ["h264", "hevc"],
+    "acceptedAudioCodecs": ["aac", "mp3", "opus"],
+    "acceptedContainers": ["mov", "ogg", "webm"],
     "crf": 23,
-    "preset": "fast"
+    "preset": "slow",
+    "targetResolution": "720",
+    "tonemap": "hable",
+    "threads": 0,
+    "twoPass": false
   },
   "machineLearning": {
+    "enabled": true,
+    "urls": ["http://immich-machine-learning:3003"],
     "clip": {
-      "enabled": true
+      "enabled": true,
+      "modelName": "ViT-B-32__openai"
+    },
+    "duplicateDetection": {
+      "enabled": true,
+      "maxDistance": 0.01
     },
     "facialRecognition": {
+      "enabled": true,
+      "maxDistance": 0.5,
+      "minFaces": 3,
+      "minScore": 0.7,
+      "modelName": "buffalo_l"
+    },
+    "ocr": {
       "enabled": true
     }
+  },
+  "nightlyTasks": {
+    "startTime": "03:00"
+  },
+  "logging": {
+    "enabled": true,
+    "level": "log"
+  },
+  "newVersionCheck": {
+    "enabled": true
   }
 }
