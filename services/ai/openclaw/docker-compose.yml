@@ -24,7 +24,8 @@ services:
       - socket-proxy
 
   openclaw:
-    image: ghcr.io/openclaw/openclaw:2026.4.12
+    build: .
+    image: openclaw-custom:2026.4.12
     container_name: openclaw
     restart: unless-stopped
     depends_on:
