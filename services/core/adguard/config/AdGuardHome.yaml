@@ -21,16 +21,20 @@ dns:
   protection_enabled: true
   filtering_enabled: true
   blocking_mode: default
-  blocked_response_ttl: 10
-  ratelimit: 0
+  blocked_response_ttl: 60
+  ratelimit: 20
   enable_dnssec: true
   cache_size: 4194304
-  cache_ttl_min: 0
-  cache_ttl_max: 0
+  cache_ttl_min: 300
+  cache_ttl_max: 86400
+  cache_optimistic: true
 filtering:
   rewrites:
-    # openclaw.khe.ee and games.khe.ee intentionally omitted — resolve via Cloudflare (HTTPS/secure context needed)
+    # openclaw.khe.ee and games.khe.ee intentionally omitted — resolve via Cloudflare (CF Access / HTTPS needed)
+    # n8n.khe.ee omitted — CF Access OTP protection must apply on LAN too
     - domain: khe.ee
+      answer: 192.168.0.11
+    - domain: dash.khe.ee
       answer: 192.168.0.11
     - domain: cloud.khe.ee
       answer: 192.168.0.11
@@ -44,8 +48,6 @@ filtering:
       answer: 192.168.0.11
     - domain: books.khe.ee
       answer: 192.168.0.11
-    - domain: n8n.khe.ee
-      answer: 192.168.0.11
     - domain: status.khe.ee
       answer: 192.168.0.11
   safe_browsing_enabled: false
@@ -56,9 +58,13 @@ filters:
     name: AdGuard DNS filter
     id: 1
   - enabled: true
-    url: https://adguardteam.github.io/HostlistsRegistry/assets/filter_2.txt
-    name: AdAway Default Blocklist
-    id: 2
+    url: https://adguardteam.github.io/HostlistsRegistry/assets/filter_4.txt
+    name: AdGuard Tracking Protection
+    id: 4
+  - enabled: true
+    url: https://small.oisd.nl/domainswild
+    name: OISD small (replaces AdAway)
+    id: 100
 querylog:
   enabled: true
   interval: 168h
