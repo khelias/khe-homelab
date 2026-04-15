@@ -31,7 +31,7 @@ services:
 
   openclaw:
     build: .
-    image: openclaw-custom:2026.4.12
+    image: openclaw-custom:2026.4.14
     container_name: openclaw
     restart: unless-stopped
     depends_on:
