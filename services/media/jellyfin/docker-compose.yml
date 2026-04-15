@@ -1,8 +1,27 @@
 services:
+  jellyfin-init:
+    image: busybox:1.37
+    container_name: jellyfin-init
+    restart: no
+    volumes:
+      - jellyfin_config:/config
+      - ./encoding.xml:/encoding.xml:ro
+    command: >
+      sh -c "mkdir -p /config/config &&
+             if ! grep -q '<HardwareAccelerationType>qsv' /config/config/encoding.xml 2>/dev/null; then
+               cp /encoding.xml /config/config/encoding.xml &&
+               echo 'QSV encoding config written';
+             else
+               echo 'QSV encoding config already present, skipping';
+             fi"
+
   jellyfin:
     image: jellyfin/jellyfin:10.11.8
     container_name: jellyfin
     restart: unless-stopped
+    depends_on:
+      jellyfin-init:
+        condition: service_completed_successfully
     environment:
       - JELLYFIN_PublishedServerUrl=${JELLYFIN_URL}
       - LIBVA_DRIVER_NAME=iHD
