@@ -11,7 +11,8 @@ NPM is not used for routing — the tunnel routes directly to Docker containers.
 
 | Domain              | Service (internal)          | Port |
 |---------------------|-----------------------------|------|
-| khe.ee              | homepage                    | 3000 |
+| khe.ee              | landing                     | 80   |
+| dash.khe.ee         | homepage                    | 3000 |
 | cloud.khe.ee        | nextcloud                   | 80   |
 | vault.khe.ee        | vaultwarden                 | 80   |
 | docs.khe.ee         | paperless                   | 8000 |
@@ -32,7 +33,7 @@ Identity: One-time PIN via email (no OAuth setup needed).
 
 | Application  | Domain  | Policy          |
 |--------------|---------|-----------------|
-| KHE Homepage | khe.ee  | Email: kaidoelias@gmail.com |
+| KHE Dashboard | dash.khe.ee | Email: kaidoelias@gmail.com |
 
 ## DNS
 

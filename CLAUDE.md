@@ -46,9 +46,9 @@ scripts/           # Deployment and maintenance scripts
 - Cloudflare Tunnel: khe-homelab (token in VM .env file)
 
 ## Current Status (2026-04-15)
-All 16 services working: Immich, Jellyfin, Vaultwarden, Paperless, Audiobookshelf,
+All 17 services working: Immich, Jellyfin, Vaultwarden, Paperless, Audiobookshelf,
 n8n, Uptime Kuma, Homepage, Ollama, Dockge, AdGuard, NPM, Cloudflare Tunnel,
-Nextcloud (33-apache + PG16), OpenClaw, study-game.
+Nextcloud (33-apache + PG16), OpenClaw, study-game, landing page.
 
 AdGuard: pre-configured via AdGuardHome.yaml (bind mount), split-horizon
 DNS with explicit per-service rewrites (no wildcard). openclaw.khe.ee and
@@ -56,8 +56,12 @@ games.khe.ee intentionally omitted — resolve via Cloudflare (HTTPS needed).
 Router DNS: 192.168.0.11 (primary) + 1.1.1.1 (fallback) — ACTIVE.
 
 Cloudflare: tunnel routes directly to Docker containers (NPM not used for
-routing). Access policies (OTP via email) protect: khe.ee, openclaw.khe.ee,
-n8n.khe.ee. See infrastructure/cloudflare.md for full routing table.
+routing). Access policies (OTP via email) protect: dash.khe.ee, openclaw.khe.ee,
+n8n.khe.ee. khe.ee is public (landing page). See infrastructure/cloudflare.md.
+
+Landing page: static HTML at khe.ee (public), served by nginx:1.30-alpine.
+  Homepage dashboard moved to dash.khe.ee (CF Access protected).
+  HOMEPAGE_ALLOWED_HOSTS=dash.khe.ee in homepage .env.
 
 Nextcloud: NEXTCLOUD_TRUSTED_DOMAINS includes internal hostname "nextcloud"
 so Homepage widget can reach OCS API. Nextcloud app password (not admin
