@@ -16,8 +16,6 @@ services:
       - TZ=Europe/Tallinn
     volumes:
       - n8n_data:/home/node/.n8n
-    ports:
-      - "5678:5678"
     depends_on:
       n8n-db:
         condition: service_healthy
