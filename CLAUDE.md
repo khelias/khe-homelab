@@ -78,7 +78,14 @@ To regenerate API keys from scratch:
   ABS:      read token column from users table in absdatabase.sqlite
   Nextcloud: docker exec nextcloud php occ user:add-app-password admin
 
-TODO: fan curve (BIOS Smart Fan is OK for now), Immich Google Takeout import
-(821GB), Nextcloud iPhone setup, OpenClaw onboarding, Proxmox 2FA,
-n8n Homepage widget (public API auth unresolved), bootstrap script for
-full rebuild from scratch.
+TODO:
+- OpenClaw onboarding (docker compose run --rm openclaw onboard)
+- Ollama: research best local LLM for CPU-only i7-12700K (no GPU yet)
+- Homepage: public subpages without CF Access login (e.g. study-games, portfolio)
+- study-games: self-host KaidoHenrik.Elias/study-games from GitHub somewhere
+- Immich Google Takeout import (821GB photos)
+- Nextcloud iPhone setup (CalDAV/CardDAV)
+- Proxmox 2FA
+- n8n Homepage widget (public API auth unresolved)
+- Fan curve (BIOS Smart Fan is OK for now)
+- Bootstrap script for full rebuild from scratch
