@@ -1,35 +1,63 @@
 services:
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:0.3.0
+    container_name: openclaw-socket-proxy
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      # Read-only Docker API access
+      CONTAINERS: 1
+      IMAGES: 1
+      INFO: 1
+      NETWORKS: 1
+      VOLUMES: 1
+      # Write operations: blocked except container restart/stop/start
+      POST: 0
+      ALLOW_RESTARTS: 1
+      AUTH: 0
+      SECRETS: 0
+      SWARM: 0
+      TASKS: 0
+      CONFIGS: 0
+    networks:
+      - socket-proxy
+
   openclaw:
     image: ghcr.io/openclaw/openclaw:2026.4.12
     container_name: openclaw
     restart: unless-stopped
+    depends_on:
+      - docker-socket-proxy
     ports:
       - "18789:18789"
     volumes:
       - openclaw_config:/home/node/.openclaw
-      - openclaw_workspace:/home/node/.openclaw/workspace
+      - ./workspace:/home/node/.openclaw/workspace  # git-tracked, bind-mounted
+    env_file:
+      - .env
     environment:
       - TZ=Europe/Tallinn
+      - DOCKER_HOST=tcp://docker-socket-proxy:2375  # routes docker CLI through proxy
+      - GEMINI_API_KEY
+      - TELEGRAM_BOT_TOKEN
     networks:
       - proxy
       - ai-internal
+      - socket-proxy
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:18789/healthz"]
       interval: 30s
       timeout: 10s
       retries: 3
-    # NOTE: Run onboarding before first start:
-    #   docker compose run --rm openclaw onboard
-    # This configures API keys and chat platform connections.
-    # After onboarding, start normally:
-    #   docker compose up -d
 
 volumes:
   openclaw_config:
-  openclaw_workspace:
 
 networks:
   proxy:
     external: true
   ai-internal:
     external: true
+  socket-proxy:
+    internal: true  # no external traffic, only openclaw <-> socket-proxy
