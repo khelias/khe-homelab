@@ -22,6 +22,7 @@ services:
       - nextcloud_html:/var/www/html
       - ${DATA_PATH}:/var/www/html/data
       - ./php-custom.ini:/usr/local/etc/php/conf.d/zzz-custom.ini:ro
+      - ./apache-proxy.conf:/etc/apache2/conf-enabled/proxy.conf:ro
     ports:
       - "8888:80"
     depends_on:
