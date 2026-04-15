@@ -55,9 +55,20 @@ DNS with explicit per-service rewrites (no wildcard). openclaw.khe.ee and
 games.khe.ee intentionally omitted — resolve via Cloudflare (HTTPS needed).
 Router DNS: 192.168.0.11 (primary) + 1.1.1.1 (fallback) — ACTIVE.
 
-Cloudflare: tunnel routes directly to Docker containers (NPM not used for
-routing). Access policies (OTP via email) protect: dash.khe.ee, openclaw.khe.ee,
-n8n.khe.ee. khe.ee is public (landing page). See infrastructure/cloudflare.md.
+Cloudflare: tunnel routes directly to Docker containers (except photos.khe.ee).
+  Access policies (OTP via email) protect: dash.khe.ee, openclaw.khe.ee,
+  n8n.khe.ee. khe.ee is public (landing page). See infrastructure/cloudflare.md.
+
+NPM (Nginx Proxy Manager): reverse proxy for LAN traffic via split-horizon DNS.
+  - Wildcard Let's Encrypt cert (*.khe.ee) via Cloudflare DNS-01 challenge (auto-renewal)
+  - 9 proxy hosts: khe.ee, dash, cloud, vault, docs, photos, jellyfin, books, status
+  - LAN path: device → AdGuard DNS → 192.168.0.11:443 → NPM → container (fast, no CF limits)
+  - External path: device → CF DNS → CF Tunnel → container directly (CF 100MB limit applies)
+  - Upload-heavy services (photos, cloud, docs, jellyfin, books): unlimited body size, 600s timeouts
+  - All hosts: WebSocket, HTTP/2, HSTS, SSL forced, block exploits
+  - NPM admin: http://192.168.0.11:81 (creds in .env on VM)
+  - CF API token for DNS challenge stored in NPM database (npm_data volume)
+  - Not behind NPM: n8n, openclaw, games (CF Access / CF-only routing needed)
 
 Landing page: static HTML at khe.ee (public), served by nginx:1.30-alpine.
   Homepage dashboard moved to dash.khe.ee (CF Access protected).

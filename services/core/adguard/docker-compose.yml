@@ -14,6 +14,10 @@ services:
       - adguard_work:/opt/adguardhome/work
     networks:
       - proxy
+    deploy:
+      resources:
+        limits:
+          memory: 256M
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:80"]
       interval: 30s
