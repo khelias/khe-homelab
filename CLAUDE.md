@@ -44,6 +44,11 @@ scripts/           # Deployment and maintenance scripts
   - /dev/dri mounted into jellyfin and immich-server containers
 - VM user: khe, SSH key auth only
 - Cloudflare Tunnel: khe-homelab (token in VM .env file)
+- Tailscale VPN: installed on VM host (not Docker), subnet router for 192.168.0.0/24
+  - Remote SSH: `ssh khe@docker-vm` (MagicDNS)
+  - Gives full LAN access remotely (Proxmox UI, Dockge, AdGuard, NPM admin)
+  - IP forwarding: /etc/sysctl.d/99-tailscale.conf
+  - Flags: --advertise-routes=192.168.0.0/24 --accept-dns=false
 
 ## Current Status (2026-04-15)
 All 17 services working: Immich, Jellyfin, Vaultwarden, Paperless, Audiobookshelf,
