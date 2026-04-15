@@ -7,6 +7,9 @@ services:
       - "11434:11434"
     environment:
       - TZ=Europe/Tallinn
+      - OLLAMA_NUM_THREAD=8        # use all vCPUs explicitly
+      - OLLAMA_KEEP_ALIVE=-1       # keep model loaded in RAM indefinitely
+      - OLLAMA_FLASH_ATTENTION=1   # memory-efficient attention (Ollama v0.13.5+)
     volumes:
       - ollama_data:/root/.ollama
     networks:

@@ -7,17 +7,18 @@ Personal family homelab — self-hosted cloud, media, and AI on a single machine
 ```mermaid
 graph LR
     Internet((Internet)) -->|khe.ee| CF[Cloudflare\nTunnel]
-    CF -->|direct to container| Core[Core\nVaultwarden · Uptime Kuma\nHomepage]
+    CF -->|CF Access OTP| Core[Core\nVaultwarden · Uptime Kuma\nHomepage]
     CF --> Media[Media\nImmich · Jellyfin\nAudiobookshelf]
     CF --> Prod[Productivity\nNextcloud · Paperless-ngx]
-    CF --> AI[AI\nn8n]
+    CF -->|CF Access OTP| AI[AI\nn8n · OpenClaw]
+    CF --> Apps[Apps\nstudy-game]
 
     HDD[(ZFS Mirror\n2x 12TB)] -->|NFS| Media
     HDD -->|NFS| Prod
     NVMe[(NVMe 2TB)] -.->|VM disks\nDatabases| Core
 ```
 
-> **Proxmox VE** (192.168.0.10) runs a single **Docker VM** (192.168.0.11) with 15 services.
+> **Proxmox VE** (192.168.0.10) runs a single **Docker VM** (192.168.0.11) with 16 services.
 > Fast storage (NVMe) for OS and databases, bulk storage (ZFS mirror) via NFS for photos, media, and files.
 
 ## Hardware
@@ -44,8 +45,9 @@ graph LR
 | **Audiobookshelf** | `books.khe.ee` | Audiobooks and podcasts |
 | **n8n** | `n8n.khe.ee` | Workflow automation |
 | **Uptime Kuma** | `status.khe.ee` | Service monitoring and alerts |
-| Ollama | LAN only | Local AI models (Llama, Qwen) |
-| OpenClaw | LAN only | Personal AI DevOps agent |
+| **OpenClaw** | `openclaw.khe.ee` | Personal AI devops agent (Telegram + web UI) |
+| **study-game** | `games.khe.ee` | Study game app (auto-deploy via GitHub Actions) |
+| Ollama | LAN only | Local AI models (qwen2.5:7b, CPU-only) |
 | AdGuard Home | LAN only | DNS ad-blocking + split-horizon DNS |
 | Dockge | LAN only | Docker Compose management UI |
 | Nginx Proxy Manager | LAN only | Reverse proxy (admin UI only) |
@@ -72,11 +74,11 @@ Local traffic uses AdGuard split-horizon DNS to stay on LAN.
 ./scripts/create-docker-vm.sh         # 3. Create Debian 13 VM (cloud-init, fully automated)
 ./scripts/setup-nfs-share.sh          # 4. Export ZFS pool via NFS
 
-# Inside Docker VM (ssh kaido@192.168.0.11)
+# Inside Docker VM (ssh khe@192.168.0.11)
 ./scripts/setup-docker-host.sh        # 5. Install Docker, tools, create networks
 ./scripts/mount-nfs-in-vm.sh          # 6. Mount NFS shares at /srv
 ./scripts/harden-docker-vm.sh         # 7. UFW firewall, fail2ban, SSH hardening
-./scripts/deploy.sh up                # 8. Start all 15 services
+./scripts/deploy.sh up                # 8. Start all 16 services
 ```
 
 ## Day-to-day
@@ -96,7 +98,8 @@ services/
 ├── core/            NPM, AdGuard, Cloudflare, Vaultwarden, Dockge, Uptime Kuma, Homepage
 ├── media/           Immich, Jellyfin, Audiobookshelf
 ├── productivity/    Nextcloud, Paperless-ngx
-└── ai/              Ollama, n8n, OpenClaw
+├── ai/              Ollama, n8n, OpenClaw (+ workspace/ for agent config)
+└── apps/            study-game
 
 infrastructure/      Proxmox and network documentation
 scripts/             Setup, deploy, backup, and hardening scripts

@@ -16,6 +16,7 @@ services/          # Docker Compose stacks, one dir per service
   media/           # Immich, Jellyfin, Audiobookshelf
   productivity/    # Nextcloud, Paperless-ngx
   ai/              # Ollama, n8n, OpenClaw
+  apps/            # study-game (nginx serving Vite build)
 infrastructure/    # Proxmox setup notes, network config, ZFS
 scripts/           # Deployment and maintenance scripts
 ```
@@ -45,17 +46,18 @@ scripts/           # Deployment and maintenance scripts
 - Cloudflare Tunnel: khe-homelab (token in VM .env file)
 
 ## Current Status (2026-04-15)
-Working: Immich, Jellyfin, Vaultwarden, Paperless, Audiobookshelf, n8n,
-Uptime Kuma, Homepage, Ollama, Dockge, AdGuard, NPM, Cloudflare Tunnel,
-Nextcloud (33-apache + PG16).
+All 16 services working: Immich, Jellyfin, Vaultwarden, Paperless, Audiobookshelf,
+n8n, Uptime Kuma, Homepage, Ollama, Dockge, AdGuard, NPM, Cloudflare Tunnel,
+Nextcloud (33-apache + PG16), OpenClaw, study-game.
 
 AdGuard: pre-configured via AdGuardHome.yaml (bind mount), split-horizon
-DNS rewrites for *.khe.ee → 192.168.0.11. Router DNS: 192.168.0.11 (primary)
-+ 1.1.1.1 (fallback) — ACTIVE.
+DNS with explicit per-service rewrites (no wildcard). openclaw.khe.ee and
+games.khe.ee intentionally omitted — resolve via Cloudflare (HTTPS needed).
+Router DNS: 192.168.0.11 (primary) + 1.1.1.1 (fallback) — ACTIVE.
 
 Cloudflare: tunnel routes directly to Docker containers (NPM not used for
-routing). Access policy protects khe.ee (homepage) with one-time PIN auth.
-See infrastructure/cloudflare.md for full routing table.
+routing). Access policies (OTP via email) protect: khe.ee, openclaw.khe.ee,
+n8n.khe.ee. See infrastructure/cloudflare.md for full routing table.
 
 Nextcloud: NEXTCLOUD_TRUSTED_DOMAINS includes internal hostname "nextcloud"
 so Homepage widget can reach OCS API. Nextcloud app password (not admin
@@ -78,14 +80,35 @@ To regenerate API keys from scratch:
   ABS:      read token column from users table in absdatabase.sqlite
   Nextcloud: docker exec nextcloud php occ user:add-app-password admin
 
+OpenClaw: DONE — running at https://openclaw.khe.ee via CF tunnel + CF Access (OTP)
+  - Token auth (mode: token) + device pairing required on first connect
+  - To approve new browser: docker exec openclaw node openclaw.mjs devices list
+    then: docker exec openclaw node openclaw.mjs devices approve <request-id>
+  - Gateway token in openclaw_config volume (openclaw.json)
+  - Model: qwen2.5:7b via Ollama on ai-internal network
+  - trustedProxies not configured — CF tunnel seen as untrusted proxy (cosmetic warning only)
+  - Docker access: docker-socket-proxy (tecnativa) on socket-proxy internal network
+    POST=0, ALLOW_RESTARTS=1 — read-only + container restart/stop/start only
+    DOCKER_HOST=tcp://docker-socket-proxy:2375 routes docker CLI through proxy
+    docker-ce-cli installed in custom image (extends base, mirrors OPENCLAW_INSTALL_DOCKER_CLI=1)
+  - Agent workspace: services/ai/openclaw/workspace/ (git-tracked bind mount)
+    SOUL.md (personality), USER.md (homelab context), AGENTS.md (safety rules)
+  - docker-essentials skill installed (ClawHub) for container management
+
+study-game: DONE — nginx:1.28-alpine serves /srv/data/study-game/dist via proxy network
+  - Auto-deploy via GitHub Actions self-hosted runner (registered on VM as khe user)
+  - Runner path: /home/khe/actions-runner, service: actions.runner.khelias-study-game.*
+  - Push to main → build → copy dist to /srv/data/study-game/dist → live at games.khe.ee
+
+Healthchecks: study-game uses 127.0.0.1 (not localhost — busybox wget DNS issue in alpine).
+  cloudflare-tunnel uses `cloudflared version` (distroless image, no curl/wget available).
+
+Ollama: CPU-only, qwen2.5:7b loaded. Performance tuning:
+  OLLAMA_NUM_THREAD=8, OLLAMA_KEEP_ALIVE=-1, OLLAMA_FLASH_ATTENTION=1
+
 TODO:
-- OpenClaw: DONE — configured non-interactively via `config set`, running on :18789 (LAN only)
-  - Gateway token stored in openclaw_openclaw_config volume (openclaw.json)
-  - Regenerate token: docker run --rm -v openclaw_openclaw_config:/home/node/.openclaw [image] node openclaw.mjs config set gateway.auth.token <new-token>
-  - Model: qwen2.5:7b via Ollama (being pulled on first run)
 - Ollama: research best local LLM for CPU-only i7-12700K (no GPU yet)
 - Homepage: public subpages without CF Access login (e.g. study-games, portfolio)
-- study-games: self-host KaidoHenrik.Elias/study-games from GitHub somewhere
 - Immich Google Takeout import (821GB photos)
 - Nextcloud iPhone setup (CalDAV/CardDAV)
 - Proxmox 2FA
