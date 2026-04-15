@@ -9,7 +9,7 @@
           type: nextcloud
           url: http://nextcloud:80
           username: "{{HOMEPAGE_VAR_NEXTCLOUD_USERNAME}}"
-          password: "{{HOMEPAGE_VAR_NEXTCLOUD_PASSWORD}}"
+          password: "{{HOMEPAGE_VAR_NEXTCLOUD_APP_PASSWORD}}"
     - Vaultwarden:
         icon: vaultwarden
         href: https://vault.khe.ee
@@ -38,6 +38,7 @@
           type: immich
           url: http://immich-server:2283
           key: "{{HOMEPAGE_VAR_IMMICH_API_KEY}}"
+          version: 2
     - Jellyfin:
         icon: jellyfin
         href: https://jellyfin.khe.ee
@@ -68,10 +69,6 @@
         description: Automatsioonid
         server: my-docker
         container: n8n
-        widget:
-          type: n8n
-          url: http://n8n:5678
-          key: "{{HOMEPAGE_VAR_N8N_API_KEY}}"
     - Ollama:
         icon: ollama
         description: Lokaalne AI
