@@ -5,6 +5,8 @@ services:
     restart: unless-stopped
     ports:
       - "13378:80"
+    environment:
+      - TZ=Europe/Tallinn
     volumes:
       - ${AUDIOBOOKS_PATH}:/audiobooks
       - ${PODCASTS_PATH}:/podcasts

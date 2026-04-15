@@ -25,6 +25,11 @@ services:
       - proxy
       - ai-internal
       - n8n-internal
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:5678/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   n8n-db:
     image: postgres:18-alpine
@@ -34,6 +39,7 @@ services:
       - POSTGRES_DB=${POSTGRES_DB:-n8n}
       - POSTGRES_USER=${POSTGRES_USER:-n8n}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - TZ=Europe/Tallinn
     volumes:
       - n8n_pgdata:/var/lib/postgresql/data
     healthcheck:

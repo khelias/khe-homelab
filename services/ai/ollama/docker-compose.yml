@@ -5,11 +5,18 @@ services:
     restart: unless-stopped
     ports:
       - "11434:11434"
+    environment:
+      - TZ=Europe/Tallinn
     volumes:
       - ollama_data:/root/.ollama
     networks:
       - proxy
       - ai-internal
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     # GPU passthrough (when available)
     # deploy:
     #   resources:

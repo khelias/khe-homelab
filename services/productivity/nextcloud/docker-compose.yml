@@ -15,6 +15,7 @@ services:
       - NEXTCLOUD_TRUSTED_DOMAINS=${NEXTCLOUD_DOMAIN}
       - OVERWRITEPROTOCOL=https
       - OVERWRITECLIURL=https://${NEXTCLOUD_DOMAIN}
+      - TZ=Europe/Tallinn
     volumes:
       - nextcloud_html:/var/www/html
       - ${DATA_PATH}:/var/www/html/data
@@ -28,6 +29,11 @@ services:
     networks:
       - proxy
       - nextcloud-internal
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/status.php"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   nextcloud-db:
     image: postgres:16-alpine
@@ -36,6 +42,7 @@ services:
     environment:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - NEXTCLOUD_DB_PASSWORD=${NEXTCLOUD_DB_PASSWORD}
+      - TZ=Europe/Tallinn
     volumes:
       - nextcloud_pgdata:/var/lib/postgresql/data
       - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
@@ -51,6 +58,8 @@ services:
     image: redis:8.6-alpine
     container_name: nextcloud-redis
     restart: unless-stopped
+    environment:
+      - TZ=Europe/Tallinn
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s

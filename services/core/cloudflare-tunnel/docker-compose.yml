@@ -6,6 +6,13 @@ services:
     command: tunnel run
     environment:
       - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+      - TZ=Europe/Tallinn
+    healthcheck:
+      test: ["CMD", "cloudflared", "tunnel", "info"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
     networks:
       - proxy
 

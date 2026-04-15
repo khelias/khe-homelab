@@ -5,6 +5,8 @@ services:
     restart: unless-stopped
     ports:
       - "3001:3001"
+    environment:
+      - TZ=Europe/Tallinn
     volumes:
       - uptime_kuma_data:/app/data
     networks:
