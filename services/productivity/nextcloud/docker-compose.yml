@@ -37,7 +37,7 @@ services:
       start_period: 60s
 
   nextcloud-db:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     container_name: nextcloud-db
     restart: unless-stopped
     environment:
