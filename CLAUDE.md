@@ -129,3 +129,9 @@ TODO:
 - n8n Homepage widget (public API auth unresolved)
 - Fan curve (BIOS Smart Fan is OK for now)
 - Bootstrap script for full rebuild from scratch
+
+New services (wishlist):
+- Quick wins: Dozzle (Docker logs), IT-Tools (dev utilities), ntfy (push notifications)
+- Weekend projects: Home Assistant, Forgejo (self-hosted Git), CrowdSec (IPS), KitchenOwl (groceries+recipes)
+- When time allows: Actual Budget, Stirling PDF, Karakeep (bookmarks+AI), FreshRSS, Changedetection.io, Docmost (wiki)
+- After RAM upgrade: Authentik (SSO) or Authelia (lighter alternative)
