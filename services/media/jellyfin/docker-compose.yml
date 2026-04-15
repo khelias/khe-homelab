@@ -13,6 +13,13 @@ services:
                echo 'QSV encoding config written';
              else
                echo 'QSV encoding config already present, skipping';
+             fi &&
+             if grep -q '<EnableHwAcceleration>false' /config/config/system.xml 2>/dev/null; then
+               sed -i 's|<EnableHwAcceleration>false</EnableHwAcceleration>|<EnableHwAcceleration>true</EnableHwAcceleration>|g' /config/config/system.xml &&
+               sed -i 's|<EnableHwEncoding>false</EnableHwEncoding>|<EnableHwEncoding>true</EnableHwEncoding>|g' /config/config/system.xml &&
+               echo 'Trickplay HW acceleration enabled';
+             else
+               echo 'Trickplay HW acceleration already enabled, skipping';
              fi"
 
   jellyfin:
