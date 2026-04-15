@@ -19,12 +19,15 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-    # GPU passthrough (when available)
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - capabilities: [gpu]
+    deploy:
+      resources:
+        limits:
+          memory: 10G   # qwen2.5:7b ~5-6GB + overhead
+          cpus: '6'     # leave 2 vCPUs for other services during inference
+        # GPU passthrough (when available — uncomment and remove limits above):
+        # reservations:
+        #   devices:
+        #     - capabilities: [gpu]
 
 volumes:
   ollama_data:
