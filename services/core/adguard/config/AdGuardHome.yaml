@@ -1,0 +1,54 @@
+http:
+  pprof:
+    port: 6060
+    enabled: false
+  address: 0.0.0.0:80
+  session_ttl: 720h
+users:
+  - name: admin
+    password: $2b$10$YaqlcPNxICkKbzOCd.1/3eNq4L8F8V/.K2BVYPT4BEFQM8SFexeQW
+dns:
+  port: 53
+  bind_hosts:
+    - 0.0.0.0
+  upstream_dns:
+    - https://dns.cloudflare.com/dns-query
+    - https://dns.quad9.net/dns-query
+  bootstrap_dns:
+    - 9.9.9.9
+    - 149.112.112.112
+    - 1.1.1.1
+  protection_enabled: true
+  filtering_enabled: true
+  blocking_mode: default
+  blocked_response_ttl: 10
+  ratelimit: 0
+  enable_dnssec: true
+  cache_size: 4194304
+  cache_ttl_min: 0
+  cache_ttl_max: 0
+filtering:
+  rewrites:
+    - domain: "*.khe.ee"
+      answer: 192.168.0.11
+    - domain: khe.ee
+      answer: 192.168.0.11
+  safe_browsing_enabled: false
+  parental_enabled: false
+filters:
+  - enabled: true
+    url: https://adguardteam.github.io/HostlistsRegistry/assets/filter_1.txt
+    name: AdGuard DNS filter
+    id: 1
+  - enabled: true
+    url: https://adguardteam.github.io/HostlistsRegistry/assets/filter_2.txt
+    name: AdAway Default Blocklist
+    id: 2
+querylog:
+  enabled: true
+  interval: 168h
+  size_memory: 1000
+statistics:
+  enabled: true
+  interval: 168h
+schema_version: 29
