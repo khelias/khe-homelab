@@ -40,12 +40,18 @@ scripts/           # Deployment and maintenance scripts
 - VM user: khe, SSH key auth only
 - Cloudflare Tunnel: khe-homelab (token in VM .env file)
 
-## Current Status (2026-04-14)
+## Current Status (2026-04-15)
 Working: Immich, Jellyfin, Vaultwarden, Paperless, Audiobookshelf, n8n,
-Uptime Kuma, Homepage, Ollama, Dockge, AdGuard, NPM, Cloudflare Tunnel.
+Uptime Kuma, Homepage, Ollama, Dockge, AdGuard, NPM, Cloudflare Tunnel,
+Nextcloud (33-apache + PG16).
 
-BROKEN: Nextcloud - PostgreSQL permission bug (oc_migrations insufficient privilege).
-Tried PG18, PG16, PG15 + NC33, NC30 - all fail. Needs investigation.
+AdGuard: pre-configured via AdGuardHome.yaml (bind mount), split-horizon
+DNS rewrites for *.khe.ee → 192.168.0.11. Router DNS must point to
+192.168.0.11 (primary) + 1.1.1.1 (fallback) to activate.
 
-TODO: Nextcloud fix, iGPU passthrough, AdGuard split-horizon DNS,
-fan curve, Immich Google Takeout import, OpenClaw onboarding, Proxmox 2FA.
+Nextcloud fix: PG CREATEROLE bug resolved via init-db.sh that creates a
+non-superuser nextcloud DB user. See services/productivity/nextcloud/init-db.sh.
+
+TODO: Router DNS config (AdGuard activation), iGPU passthrough,
+fan curve, Immich Google Takeout import (821GB), Nextcloud iPhone setup,
+OpenClaw onboarding, Proxmox 2FA.
