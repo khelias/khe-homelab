@@ -79,7 +79,10 @@ To regenerate API keys from scratch:
   Nextcloud: docker exec nextcloud php occ user:add-app-password admin
 
 TODO:
-- OpenClaw onboarding (docker compose run --rm openclaw onboard)
+- OpenClaw: DONE — configured non-interactively via `config set`, running on :18789 (LAN only)
+  - Gateway token stored in openclaw_openclaw_config volume (openclaw.json)
+  - Regenerate token: docker run --rm -v openclaw_openclaw_config:/home/node/.openclaw [image] node openclaw.mjs config set gateway.auth.token <new-token>
+  - Model: qwen2.5:7b via Ollama (being pulled on first run)
 - Ollama: research best local LLM for CPU-only i7-12700K (no GPU yet)
 - Homepage: public subpages without CF Access login (e.g. study-games, portfolio)
 - study-games: self-host KaidoHenrik.Elias/study-games from GitHub somewhere
