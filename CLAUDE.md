@@ -63,13 +63,20 @@ Landing page: static HTML at khe.ee (public), served by nginx:1.30-alpine.
   Homepage dashboard moved to dash.khe.ee (CF Access protected).
   HOMEPAGE_ALLOWED_HOSTS=dash.khe.ee in homepage .env.
 
-Nextcloud: NEXTCLOUD_TRUSTED_DOMAINS includes internal hostname "nextcloud"
-so Homepage widget can reach OCS API. Nextcloud app password (not admin
-password) used for Homepage widget — generated via:
-  docker exec nextcloud php occ user:add-app-password admin
-
-Nextcloud fix: PG CREATEROLE bug resolved via init-db.sh that creates a
-non-superuser nextcloud DB user. See services/productivity/nextcloud/init-db.sh.
+Nextcloud: production-ready config (33.0.2-apache, pinned).
+  - Cron sidecar (nextcloud-cron) for background jobs
+  - PHP: 512M memory, 16G upload, OPcache 256M, JIT 128M (php-custom.ini mount)
+  - PostgreSQL: shared_buffers=256MB, work_mem=16MB, effective_cache_size=1GB
+  - Redis: 256mb maxmemory, allkeys-lru, persistence disabled (cache-only)
+  - trusted_proxies: 172.16.0.0/12 (Docker network for CF Tunnel)
+  - Config: default_phone_region=EE, maintenance_window_start=1 (UTC),
+    simpleSignUpAllowed=false, loglevel=2, trashbin/versions "7, auto"
+  - Apps: calendar 6.2.2 + contacts 8.4.4 installed (iPhone CalDAV/CardDAV ready)
+  - Disabled: firstrunwizard, recommendations, survey_client, federation,
+    circles, weather_status, contactsinteraction, support, user_status, dashboard
+  - PG CREATEROLE bug resolved via init-db.sh (non-superuser nextcloud DB user)
+  - NEXTCLOUD_TRUSTED_DOMAINS includes "nextcloud" for Homepage OCS API widget
+  - App password for Homepage: docker exec nextcloud php occ user:add-app-password admin
 
 Jellyfin QSV: configured via init container (encoding.xml bind mount +
 system.xml patch). No web UI steps needed.
@@ -118,7 +125,7 @@ TODO:
 - Ollama: research best local LLM for CPU-only i7-12700K (no GPU yet)
 - Homepage: public subpages without CF Access login (e.g. study-games, portfolio)
 - Immich Google Takeout import (821GB photos)
-- Nextcloud iPhone setup (CalDAV/CardDAV)
+- Nextcloud iPhone setup (CalDAV/CardDAV — apps installed, phone config remaining)
 - n8n Homepage widget (public API auth unresolved)
 - Fan curve (BIOS Smart Fan is OK for now)
 - Bootstrap script for full rebuild from scratch
