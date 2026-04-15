@@ -10,25 +10,32 @@
 
 ## DNS Strategy (Split-Horizon)
 - **External**: Cloudflare DNS for khe.ee → Cloudflare Tunnel
-- **Internal**: AdGuard Home as local DNS, rewrites *.khe.ee → server local IP
-  - This means local traffic stays local (no hairpin NAT needed)
+- **Internal**: AdGuard Home as local DNS, rewrites *.khe.ee → 192.168.0.11
+  - Local traffic stays local (no hairpin NAT)
+  - Router DNS: 192.168.0.11 (primary) + 1.1.1.1 (fallback) — ACTIVE
 
-## Subdomains
-| Subdomain          | Service              | Port  |
-|--------------------|----------------------|-------|
-| khe.ee             | Homepage (dashboard) | 3000  |
-| cloud.khe.ee       | Nextcloud            | 8888  |
-| photos.khe.ee      | Immich               | 2283  |
-| vault.khe.ee       | Vaultwarden          | 80    |
-| jellyfin.khe.ee    | Jellyfin             | 8096  |
-| docs.khe.ee        | Paperless-ngx        | 8010  |
-| books.khe.ee       | Audiobookshelf       | 13378 |
-| n8n.khe.ee         | n8n                  | 5678  |
-| dockge.khe.ee      | Dockge               | 5001  |
-| adguard.khe.ee     | AdGuard Home         | 8080  |
-| status.khe.ee      | Uptime Kuma          | 3001  |
+## Cloudflare Tunnel Routing
 
-## Cloudflare Tunnel
-- Zero Trust tunnel handles all external traffic
-- No ports opened on router
-- SSL/TLS: Full (strict) on Cloudflare
+The tunnel routes directly to Docker containers — no reverse proxy in the path.
+See `../cloudflare.md` for the authoritative routing table.
+
+| Domain              | Container           | Port |
+|---------------------|---------------------|------|
+| khe.ee              | homepage            | 3000 |
+| cloud.khe.ee        | nextcloud           | 80   |
+| vault.khe.ee        | vaultwarden         | 80   |
+| docs.khe.ee         | paperless           | 8000 |
+| photos.khe.ee       | immich-server       | 2283 |
+| jellyfin.khe.ee     | jellyfin            | 8096 |
+| books.khe.ee        | audiobookshelf      | 80   |
+| n8n.khe.ee          | n8n                 | 5678 |
+| status.khe.ee       | uptime-kuma         | 3001 |
+
+## LAN-Only Services (not exposed via tunnel)
+
+| Service             | IP:Port                  |
+|---------------------|--------------------------|
+| AdGuard Home        | 192.168.0.11:8080        |
+| Dockge              | 192.168.0.11:5001        |
+| Nginx Proxy Manager | 192.168.0.11:81 (admin)  |
+| Proxmox             | 192.168.0.10:8006        |

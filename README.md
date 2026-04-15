@@ -7,12 +7,10 @@ Personal family homelab — self-hosted cloud, media, and AI on a single machine
 ```mermaid
 graph LR
     Internet((Internet)) -->|khe.ee| CF[Cloudflare\nTunnel]
-    CF --> NPM[Nginx Proxy\nManager]
-
-    NPM --> Core[Core\nAdGuard · Vaultwarden\nDockge · Uptime Kuma\nHomepage]
-    NPM --> Media[Media\nImmich · Jellyfin\nAudiobookshelf]
-    NPM --> Prod[Productivity\nNextcloud · Paperless-ngx]
-    NPM --> AI[AI\nOllama · n8n · OpenClaw]
+    CF -->|direct to container| Core[Core\nVaultwarden · Uptime Kuma\nHomepage]
+    CF --> Media[Media\nImmich · Jellyfin\nAudiobookshelf]
+    CF --> Prod[Productivity\nNextcloud · Paperless-ngx]
+    CF --> AI[AI\nn8n]
 
     HDD[(ZFS Mirror\n2x 12TB)] -->|NFS| Media
     HDD -->|NFS| Prod
@@ -46,11 +44,11 @@ graph LR
 | **Audiobookshelf** | `books.khe.ee` | Audiobooks and podcasts |
 | **n8n** | `n8n.khe.ee` | Workflow automation |
 | **Uptime Kuma** | `status.khe.ee` | Service monitoring and alerts |
-| Ollama | — | Local AI models (Llama, Qwen) |
-| OpenClaw | — | Personal AI DevOps agent |
-| AdGuard Home | `adguard.khe.ee` | DNS ad-blocking + split-horizon DNS |
-| Dockge | `dockge.khe.ee` | Docker Compose management UI |
-| Nginx Proxy Manager | — | Reverse proxy + SSL |
+| Ollama | LAN only | Local AI models (Llama, Qwen) |
+| OpenClaw | LAN only | Personal AI DevOps agent |
+| AdGuard Home | LAN only | DNS ad-blocking + split-horizon DNS |
+| Dockge | LAN only | Docker Compose management UI |
+| Nginx Proxy Manager | LAN only | Reverse proxy (admin UI only) |
 | Cloudflare Tunnel | — | Secure external access (no open ports) |
 
 ## Network
