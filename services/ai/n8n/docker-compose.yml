@@ -28,6 +28,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 60s
 
   n8n-db:
     image: postgres:18-alpine
@@ -45,6 +46,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
     networks:
       - n8n-internal
 

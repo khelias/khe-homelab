@@ -26,6 +26,12 @@ services:
       - immich-internal
     devices:
       - /dev/dri:/dev/dri
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:2283/api/server/ping || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   immich-machine-learning:
     image: ghcr.io/immich-app/immich-machine-learning:v2.7.5-openvino
@@ -37,6 +43,12 @@ services:
       - immich_ml_cache:/cache
     networks:
       - immich-internal
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3003/ping || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s  # ML model loading takes time on first start
 
   immich-valkey:
     image: docker.io/valkey/valkey:9-alpine
@@ -47,6 +59,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
     networks:
       - immich-internal
 
@@ -67,6 +80,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
     networks:
       - immich-internal
 

@@ -3,7 +3,7 @@
     "accel": "qsv",
     "accelDecode": true,
     "preferredHwDevice": "auto",
-    "transcode": "required",
+    "transcode": "optimal",
     "targetVideoCodec": "h264",
     "crf": 23,
     "preset": "fast"
