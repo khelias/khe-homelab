@@ -1,15 +1,14 @@
 /* Subtle gradient background */
 #page_container {
-  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0a0a0a 100%);
+  background: linear-gradient(160deg, #09090b 0%, #18181b 40%, #1c1c24 70%, #09090b 100%);
   min-height: 100vh;
 }
 
-/* Slightly more visible service cards */
+/* Card hover lift */
 .service {
-  backdrop-filter: blur(8px);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 .service:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.05);
+  box-shadow: 0 4px 16px rgba(255, 255, 255, 0.04);
 }

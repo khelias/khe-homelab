@@ -2,7 +2,7 @@
     - Nextcloud:
         icon: nextcloud
         href: https://cloud.khe.ee
-        description: Failid, kalender, kontaktid
+        description: Failid ja kalender
         server: my-docker
         container: nextcloud
         widget:
@@ -42,7 +42,7 @@
     - Jellyfin:
         icon: jellyfin
         href: https://jellyfin.khe.ee
-        description: Filmid ja multikad
+        description: Filmid ja sarjad
         server: my-docker
         container: jellyfin
         widget:
@@ -66,26 +66,28 @@
     - n8n:
         icon: n8n
         href: https://n8n.khe.ee
-        description: Automatsioonid
+        description: Automaatika
         server: my-docker
         container: n8n
     - Ollama:
         icon: ollama
-        description: Lokaalne AI (qwen2.5:7b)
+        description: qwen2.5:7b · CPU
         server: my-docker
         container: ollama
     - OpenClaw:
         icon: mdi-robot-outline
         href: https://openclaw.khe.ee
-        description: DevOps agent (Skippy)
+        description: Skippy
         server: my-docker
         container: openclaw
 
-- Virtualisatsioon:
+- Infra:
     - Proxmox:
         icon: proxmox
         href: https://192.168.0.10:8006
-        description: Hypervisor (pve.khe.ee)
+        description: Hypervisor
+        server: my-docker
+        container: homepage
         widget:
           type: proxmox
           url: https://192.168.0.10:8006
@@ -94,32 +96,10 @@
           node: pve
           allowInsecure: true
           fields: ["vms", "lxc", "resources.cpu", "resources.mem"]
-    - Docker VM:
-        icon: docker
-        href: http://192.168.0.11:5001
-        description: VM 100 · 192.168.0.11
-
-- Haldus:
-    - Uptime Kuma:
-        icon: uptime-kuma
-        href: https://status.khe.ee
-        description: Monitooring
-        server: my-docker
-        container: uptime-kuma
-        widget:
-          type: uptimekuma
-          url: http://uptime-kuma:3001
-          slug: homelab
-    - Dockge:
-        icon: dockge
-        href: http://192.168.0.11:5001
-        description: Docker haldus
-        server: my-docker
-        container: dockge
     - AdGuard:
         icon: adguard-home
         href: http://192.168.0.11:8080
-        description: DNS ja reklaamiblokeerija
+        description: DNS ja reklaamiblokk
         server: my-docker
         container: adguard
         widget:
@@ -127,3 +107,9 @@
           url: http://adguard:80
           username: "{{HOMEPAGE_VAR_ADGUARD_USERNAME}}"
           password: "{{HOMEPAGE_VAR_ADGUARD_PASSWORD}}"
+    - Uptime Kuma:
+        icon: uptime-kuma
+        href: https://status.khe.ee
+        description: Monitooring
+        server: my-docker
+        container: uptime-kuma
