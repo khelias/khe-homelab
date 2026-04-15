@@ -5,6 +5,9 @@ services:
     restart: unless-stopped
     environment:
       - JELLYFIN_PublishedServerUrl=${JELLYFIN_URL}
+      - LIBVA_DRIVER_NAME=iHD
+    devices:
+      - /dev/dri:/dev/dri
     volumes:
       - jellyfin_config:/config
       - jellyfin_cache:/cache
@@ -18,9 +21,6 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-    # Intel Quick Sync hardware transcoding (enable after GPU passthrough)
-    # devices:
-    #   - /dev/dri:/dev/dri
 
 volumes:
   jellyfin_config:

@@ -36,7 +36,11 @@ scripts/           # Deployment and maintenance scripts
 - Data disk: ZFS mirror pool "tank" (2x 12TB WD Ultrastar) → NFS → /srv
 - DBs (PostgreSQL): named Docker volumes on VM's NVMe disk (fast I/O)
 - Large files (photos, media): NFS mount from ZFS pool (snapshots, compression)
-- Hardware transcoding: Intel Quick Sync (i7-12700K iGPU passthrough) - NOT YET SET UP
+- Hardware transcoding: Intel Quick Sync (i7-12700K iGPU passthrough) - SET UP
+  - vfio-pci binds iGPU on host (blacklisted i915), passed through to VM 100
+  - VM runs linux-image-amd64 kernel (cloud kernel lacks i915), GRUB default set
+  - VM apt sources include non-free-firmware for Intel firmware packages
+  - /dev/dri mounted into jellyfin and immich-server containers
 - VM user: khe, SSH key auth only
 - Cloudflare Tunnel: khe-homelab (token in VM .env file)
 
@@ -52,6 +56,7 @@ DNS rewrites for *.khe.ee → 192.168.0.11. Router DNS must point to
 Nextcloud fix: PG CREATEROLE bug resolved via init-db.sh that creates a
 non-superuser nextcloud DB user. See services/productivity/nextcloud/init-db.sh.
 
-TODO: Router DNS config (AdGuard activation), iGPU passthrough,
+TODO: Router DNS config (AdGuard activation), Jellyfin Quick Sync enable
+(web UI → Dashboard → Playback → Hardware acceleration → QSV),
 fan curve, Immich Google Takeout import (821GB), Nextcloud iPhone setup,
 OpenClaw onboarding, Proxmox 2FA.
