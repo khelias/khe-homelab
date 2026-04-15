@@ -50,13 +50,35 @@ Uptime Kuma, Homepage, Ollama, Dockge, AdGuard, NPM, Cloudflare Tunnel,
 Nextcloud (33-apache + PG16).
 
 AdGuard: pre-configured via AdGuardHome.yaml (bind mount), split-horizon
-DNS rewrites for *.khe.ee → 192.168.0.11. Router DNS must point to
-192.168.0.11 (primary) + 1.1.1.1 (fallback) to activate.
+DNS rewrites for *.khe.ee → 192.168.0.11. Router DNS: 192.168.0.11 (primary)
++ 1.1.1.1 (fallback) — ACTIVE.
+
+Cloudflare: tunnel routes directly to Docker containers (NPM not used for
+routing). Access policy protects khe.ee (homepage) with one-time PIN auth.
+See infrastructure/cloudflare.md for full routing table.
+
+Nextcloud: NEXTCLOUD_TRUSTED_DOMAINS includes internal hostname "nextcloud"
+so Homepage widget can reach OCS API. Nextcloud app password (not admin
+password) used for Homepage widget — generated via:
+  docker exec nextcloud php occ user:add-app-password admin
 
 Nextcloud fix: PG CREATEROLE bug resolved via init-db.sh that creates a
 non-superuser nextcloud DB user. See services/productivity/nextcloud/init-db.sh.
 
-TODO: Router DNS config (AdGuard activation), Jellyfin Quick Sync enable
-(web UI → Dashboard → Playback → Hardware acceleration → QSV),
-fan curve, Immich Google Takeout import (821GB), Nextcloud iPhone setup,
-OpenClaw onboarding, Proxmox 2FA.
+Jellyfin QSV: configured via init container (encoding.xml bind mount +
+system.xml patch). No web UI steps needed.
+
+Homepage: live widgets for all services. Config in services/core/homepage/config/
+(git-tracked bind mount). API keys stored in VM .env only (never committed).
+To regenerate API keys from scratch:
+  Proxmox:  pveum user token add root@pam homepage --privsep=0
+  Paperless: docker exec paperless python3 manage.py drf_create_token admin
+  Immich:   insert into api_key table (see scripts/ for helper)
+  Jellyfin: insert into ApiKeys table in jellyfin.db
+  ABS:      read token column from users table in absdatabase.sqlite
+  Nextcloud: docker exec nextcloud php occ user:add-app-password admin
+
+TODO: fan curve (BIOS Smart Fan is OK for now), Immich Google Takeout import
+(821GB), Nextcloud iPhone setup, OpenClaw onboarding, Proxmox 2FA,
+n8n Homepage widget (public API auth unresolved), bootstrap script for
+full rebuild from scratch.
