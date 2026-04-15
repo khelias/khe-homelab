@@ -119,7 +119,6 @@ TODO:
 - Homepage: public subpages without CF Access login (e.g. study-games, portfolio)
 - Immich Google Takeout import (821GB photos)
 - Nextcloud iPhone setup (CalDAV/CardDAV)
-- Proxmox 2FA
 - n8n Homepage widget (public API auth unresolved)
 - Fan curve (BIOS Smart Fan is OK for now)
 - Bootstrap script for full rebuild from scratch
