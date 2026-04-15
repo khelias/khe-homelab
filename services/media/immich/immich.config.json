@@ -1,7 +1,17 @@
 {
+  "server": {
+    "externalDomain": "https://photos.khe.ee"
+  },
   "storageTemplate": {
     "enabled": true,
     "template": "{{y}}/{{y}}-{{MM}}-{{dd}}/{{filename}}"
+  },
+  "trash": {
+    "enabled": true,
+    "days": 30
+  },
+  "map": {
+    "enabled": true
   },
   "ffmpeg": {
     "accel": "qsv",
