@@ -12,6 +12,9 @@ layout:
   AI:
     style: row
     columns: 2
+  Virtualisatsioon:
+    style: row
+    columns: 2
   Haldus:
     style: row
     columns: 3
