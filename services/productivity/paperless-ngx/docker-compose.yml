@@ -20,8 +20,7 @@ services:
       - PAPERLESS_OCR_LANGUAGE=est+eng
       - PAPERLESS_OCR_LANGUAGES=est
       - PAPERLESS_TIME_ZONE=Europe/Tallinn
-      - PAPERLESS_ADMIN_USER=${PAPERLESS_ADMIN_USER}
-      - PAPERLESS_ADMIN_PASSWORD=${PAPERLESS_ADMIN_PASSWORD}
+      - TZ=Europe/Tallinn
     volumes:
       - paperless_data:/usr/src/paperless/data
       - ${MEDIA_PATH}:/usr/src/paperless/media
@@ -32,6 +31,11 @@ services:
     networks:
       - proxy
       - paperless-internal
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   paperless-db:
     image: postgres:15-alpine
@@ -41,6 +45,7 @@ services:
       - POSTGRES_DB=${POSTGRES_DB:-paperless}
       - POSTGRES_USER=${POSTGRES_USER:-paperless}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - TZ=Europe/Tallinn
     volumes:
       - paperless_pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -55,6 +60,8 @@ services:
     image: redis:8.6-alpine
     container_name: paperless-redis
     restart: unless-stopped
+    environment:
+      - TZ=Europe/Tallinn
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s

@@ -11,8 +11,14 @@ services:
       - /srv/dockge/stacks:/srv/dockge/stacks
     environment:
       - DOCKGE_STACKS_DIR=/srv/dockge/stacks
+      - TZ=Europe/Tallinn
     networks:
       - proxy
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5001', r => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 volumes:
   dockge_data:

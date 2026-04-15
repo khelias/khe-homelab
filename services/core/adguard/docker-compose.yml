@@ -3,6 +3,8 @@ services:
     image: adguard/adguardhome:v0.107.73
     container_name: adguard
     restart: unless-stopped
+    environment:
+      - TZ=Europe/Tallinn
     ports:
       - "53:53/tcp"
       - "53:53/udp"

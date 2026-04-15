@@ -7,8 +7,9 @@ services:
       - DOMAIN=${VAULTWARDEN_DOMAIN}
       - SIGNUPS_ALLOWED=${SIGNUPS_ALLOWED:-false}
       - ADMIN_TOKEN=${ADMIN_TOKEN}
+      - TZ=Europe/Tallinn
     volumes:
-      - vaultwarden_data:/data
+      - ${DATA_PATH}:/data
     networks:
       - proxy
     healthcheck:
@@ -16,9 +17,6 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-
-volumes:
-  vaultwarden_data:
 
 networks:
   proxy:

@@ -7,6 +7,8 @@ services:
       - "80:80"
       - "443:443"
       - "81:81"        # Admin UI
+    environment:
+      - TZ=Europe/Tallinn
     volumes:
       - npm_data:/data
       - npm_letsencrypt:/etc/letsencrypt
