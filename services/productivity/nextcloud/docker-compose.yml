@@ -1,6 +1,6 @@
 services:
   nextcloud:
-    image: nextcloud:33-apache
+    image: nextcloud:33.0.2-apache
     container_name: nextcloud
     restart: unless-stopped
     environment:
@@ -15,10 +15,13 @@ services:
       - NEXTCLOUD_TRUSTED_DOMAINS=${NEXTCLOUD_DOMAIN} nextcloud
       - OVERWRITEPROTOCOL=https
       - OVERWRITECLIURL=https://${NEXTCLOUD_DOMAIN}
+      - PHP_MEMORY_LIMIT=512M
+      - PHP_UPLOAD_LIMIT=16G
       - TZ=Europe/Tallinn
     volumes:
       - nextcloud_html:/var/www/html
       - ${DATA_PATH}:/var/www/html/data
+      - ./php-custom.ini:/usr/local/etc/php/conf.d/zzz-custom.ini:ro
     ports:
       - "8888:80"
     depends_on:
@@ -30,16 +33,48 @@ services:
       - proxy
       - nextcloud-internal
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80/status.php"]
-      interval: 30s
+      test: ["CMD", "curl", "-f", "-s", "-o", "/dev/null", "http://localhost:80/status.php"]
+      interval: 60s
       timeout: 10s
-      retries: 3
-      start_period: 60s
+      retries: 5
+      start_period: 120s
+
+  nextcloud-cron:
+    image: nextcloud:33.0.2-apache
+    container_name: nextcloud-cron
+    restart: unless-stopped
+    entrypoint: /cron.sh
+    environment:
+      - TZ=Europe/Tallinn
+    volumes:
+      - nextcloud_html:/var/www/html
+      - ${DATA_PATH}:/var/www/html/data
+      - ./php-custom.ini:/usr/local/etc/php/conf.d/zzz-custom.ini:ro
+    depends_on:
+      nextcloud:
+        condition: service_healthy
+    networks:
+      - nextcloud-internal
 
   nextcloud-db:
     image: postgres:16-alpine
     container_name: nextcloud-db
     restart: unless-stopped
+    command:
+      - postgres
+      - -c
+      - shared_buffers=256MB
+      - -c
+      - work_mem=16MB
+      - -c
+      - effective_cache_size=1GB
+      - -c
+      - maintenance_work_mem=128MB
+      - -c
+      - wal_buffers=8MB
+      - -c
+      - random_page_cost=1.1
+    shm_size: '512mb'
     environment:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - NEXTCLOUD_DB_PASSWORD=${NEXTCLOUD_DB_PASSWORD}
@@ -60,6 +95,7 @@ services:
     image: redis:8.6-alpine
     container_name: nextcloud-redis
     restart: unless-stopped
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --save "" --appendonly no
     environment:
       - TZ=Europe/Tallinn
     healthcheck:
