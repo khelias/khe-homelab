@@ -30,6 +30,7 @@ See `../cloudflare.md` for the authoritative routing table.
 | books.khe.ee        | audiobookshelf      | 80   |
 | n8n.khe.ee          | n8n                 | 5678 |
 | status.khe.ee       | uptime-kuma         | 3001 |
+| games.khe.ee        | study-game          | 80   |
 
 ## LAN-Only Services (not exposed via tunnel)
 
