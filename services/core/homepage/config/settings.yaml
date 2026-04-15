@@ -1,9 +1,7 @@
 title: KHE Homelab
-favicon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/heimdall.png
 theme: dark
 color: zinc
 headerStyle: clean
-cardBlur: md
 useEqualHeights: true
 layout:
   Pilv:
@@ -15,9 +13,6 @@ layout:
   AI:
     style: row
     columns: 3
-  Virtualisatsioon:
-    style: row
-    columns: 2
-  Haldus:
+  Infra:
     style: row
     columns: 3
