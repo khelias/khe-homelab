@@ -21,6 +21,7 @@ NPM is not used for routing — the tunnel routes directly to Docker containers.
 | n8n.khe.ee          | n8n                         | 5678 |
 | status.khe.ee       | uptime-kuma                 | 3001 |
 | games.khe.ee        | study-game                  | 80   |
+| openclaw.khe.ee     | openclaw                    | 18789|
 
 Not exposed via tunnel (LAN only): AdGuard (:8080), Dockge (:5001), NPM admin (:81), Proxmox (:8006)
 
