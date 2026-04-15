@@ -56,6 +56,12 @@ services:
         condition: service_healthy
     networks:
       - nextcloud-internal
+    healthcheck:
+      test: ["CMD", "busybox", "stat", "/var/www/html/cron.php"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   nextcloud-db:
     image: postgres:16-alpine
