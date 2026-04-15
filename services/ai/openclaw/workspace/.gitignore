@@ -1,0 +1,7 @@
+# Runtime directories created by OpenClaw / ClawHub
+.clawhub/
+.openclaw/
+state/
+
+# Installed skills (re-installable from ClawHub)
+skills/
