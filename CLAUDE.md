@@ -145,6 +145,9 @@ TODO:
 - n8n Homepage widget (public API auth unresolved)
 - Fan curve (BIOS Smart Fan is OK for now)
 - Bootstrap script for full rebuild from scratch
+- Komodo: Docker Compose GitOps controller — evaluate when building more apps
+  (adventure-engine, spliit). Gives UI + API + rollback + push-based deploys;
+  skipping poll-based systemd timer in the meantime since Komodo would replace it.
 
 New services (wishlist):
 - Quick wins: Dozzle (Docker logs), IT-Tools (dev utilities), ntfy (push notifications)
