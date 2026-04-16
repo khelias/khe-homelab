@@ -32,10 +32,11 @@ https://login.tailscale.com/admin/machines → docker-vm → Edit route settings
 
 ## Network Details
 
-| Node      | Tailscale IP    | OS    | Role                        |
-|-----------|-----------------|-------|-----------------------------|
-| docker-vm | 100.71.186.32   | Linux | Server, subnet router       |
-| mac       | 100.126.136.127 | macOS | Client                      |
+| Node      | OS    | Role                        |
+|-----------|-------|-----------------------------|
+| docker-vm | Linux | Server, subnet router       |
+| mac       | macOS | Client                      |
+| iphone    | iOS   | Client                      |
 
 Subnet route: 192.168.0.0/24 → via docker-vm
 MagicDNS: `docker-vm` resolves automatically.
@@ -64,5 +65,4 @@ http://192.168.0.11:81      # NPM admin
 
 ## Account
 
-Login: kaidoelias@ (same as Tailscale admin console)
-Admin: https://login.tailscale.com/admin
+Admin console: https://login.tailscale.com/admin (login details in Vaultwarden).

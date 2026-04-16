@@ -33,7 +33,9 @@ Identity: One-time PIN via email (no OAuth setup needed).
 
 | Application  | Domain  | Policy          |
 |--------------|---------|-----------------|
-| KHE Dashboard | dash.khe.ee | Email: kaidoelias@gmail.com |
+| KHE Dashboard | dash.khe.ee | Email allowlist (owner only) |
+| n8n          | n8n.khe.ee  | Email allowlist (owner only) |
+| OpenClaw     | openclaw.khe.ee | Email allowlist (owner only) |
 
 ## DNS
 
