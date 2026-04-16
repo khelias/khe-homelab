@@ -46,25 +46,25 @@ Jellyfin and Immich machine-learning both use `/dev/dri` for Quick Sync accelera
 
 ## Services
 
-| Service | Domain | What it does |
-|---------|--------|-------------|
-| **Landing Page** | `khe.ee` | Public family landing page |
-| **Homepage** | `dash.khe.ee` | Service dashboard with live widgets (CF Access protected) |
-| **Nextcloud** | `cloud.khe.ee` | Files, calendar, contacts (CalDAV/CardDAV), tuned PHP/PG/Redis |
-| **Immich** | `photos.khe.ee` | Photo library with ML tagging (Google Photos replacement) |
-| **Vaultwarden** | `vault.khe.ee` | Password manager with Passkey support |
-| **Jellyfin** | `jellyfin.khe.ee` | Media server with Quick Sync HW transcoding |
-| **Paperless-ngx** | `docs.khe.ee` | Document archive with OCR (Estonian + English) |
-| **Audiobookshelf** | `books.khe.ee` | Audiobooks and podcasts |
-| **n8n** | `n8n.khe.ee` | Workflow automation (CF Access protected) |
-| **Uptime Kuma** | `status.khe.ee` | Service monitoring and alerts |
-| **OpenClaw** | `openclaw.khe.ee` | AI devops agent with sandboxed Docker access (CF Access protected) |
-| **study-game** | `games.khe.ee` | Study game app, auto-deployed from GitHub |
-| Ollama | LAN only | Local AI models (qwen2.5:7b, CPU-only) |
-| AdGuard Home | LAN only | DNS ad-blocking + split-horizon DNS |
-| Dockge | LAN only | Docker Compose management UI |
-| Nginx Proxy Manager | LAN only | Reverse proxy + wildcard SSL for LAN traffic |
-| Cloudflare Tunnel | — | Secure external access (no open ports) |
+| | Service | Domain | What it does |
+|---|---------|--------|-------------|
+| 🌐 | **Landing Page** | `khe.ee` | Public family landing page |
+| 🏠 | **Homepage** | `dash.khe.ee` | Service dashboard with live widgets (CF Access protected) |
+| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/nextcloud.svg" width="22" /> | **Nextcloud** | `cloud.khe.ee` | Files, calendar, contacts (CalDAV/CardDAV), tuned PHP/PG/Redis |
+| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/immich.svg" width="22" /> | **Immich** | `photos.khe.ee` | Photo library with ML tagging (Google Photos replacement) |
+| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/vaultwarden.svg" width="22" /> | **Vaultwarden** | `vault.khe.ee` | Password manager with Passkey support |
+| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/jellyfin.svg" width="22" /> | **Jellyfin** | `jellyfin.khe.ee` | Media server with Quick Sync HW transcoding |
+| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/paperless-ngx.svg" width="22" /> | **Paperless-ngx** | `docs.khe.ee` | Document archive with OCR (Estonian + English) |
+| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/audiobookshelf.svg" width="22" /> | **Audiobookshelf** | `books.khe.ee` | Audiobooks and podcasts |
+| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/n8n.svg" width="22" /> | **n8n** | `n8n.khe.ee` | Workflow automation (CF Access protected) |
+| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/uptime-kuma.svg" width="22" /> | **Uptime Kuma** | `status.khe.ee` | Service monitoring and alerts |
+| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/claude-ai.svg" width="22" /> | **OpenClaw** | `openclaw.khe.ee` | AI devops agent with sandboxed Docker access (CF Access protected) |
+| 🎮 | **study-game** | `games.khe.ee` | Study game app, auto-deployed from GitHub |
+| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/ollama.svg" width="22" /> | Ollama | LAN only | Local AI models (qwen2.5:7b, CPU-only) |
+| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/adguard-home.svg" width="22" /> | AdGuard Home | LAN only | DNS ad-blocking + split-horizon DNS |
+| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/dockge.svg" width="22" /> | Dockge | LAN only | Docker Compose management UI |
+| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/nginx-proxy-manager.svg" width="22" /> | Nginx Proxy Manager | LAN only | Reverse proxy + wildcard SSL for LAN traffic |
+| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/cloudflare.svg" width="22" /> | Cloudflare Tunnel | — | Secure external access (no open ports) |
 
 ## Security & Access
 
