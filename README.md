@@ -20,37 +20,18 @@ graph TB
 
     subgraph DVM[Docker VM · 192.168.0.11 — 17 services · 27 containers]
         direction LR
-        subgraph Core
-            Homepage
-            Vaultwarden
-            Dockge
-            UptimeKuma[Uptime Kuma]
-        end
-        subgraph Media
-            Immich
-            Jellyfin
-            Audiobookshelf
-        end
-        subgraph Productivity
-            Nextcloud
-            Paperless[Paperless-ngx]
-        end
-        subgraph AI
-            Ollama
-            n8n
-            OpenClaw
-        end
-        subgraph Apps
-            Landing[Landing Page]
-            StudyGame[study-game]
-        end
+        Core["<b>Core</b><br/>Homepage · Vaultwarden<br/>Dockge · Uptime Kuma"]
+        Media["<b>Media</b><br/>Immich · Jellyfin<br/>Audiobookshelf"]
+        Prod["<b>Productivity</b><br/>Nextcloud · Paperless-ngx"]
+        AI["<b>AI</b><br/>Ollama · n8n · OpenClaw"]
+        Apps["<b>Apps</b><br/>Landing Page · study-game"]
     end
 
     DVM --> HDD[(ZFS Mirror · 2× 12TB<br/>NFS /srv)]
     DVM -.-> NVMe[(NVMe 2TB<br/>OS + DB volumes)]
 ```
 
-> NPM, AdGuard, and Cloudflare Tunnel also run on the same Docker VM (shown above for their ingress role, not listed again inside the Core group).
+> NPM, AdGuard, and Cloudflare Tunnel also run on the same Docker VM (shown above in the ingress tier, not listed again inside Core).
 
 Two independent paths to the same containers:
 - **External** — Cloudflare Tunnel goes directly to each container (12 public hostnames). CF Access OTP gates `dash`, `n8n`, `openclaw`. Subject to Cloudflare's 100MB upload limit.
