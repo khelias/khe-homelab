@@ -8,21 +8,49 @@ Personal family homelab — self-hosted cloud, media, and AI on a single machine
 graph TB
     Internet((Internet))
     VPN((Tailscale<br/>VPN))
-    AG[AdGuard Home<br/>split-horizon DNS]
+    LAN((LAN<br/>devices))
 
     Internet --> CF[Cloudflare Tunnel]
-    VPN -->|subnet router<br/>192.168.0.0/24| LAN((LAN devices))
-    AG -.->|9 hosts<br/>*.khe.ee → 192.168.0.11| LAN
-
-    CF -->|12 domains direct to container<br/>CF Access OTP on dash, n8n, openclaw| CTR
+    VPN -->|subnet route<br/>192.168.0.0/24| LAN
+    AG[AdGuard Home<br/>split-horizon DNS] -.->|9 hosts<br/>*.khe.ee → 192.168.0.11| LAN
     LAN --> NPM[Nginx Proxy Manager<br/>wildcard *.khe.ee · LAN-only]
-    NPM --> CTR
 
-    CTR[Docker VM · 192.168.0.11<br/>17 services · 27 containers]
+    CF -->|12 domains direct<br/>CF Access OTP on<br/>dash, n8n, openclaw| DVM
+    NPM --> DVM
 
-    CTR --> HDD[(ZFS Mirror · 2× 12TB<br/>NFS /srv)]
-    CTR -.-> NVMe[(NVMe 2TB<br/>OS + DB volumes)]
+    subgraph DVM[Docker VM · 192.168.0.11 — 17 services · 27 containers]
+        direction LR
+        subgraph Core
+            Homepage
+            Vaultwarden
+            Dockge
+            UptimeKuma[Uptime Kuma]
+        end
+        subgraph Media
+            Immich
+            Jellyfin
+            Audiobookshelf
+        end
+        subgraph Productivity
+            Nextcloud
+            Paperless[Paperless-ngx]
+        end
+        subgraph AI
+            Ollama
+            n8n
+            OpenClaw
+        end
+        subgraph Apps
+            Landing[Landing Page]
+            StudyGame[study-game]
+        end
+    end
+
+    DVM --> HDD[(ZFS Mirror · 2× 12TB<br/>NFS /srv)]
+    DVM -.-> NVMe[(NVMe 2TB<br/>OS + DB volumes)]
 ```
+
+> NPM, AdGuard, and Cloudflare Tunnel also run on the same Docker VM (shown above for their ingress role, not listed again inside the Core group).
 
 Two independent paths to the same containers:
 - **External** — Cloudflare Tunnel goes directly to each container (12 public hostnames). CF Access OTP gates `dash`, `n8n`, `openclaw`. Subject to Cloudflare's 100MB upload limit.
