@@ -12,6 +12,10 @@ logs/
 # Canonical baseline lives in AdGuardHome.template.yaml; copy to AdGuardHome.yaml on first deploy.
 services/core/adguard/config/AdGuardHome.yaml
 
+# Private notes — current security gaps, threat model, anything that would tip off
+# an attacker while still unfixed. Public ROADMAP.md covers direction only.
+.private/
+
 # OS files
 .DS_Store
 Thumbs.db
