@@ -5,19 +5,23 @@ Personal family homelab — self-hosted cloud, media, and AI on a single machine
 ## Architecture
 
 ```mermaid
-graph LR
-    Internet((Internet)) --> CF[Cloudflare<br/>Tunnel]
-    VPN((Tailscale<br/>VPN)) -->|subnet router<br/>192.168.0.0/24| LAN
+graph TB
+    Internet((Internet))
+    VPN((Tailscale<br/>VPN))
+    AG[AdGuard Home<br/>split-horizon DNS]
+
+    Internet --> CF[Cloudflare Tunnel]
+    VPN -->|subnet router<br/>192.168.0.0/24| LAN((LAN devices))
+    AG -.->|9 hosts<br/>*.khe.ee → 192.168.0.11| LAN
 
     CF -->|12 domains direct to container<br/>CF Access OTP on dash, n8n, openclaw| CTR
+    LAN --> NPM[Nginx Proxy Manager<br/>wildcard *.khe.ee · LAN-only]
+    NPM --> CTR
 
-    AG[AdGuard Home<br/>split-horizon DNS] -.->|9 of 12 hosts<br/>*.khe.ee → 192.168.0.11| LAN
-    LAN((LAN<br/>devices)) --> NPM
+    CTR[Docker VM · 192.168.0.11<br/>17 services · 27 containers]
 
-    NPM[Nginx Proxy Manager<br/>wildcard *.khe.ee cert<br/>LAN-only] --> CTR[Docker VM · 192.168.0.11<br/>17 services · 27 containers]
-
-    HDD[(ZFS Mirror<br/>2× 12TB)] -->|NFS /srv| CTR
-    NVMe[(NVMe 2TB)] -.->|OS + DB volumes| CTR
+    CTR --> HDD[(ZFS Mirror · 2× 12TB<br/>NFS /srv)]
+    CTR -.-> NVMe[(NVMe 2TB<br/>OS + DB volumes)]
 ```
 
 Two independent paths to the same containers:
