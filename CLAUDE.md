@@ -137,20 +137,10 @@ Ollama: CPU-only, qwen2.5:7b loaded. Performance tuning:
 Immich machine-learning: OpenVINO image (CPU inference).
   Resource limits: 4G RAM, 4 CPUs. start_period: 120s (model load on first start).
 
-TODO:
+Near-term operational TODO (strategic roadmap lives in ROADMAP.md):
 - Ollama: research best local LLM for CPU-only i7-12700K (no GPU yet)
 - Homepage: public subpages without CF Access login (e.g. study-games, portfolio)
 - Immich Google Takeout import (821GB photos)
 - Nextcloud iPhone setup (CalDAV/CardDAV — apps installed, phone config remaining)
 - n8n Homepage widget (public API auth unresolved)
 - Fan curve (BIOS Smart Fan is OK for now)
-- Bootstrap script for full rebuild from scratch
-- Komodo: Docker Compose GitOps controller — evaluate when building more apps
-  (adventure-engine, spliit). Gives UI + API + rollback + push-based deploys;
-  skipping poll-based systemd timer in the meantime since Komodo would replace it.
-
-New services (wishlist):
-- Quick wins: Dozzle (Docker logs), IT-Tools (dev utilities), ntfy (push notifications)
-- Weekend projects: Home Assistant, Forgejo (self-hosted Git), CrowdSec (IPS), KitchenOwl (groceries+recipes)
-- When time allows: Actual Budget, Stirling PDF, Karakeep (bookmarks+AI), FreshRSS, Changedetection.io, Docmost (wiki)
-- After RAM upgrade: Authentik (SSO) or Authelia (lighter alternative)
