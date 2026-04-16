@@ -119,15 +119,17 @@ All external traffic goes through Cloudflare Tunnel — zero ports open on the r
 ```bash
 # On Proxmox host
 ./scripts/proxmox-post-install.sh     # 1. Disable enterprise repo, install tools, enable IOMMU
-./scripts/create-zfs-pool.sh          # 2. Create ZFS mirror from 2x 12TB HDDs
-./scripts/create-docker-vm.sh         # 3. Create Debian 13 VM (cloud-init, fully automated)
-./scripts/setup-nfs-share.sh          # 4. Export ZFS pool via NFS
+./scripts/setup-igpu-passthrough.sh   # 2. Bind Intel iGPU to vfio-pci for QSV (reboot after)
+./scripts/create-zfs-pool.sh          # 3. Create ZFS mirror from 2x 12TB HDDs
+./scripts/create-docker-vm.sh         # 4. Create Debian 13 VM (cloud-init, fully automated)
+./scripts/setup-nfs-share.sh          # 5. Export ZFS pool via NFS
 
 # Inside Docker VM (ssh khe@192.168.0.11)
-./scripts/setup-docker-host.sh        # 5. Install Docker, tools, create networks
-./scripts/mount-nfs-in-vm.sh          # 6. Mount NFS shares at /srv
-./scripts/harden-docker-vm.sh         # 7. UFW firewall, fail2ban, SSH hardening
-./scripts/deploy.sh up                # 8. Start core + media + productivity + ai stacks
+./scripts/setup-docker-host.sh        # 6. Install Docker + real kernel + firmware (reboot after)
+./scripts/mount-nfs-in-vm.sh          # 7. Mount NFS shares at /srv
+./scripts/harden-docker-vm.sh         # 8. UFW firewall, fail2ban, SSH hardening
+./scripts/setup-tailscale.sh          # 9. Install Tailscale as subnet router
+./scripts/deploy.sh up                # 10. Start all 17 services
 ```
 
 ## Day-to-day
