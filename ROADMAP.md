@@ -1,8 +1,6 @@
 # Roadmap
 
-Direction and priorities for the homelab. Sensitive gaps (current security shortcomings,
-credentials) live in a separate private note, not here. This file describes what the
-platform should become, not what's currently broken.
+Direction and priorities for the homelab — what it should become, beyond current state.
 
 ## Near-term (next few sessions)
 
@@ -21,14 +19,14 @@ platform should become, not what's currently broken.
 
 - **Offsite backup** — rclone → Backblaze B2 or Wasabi. Today backups live only on
   the ZFS pool; if the pool fails, we lose backups too (3-2-1 rule violation).
-- **Bootstrap script for full rebuild** — one script that takes a fresh Proxmox host
-  to a fully working homelab. Currently the 10-step setup is a scripted sequence,
-  but there's no single entrypoint that chains them and handles the reboot points.
+- **Bootstrap script for full rebuild** — one entry point that takes a fresh
+  Proxmox host to a fully working homelab. The 10-step setup is scripted already
+  but has no orchestrator handling the reboot points.
 - **Disaster recovery runbook + tested restore** — actually restore a Postgres dump
   into a spare container and verify. Today we trust the backup script to work
   without evidence it does under pressure.
 - **Observability revamp** — cover every production service in Uptime Kuma; add
-  ntfy (or Telegram) push channel for alerts. Today we'd silently notice outages.
+  ntfy (or Telegram) push channel for alerts. Today outages would be silent.
 
 ## Long-term (when app-heavy projects arrive)
 
@@ -41,14 +39,30 @@ platform should become, not what's currently broken.
 - **Authentik / Authelia SSO** — once RAM upgrade lands, consolidate auth across
   services instead of each one managing its own.
 
+## Hardware
+
+Currently: i7-12700K, 32GB DDR5, 2× 12TB ZFS mirror, 2TB NVMe. No discrete GPU.
+
+- **RTX-class GPU** — accelerate Ollama (today CPU-only `qwen2.5:7b`) and Immich
+  ML (today OpenVINO CPU). IOMMU is already on, iGPU is already passed through for
+  Quick Sync — a discrete card would pass through the same way.
+- **+32GB DDR5 → 64GB total** — unblocks Authentik SSO, more concurrent services,
+  larger local LLMs, parallel ML workloads.
+- **UPS** — not yet; power cut is unclean shutdown for the whole homelab. Worth
+  considering once critical family usage grows.
+- **10GbE upgrade** — only relevant if Jellyfin / Immich / Nextcloud transfers
+  start saturating the current 2.5GbE link. No evidence of that yet.
+
 ## Service wishlist
 
-Categorised in `CLAUDE.md` under `New services (wishlist)`. In rough order of
-impact: Dozzle, ntfy, IT-Tools (quick wins), then Home Assistant, Forgejo,
-CrowdSec, KitchenOwl, then the long-tail utilities.
+Rough order of impact:
 
-## What this roadmap deliberately excludes
-
-- **Current security gaps** — specific misconfigurations that an attacker could
-  exploit today. Those live in a private note and disappear once fixed.
-- **Credentials or secrets** — always in Vaultwarden, never in the repo.
+- **Quick wins** — Dozzle (Docker log viewer), ntfy (push notifications),
+  IT-Tools (dev utilities)
+- **Weekend projects** — Home Assistant, Forgejo (self-hosted Git), CrowdSec (IPS),
+  KitchenOwl (groceries + recipes)
+- **When time allows** — Actual Budget, Stirling PDF, Karakeep (bookmarks + AI),
+  FreshRSS, Changedetection.io, Docmost (wiki)
+- **After RAM upgrade** — Authentik (SSO) or Authelia (lighter alternative)
+- **Own projects** — adventure-engine revival, Spliit (Splitwise alternative),
+  study-game iterations

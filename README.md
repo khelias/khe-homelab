@@ -6,27 +6,25 @@ Personal family homelab — self-hosted cloud, media, and AI on a single machine
 
 ```mermaid
 graph LR
-    Internet((Internet)) --> CF[Cloudflare\nTunnel]
-    VPN((Tailscale\nVPN)) --> DVM
+    Internet((Internet)) --> CF[Cloudflare<br/>Tunnel]
+    VPN((Tailscale<br/>VPN)) -->|subnet router<br/>192.168.0.0/24| LAN
 
-    CF --> Landing[khe.ee\nLanding Page]
-    CF -->|CF Access OTP| Protected[dash · n8n · openclaw]
-    CF --> Public[Vaultwarden · Uptime Kuma\nImmich · Jellyfin · Nextcloud\nPaperless · Audiobookshelf\nstudy-game]
+    CF -->|12 domains direct to container<br/>CF Access OTP on dash, n8n, openclaw| CTR
 
-    Landing & Public & Protected --- DVM[Docker VM\n192.168.0.11]
+    AG[AdGuard Home<br/>split-horizon DNS] -.->|9 of 12 hosts<br/>*.khe.ee → 192.168.0.11| LAN
+    LAN((LAN<br/>devices)) --> NPM
 
-    DVM --- NPM[Nginx Proxy Manager\nwildcard *.khe.ee cert]
-    NPM --- LAN((LAN devices\nsplit-horizon DNS))
-    LAN --- AG[AdGuard Home\nDNS + ad-block]
+    NPM[Nginx Proxy Manager<br/>wildcard *.khe.ee cert<br/>LAN-only] --> CTR[Docker VM · 192.168.0.11<br/>17 services · 27 containers]
 
-    HDD[(ZFS Mirror\n2× 12TB)] -->|NFS| DVM
-    NVMe[(NVMe 2TB)] -.->|OS + DBs| DVM
+    HDD[(ZFS Mirror<br/>2× 12TB)] -->|NFS /srv| CTR
+    NVMe[(NVMe 2TB)] -.->|OS + DB volumes| CTR
 ```
 
-> **Proxmox VE** (192.168.0.10) runs a single **Docker VM** (192.168.0.11) with 17 services.
-> External traffic via **Cloudflare Tunnel**, LAN traffic via **Nginx Proxy Manager** (split-horizon DNS).
-> Remote access via **Tailscale VPN** (subnet router for the whole LAN).
-> Fast storage (NVMe) for OS and databases, bulk storage (ZFS mirror) via NFS for photos, media, and files.
+Two independent paths to the same containers:
+- **External** — Cloudflare Tunnel goes directly to each container (12 public hostnames). CF Access OTP gates `dash`, `n8n`, `openclaw`. Subject to Cloudflare's 100MB upload limit.
+- **LAN / Tailscale** — AdGuard rewrites 9 hostnames (`khe.ee`, `dash`, `cloud`, `vault`, `docs`, `photos`, `jellyfin`, `books`, `status`) to `192.168.0.11`, so devices hit NPM with the wildcard cert and no upload limit. `n8n`, `openclaw`, `games` have no LAN shortcut — always via CF.
+
+Proxmox VE (192.168.0.10) is the hypervisor; the Docker VM (192.168.0.11) is the only guest. Fast storage (NVMe) holds the VM root + DB volumes; bulk storage (ZFS mirror, NFS-mounted at `/srv`) holds photos, media, documents.
 
 ## Hardware
 
