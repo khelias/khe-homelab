@@ -1,12 +1,19 @@
+# AdGuard Home baseline config — checked into git without any credentials.
+#
+# On first deploy, copy this file to AdGuardHome.yaml (which is gitignored)
+# so the live file can hold admin user + runtime state outside of version control:
+#
+#   cp AdGuardHome.template.yaml AdGuardHome.yaml
+#   docker compose up -d adguard       # wizard creates admin on first visit
+#
+# AdGuard rewrites AdGuardHome.yaml at runtime (users, stats, filters); keeping
+# it tracked would leak credential hashes and create constant git diff noise.
 http:
   pprof:
     port: 6060
     enabled: false
   address: 0.0.0.0:80
   session_ttl: 720h
-users:
-  - name: admin
-    password: $2b$10$YaqlcPNxICkKbzOCd.1/3eNq4L8F8V/.K2BVYPT4BEFQM8SFexeQW
 dns:
   port: 53
   bind_hosts:
