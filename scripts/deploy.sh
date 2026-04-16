@@ -21,14 +21,13 @@ DEPLOY_ORDER=(
   "ai/ollama"
   "ai/n8n"
   "ai/openclaw"
+  "apps/landing"
+  "apps/study-game"
 )
 
-# Services that require external setup before they can run
-# Remove from this list once configured
-SKIP_SERVICES=(
-  "core/cloudflare-tunnel"   # Needs Cloudflare tunnel token
-  "ai/openclaw"              # Needs interactive onboarding
-)
+# Services that require external setup before they can run.
+# Add here only if a stack currently has a missing precondition (e.g. unconfigured token).
+SKIP_SERVICES=()
 
 ACTION="${1:-up}"
 
