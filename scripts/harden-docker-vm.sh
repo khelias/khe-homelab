@@ -79,6 +79,21 @@ echo "Configuring automatic security updates..."
 sudo apt-get install -y unattended-upgrades
 echo 'Unattended-Upgrade::Automatic-Reboot "false";' | sudo tee /etc/apt/apt.conf.d/51auto-reboot
 
+# 5. Install cron and schedule nightly backup.sh
+echo "Installing cron and scheduling backup.sh..."
+sudo apt-get install -y cron
+sudo systemctl enable --now cron
+BACKUP_CRON="0 2 * * * cd $HOME/homelab && ./scripts/backup.sh >> /srv/backups/backup.log 2>&1"
+( crontab -l 2>/dev/null | grep -v "backup.sh" ; echo "$BACKUP_CRON" ) | crontab -
+sudo mkdir -p /srv/backups
+sudo chown "$USER:$USER" /srv/backups
+
+# 6. Lock down .env files (600 — owner read/write only).
+# Compose reads them as the running user; group/world read is never needed.
+echo "Locking .env file permissions..."
+find "$HOME/homelab/services" -name .env -not -name .env.example \
+  -exec sudo chmod 600 {} \; 2>/dev/null || true
+
 echo ""
 echo "=== Hardening complete ==="
 echo ""
