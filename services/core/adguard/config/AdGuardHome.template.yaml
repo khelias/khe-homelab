@@ -1,0 +1,82 @@
+# AdGuard Home baseline config — checked into git without any credentials.
+#
+# On first deploy, copy this file to AdGuardHome.yaml (which is gitignored)
+# so the live file can hold admin user + runtime state outside of version control:
+#
+#   cp AdGuardHome.template.yaml AdGuardHome.yaml
+#   docker compose up -d adguard       # wizard creates admin on first visit
+#
+# AdGuard rewrites AdGuardHome.yaml at runtime (users, stats, filters); keeping
+# it tracked would leak credential hashes and create constant git diff noise.
+http:
+  pprof:
+    port: 6060
+    enabled: false
+  address: 0.0.0.0:80
+  session_ttl: 720h
+dns:
+  port: 53
+  bind_hosts:
+    - 0.0.0.0
+  upstream_dns:
+    - https://dns.cloudflare.com/dns-query
+    - https://dns.quad9.net/dns-query
+  bootstrap_dns:
+    - 9.9.9.9
+    - 149.112.112.112
+    - 1.1.1.1
+  protection_enabled: true
+  filtering_enabled: true
+  blocking_mode: default
+  blocked_response_ttl: 60
+  ratelimit: 20
+  enable_dnssec: true
+  cache_size: 4194304
+  cache_ttl_min: 300
+  cache_ttl_max: 86400
+  cache_optimistic: true
+filtering:
+  rewrites:
+    # openclaw.khe.ee and games.khe.ee intentionally omitted — resolve via Cloudflare (CF Access / HTTPS needed)
+    # n8n.khe.ee omitted — CF Access OTP protection must apply on LAN too
+    - domain: khe.ee
+      answer: 192.168.0.11
+    - domain: dash.khe.ee
+      answer: 192.168.0.11
+    - domain: cloud.khe.ee
+      answer: 192.168.0.11
+    - domain: vault.khe.ee
+      answer: 192.168.0.11
+    - domain: docs.khe.ee
+      answer: 192.168.0.11
+    - domain: photos.khe.ee
+      answer: 192.168.0.11
+    - domain: jellyfin.khe.ee
+      answer: 192.168.0.11
+    - domain: books.khe.ee
+      answer: 192.168.0.11
+    - domain: status.khe.ee
+      answer: 192.168.0.11
+  safe_browsing_enabled: false
+  parental_enabled: false
+filters:
+  - enabled: true
+    url: https://adguardteam.github.io/HostlistsRegistry/assets/filter_1.txt
+    name: AdGuard DNS filter
+    id: 1
+  - enabled: true
+    url: https://adguardteam.github.io/HostlistsRegistry/assets/filter_4.txt
+    name: AdGuard Tracking Protection
+    id: 4
+  - enabled: true
+    url: https://small.oisd.nl/domainswild
+    name: OISD small (replaces AdAway)
+    id: 100
+querylog:
+  enabled: true
+  interval: 168h
+  size_memory: 1000
+statistics:
+  enabled: true
+  interval: 168h
+schema_version: 29
