@@ -1,6 +1,6 @@
 services:
   nextcloud:
-    image: nextcloud:33.0.2-apache
+    image: nextcloud:33.0.2-apache@sha256:3e676af625884f4e228ac6655f51a4ea65f3a1e68f320ad23d17fccfa00d5b54
     container_name: nextcloud
     restart: unless-stopped
     environment:
@@ -41,7 +41,7 @@ services:
       start_period: 120s
 
   nextcloud-cron:
-    image: nextcloud:33.0.2-apache
+    image: nextcloud:33.0.2-apache@sha256:3e676af625884f4e228ac6655f51a4ea65f3a1e68f320ad23d17fccfa00d5b54
     container_name: nextcloud-cron
     restart: unless-stopped
     entrypoint: /cron.sh
@@ -64,7 +64,7 @@ services:
       start_period: 30s
 
   nextcloud-db:
-    image: postgres:16-alpine
+    image: postgres:16-alpine@sha256:93d55776e04376e19adb2733e3ccebb4392ee7dd86d8ff238503b30fe719c84f
     container_name: nextcloud-db
     restart: unless-stopped
     command:
@@ -99,7 +99,7 @@ services:
       - nextcloud-internal
 
   nextcloud-redis:
-    image: redis:8.6-alpine
+    image: redis:8.6-alpine@sha256:c5e375abb885e6b2021c0377879e4890bf76f9065b8922ffc113f2b226b9fc17
     container_name: nextcloud-redis
     restart: unless-stopped
     command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --save "" --appendonly no
