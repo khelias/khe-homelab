@@ -27,6 +27,12 @@
       "matchManagers": ["docker-compose"],
       "matchUpdateTypes": ["major"],
       "labels": ["dependencies", "breaking"]
+    },
+    {
+      "description": "Group adventure-proxy updates (Dockerfile + npm) into one PR",
+      "matchFileNames": ["services/apps/games/adventure-proxy/**"],
+      "groupName": "adventure-proxy",
+      "groupSlug": "adventure-proxy"
     }
   ]
 }
