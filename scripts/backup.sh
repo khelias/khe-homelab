@@ -152,6 +152,8 @@ BIND_MOUNTS=(
   "/srv/data/nextcloud:nextcloud-files"
   "/home/khe/homelab/services/core/adguard/config:adguard-config"
   "/home/khe/homelab/services/core/homepage/config:homepage-config"
+  "/home/khe/.ssh:ssh-khe"
+  "/var/lib/tailscale:tailscale-state"
 )
 
 for entry in "${BIND_MOUNTS[@]}"; do
@@ -165,6 +167,32 @@ for entry in "${BIND_MOUNTS[@]}"; do
   tar_via_alpine "$path" "$name" \
     || fail "tar failed: $path (see ${name}.err)"
 done
+
+# --- VM-local state that lives outside filesystem dirs or needs selective
+#     capture. Placed in /srv/backups so Etapp 2 (restic) picks them up
+#     without having to visit paths outside the repo.
+
+echo "-> system: crontab khe"
+if ! crontab -l > "$BACKUP_DIR/crontab.khe.txt" 2>"$BACKUP_DIR/crontab.err"; then
+  fail "crontab -l failed (see crontab.err)"
+else
+  rm -f "$BACKUP_DIR/crontab.err"
+fi
+
+# GitHub Actions self-hosted runner identity. The full dir contains _diag/
+# logs (large, noisy) — capture only the registration + credential files.
+RUNNER_DIR="$HOME/actions-runner"
+if [ -d "$RUNNER_DIR" ]; then
+  echo "-> system: actions-runner identity"
+  err="$BACKUP_DIR/actions-runner.err"
+  if ! tar czf "$BACKUP_DIR/actions-runner.tar.gz" -C "$RUNNER_DIR" \
+        .runner .credentials .credentials_rsaparams 2>"$err"; then
+    rm -f "$BACKUP_DIR/actions-runner.tar.gz"
+    fail "tar failed: actions-runner (see $(basename "$err"))"
+  else
+    rm -f "$err"
+  fi
+fi
 
 # --- Summary ---
 DURATION=$(( $(date +%s) - START_TS ))
