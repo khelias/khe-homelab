@@ -1,6 +1,6 @@
 services:
   n8n:
-    image: docker.n8n.io/n8nio/n8n:2.17.1
+    image: docker.n8n.io/n8nio/n8n:2.17.2@sha256:4e5be628f9eb05e3fde3cd242c84f6000165c95d2048d5076fcc569421ada4f3
     container_name: n8n
     restart: unless-stopped
     environment:
@@ -31,7 +31,7 @@ services:
       start_period: 60s
 
   n8n-db:
-    image: postgres:18-alpine
+    image: postgres:18-alpine@sha256:52098013b4b64a746626437d38afc03cabff6cdeb4d3d92e2342aa95f0ce56ea
     container_name: n8n-db
     restart: unless-stopped
     environment:
