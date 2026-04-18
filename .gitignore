@@ -12,6 +12,9 @@ logs/
 # Canonical baseline lives in AdGuardHome.template.yaml; copy to AdGuardHome.yaml on first deploy.
 services/core/adguard/config/AdGuardHome.yaml
 
+# Homepage auto-creates this sample file; we don't use Kubernetes.
+services/core/homepage/config/kubernetes.yaml
+
 # Private notes — current security gaps, threat model, anything that would tip off
 # an attacker while still unfixed. Public ROADMAP.md covers direction only.
 .private/
