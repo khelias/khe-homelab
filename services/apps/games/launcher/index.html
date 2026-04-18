@@ -225,6 +225,16 @@
       letter-spacing: 0.04em;
       text-align: center;
     }
+    footer .divider {
+      margin: 0 0.5rem;
+      opacity: 0.5;
+    }
+    footer a {
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    footer a:hover { color: var(--text-dim); }
 
     /* per-card accents */
     .card-study {
@@ -279,7 +289,11 @@
       </a>
     </main>
 
-    <footer>Self-hosted in Tallinn</footer>
+    <footer>
+      Self-hosted in Tallinn
+      <span class="divider">·</span>
+      <a href="/privacy">Privaatsus</a>
+    </footer>
   </div>
 </body>
 </html>
