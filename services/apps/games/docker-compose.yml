@@ -29,7 +29,7 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - GEMINI_MODEL=gemini-2.5-flash
       - CLAUDE_MODEL=claude-sonnet-4-6
-      - DEFAULT_PROVIDER=claude
+      - DEFAULT_PROVIDER=gemini
       - TZ=Europe/Tallinn
     networks:
       - games-internal
