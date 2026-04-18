@@ -1,6 +1,6 @@
 services:
   paperless:
-    image: ghcr.io/paperless-ngx/paperless-ngx:2.20.14
+    image: ghcr.io/paperless-ngx/paperless-ngx:2.20.14@sha256:b89f83345532cfba72690185257eb6c4f92fc2a782332a42abe19c07b7a6595f
     container_name: paperless
     restart: unless-stopped
     depends_on:
@@ -41,7 +41,7 @@ services:
       start_period: 60s
 
   paperless-db:
-    image: postgres:16-alpine
+    image: postgres:16-alpine@sha256:93d55776e04376e19adb2733e3ccebb4392ee7dd86d8ff238503b30fe719c84f
     container_name: paperless-db
     restart: unless-stopped
     environment:
@@ -61,7 +61,7 @@ services:
       - paperless-internal
 
   paperless-redis:
-    image: redis:8.6-alpine
+    image: redis:8.6-alpine@sha256:c5e375abb885e6b2021c0377879e4890bf76f9065b8922ffc113f2b226b9fc17
     container_name: paperless-redis
     restart: unless-stopped
     environment:

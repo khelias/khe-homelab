@@ -1,6 +1,6 @@
 services:
   jellyfin-init:
-    image: busybox:1.37
+    image: busybox:1.37@sha256:1487d0af5f52b4ba31c7e465126ee2123fe3f2305d638e7827681e7cf6c83d5e
     container_name: jellyfin-init
     restart: no
     volumes:
@@ -23,7 +23,7 @@ services:
              fi"
 
   jellyfin:
-    image: jellyfin/jellyfin:10.11.8
+    image: jellyfin/jellyfin:10.11.8@sha256:1694ff069f0c9dafb283c36765175606866769f5d72f2ed56b6a0f1be922fc37
     container_name: jellyfin
     restart: unless-stopped
     depends_on:
