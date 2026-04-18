@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KHE Mängud</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card-bg: #1e293b;
+            --card-hover: #334155;
+            --text: #f1f5f9;
+            --text-dim: #94a3b8;
+            --accent: #38bdf8;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Poppins', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem 1rem;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        .subtitle {
+            color: var(--text-dim);
+            font-size: 1.1rem;
+        }
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            width: 100%;
+            max-width: 900px;
+        }
+        .game-card {
+            background: var(--card-bg);
+            border-radius: 1rem;
+            padding: 2rem;
+            text-decoration: none;
+            color: var(--text);
+            transition: background 0.2s, transform 0.2s;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        .game-card:hover {
+            background: var(--card-hover);
+            transform: translateY(-2px);
+        }
+        .game-icon {
+            font-size: 3rem;
+            line-height: 1;
+        }
+        .game-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        .game-desc {
+            color: var(--text-dim);
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+        .game-cta {
+            margin-top: auto;
+            color: var(--accent);
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        footer {
+            margin-top: auto;
+            padding-top: 3rem;
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            text-align: center;
+        }
+        footer a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>KHE Mängud</h1>
+        <p class="subtitle">Pere mängude kogu</p>
+    </header>
+
+    <main class="games-grid">
+        <a href="/study/" class="game-card">
+            <div class="game-icon">🎓</div>
+            <div class="game-title">Nutimängud</div>
+            <p class="game-desc">Harjutame lugemist, matemaatikat ja loogikat läbi lõbusate mängude.</p>
+            <span class="game-cta">Mängi →</span>
+        </a>
+    </main>
+
+    <footer>
+        <a href="https://khe.ee">khe.ee</a>
+    </footer>
+</body>
+</html>
