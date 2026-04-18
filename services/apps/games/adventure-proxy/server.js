@@ -23,6 +23,40 @@ app.use(express.json({ limit: '1mb', type: '*/*' }));
 
 app.get('/healthz', (_req, res) => res.status(200).send('ok'));
 
+// Legacy endpoint used by older cached frontends. Forwards a Gemini-shaped
+// request body straight through to Google and returns Gemini's raw response.
+// Keep until old `app.js` bundles have aged out of browser/CDN caches.
+app.post('/gemini', async (req, res) => {
+  if (!GEMINI_API_KEY) {
+    return res.status(503).json({ error: 'Gemini not configured on this proxy' });
+  }
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
+  try {
+    const upstream = await fetch(geminiUrl(GEMINI_MODEL), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req.body),
+      signal: controller.signal,
+    });
+    const data = await upstream.json();
+    if (!upstream.ok) {
+      return res.status(upstream.status).json({
+        error: data?.error?.message || 'Gemini upstream error',
+      });
+    }
+    res.json(data);
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      return res.status(504).json({ error: 'Upstream timeout' });
+    }
+    console.error('proxy legacy /gemini:', err.message || err);
+    res.status(500).json({ error: err.message || 'Proxy error' });
+  } finally {
+    clearTimeout(timer);
+  }
+});
+
 app.post('/generate', async (req, res) => {
   const { prompt, schema, provider = DEFAULT_PROVIDER } = req.body || {};
   if (typeof prompt !== 'string' || !prompt || typeof schema !== 'object' || !schema) {
