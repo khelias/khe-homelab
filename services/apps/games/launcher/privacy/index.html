@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privaatsus — KHE Mängud</title>
+  <meta name="description" content="Privaatsusteade games.khe.ee jaoks">
+  <link rel="preload" href="/fonts/inter-400.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/inter-500.woff2" as="font" type="font/woff2" crossorigin>
+  <style>
+    @font-face {
+      font-family: 'Inter';
+      font-style: normal;
+      font-weight: 400;
+      font-display: swap;
+      src: url('/fonts/inter-400.woff2') format('woff2');
+    }
+    @font-face {
+      font-family: 'Inter';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url('/fonts/inter-500.woff2') format('woff2');
+    }
+    @font-face {
+      font-family: 'Inter';
+      font-style: normal;
+      font-weight: 600;
+      font-display: swap;
+      src: url('/fonts/inter-600.woff2') format('woff2');
+    }
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #09090b;
+      --text: #fafafa;
+      --text-dim: #d4d4d8;
+      --text-muted: #71717a;
+      --text-faint: #52525b;
+      --border: rgba(255, 255, 255, 0.08);
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text-dim);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.6;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      top: -20%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 80%;
+      height: 60%;
+      background: radial-gradient(ellipse at center, rgba(99, 102, 241, 0.08), transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    main {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 4rem 2rem 3rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    a.back {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.8rem;
+      margin-bottom: 2rem;
+      transition: color 0.15s, gap 0.15s;
+    }
+    a.back:hover { color: var(--text); gap: 0.5rem; }
+    a.back svg { width: 14px; height: 14px; }
+
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 500;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      margin-bottom: 0.5rem;
+    }
+
+    .updated {
+      color: var(--text-faint);
+      font-size: 0.8rem;
+      margin-bottom: 2.5rem;
+    }
+
+    h2 {
+      font-size: 1rem;
+      font-weight: 500;
+      color: var(--text);
+      margin-top: 2rem;
+      margin-bottom: 0.75rem;
+    }
+
+    p { font-size: 0.9rem; margin-bottom: 0.75rem; }
+
+    ul { list-style: none; padding-left: 0; }
+    li {
+      font-size: 0.9rem;
+      padding-left: 1rem;
+      position: relative;
+      margin-bottom: 0.5rem;
+    }
+    li::before {
+      content: "—";
+      position: absolute;
+      left: 0;
+      color: var(--text-faint);
+    }
+
+    code {
+      background: #18181b;
+      padding: 0.1rem 0.35rem;
+      border-radius: 4px;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+
+    a { color: var(--text-dim); }
+    a:hover { color: var(--text); }
+  </style>
+</head>
+<body>
+
+<main>
+  <a class="back" href="/">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    Mängud
+  </a>
+
+  <h1>Privaatsus</h1>
+  <p class="updated">Viimati uuendatud: 2026-04-18</p>
+
+  <p>games.khe.ee on avalik isiklik koduserveri leht. Reklaame ei näidata,
+  kasutajakontosid ei küsita ja külastajate käitumist ei jälgita
+  (analytics puudub).</p>
+
+  <h2>Küpsised</h2>
+  <p>Lehel endal küpsiseid ei seata. Cloudflare CDN võib seada oma
+  bot-protection küpsise <code>_cf_bm</code> (~30 min eluaeg) — see on
+  EU ePrivacy reeglite mõttes "rangelt vajalik" ega vaja nõusolekut.</p>
+
+  <h2>Lokaalne salvestus</h2>
+  <ul>
+    <li><strong>Nutimängud (/study/)</strong> — mängu seis (taseme progress jms)
+        salvestatakse brauseri <code>localStorage</code>'isse. Server seda ei näe.</li>
+    <li><strong>AI Seiklus (/adventure/)</strong> — mängu seis salvestatakse
+        brauseri <code>localStorage</code>'isse.</li>
+  </ul>
+
+  <h2>AI Seikluse puhul</h2>
+  <p>"AI Seiklus" saadab mängija sisestatud teksti tehisintellekti API-le
+  (Anthropic Claude või Google Gemini) loo genereerimiseks. Päring liigub
+  läbi serveris jooksva proxy ja edasi vastava teenusepakkuja juurde.</p>
+  <p>Need teenusepakkujad on <strong>USA-põhised</strong> ja võivad päringu
+  sisu töödelda vastavalt oma reeglitele:</p>
+  <ul>
+    <li>Anthropic — <a href="https://www.anthropic.com/legal/privacy" target="_blank" rel="noopener">privacy policy</a></li>
+    <li>Google Gemini — <a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noopener">terms</a></li>
+  </ul>
+  <p><strong>Soovitus:</strong> ära sisesta mängu päringutes pärisnimesid,
+  aadresse, isikukoode ega muud isikuandmeid mida sa ei tahaks kolmandale
+  poole saata.</p>
+
+  <h2>Hostimine ja võrk</h2>
+  <ul>
+    <li>Server asub Tallinnas, koduses LAN-is.</li>
+    <li>Avalik ligipääs läheb läbi Cloudflare'i (DNS, tunnel, TLS).
+        Cloudflare näeb päringu metaandmeid (IP, URL, user agent) ja toimib
+        TLS-i lõpp-punktina.</li>
+    <li>Fondid serveeritakse oma serverist, mitte kolmandalt poolelt.</li>
+  </ul>
+
+  <h2>Kontakt</h2>
+  <p>Küsimused: <a href="https://github.com/khelias" target="_blank" rel="noopener">github.com/khelias</a></p>
+</main>
+
+</body>
+</html>
