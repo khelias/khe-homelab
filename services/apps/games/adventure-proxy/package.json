@@ -1,0 +1,13 @@
+{
+  "name": "adventure-proxy",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Thin Express proxy: forwards POST /gemini to Google Generative Language API with server-side key",
+  "main": "server.js",
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "express": "5.1.0"
+  }
+}

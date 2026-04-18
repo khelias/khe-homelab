@@ -122,17 +122,20 @@ OpenClaw: DONE — running at https://openclaw.khe.ee via CF tunnel + CF Access 
     SOUL.md (personality), USER.md (homelab context), AGENTS.md (safety rules)
   - docker-essentials skill installed (ClawHub) for container management
 
-games hub: DONE — single nginx:1.30-alpine container (services/apps/games/) routes
-  - / → launcher (git-tracked in services/apps/games/launcher/)
+games hub: DONE — services/apps/games/ stack (nginx + adventure-proxy)
+  - / → launcher (git-tracked in services/apps/games/launcher/, Inter-font dark design)
   - /study/ → study-game (/srv/data/games/study/, GH Actions runner deploys here)
-  - Faas 2 reserved: /adventure/ (ai-adventure-engine frontend) + /adventure/api/ (Gemini proxy)
-  - Container name: `games`; carries transient proxy-network alias `study-game`
-    because the CF tunnel route for games.khe.ee still targets http://study-game:80.
-    Remove alias + update CF Zero Trust route to http://games:80 as cleanup.
+  - /adventure/ → ai-adventure-engine (/srv/data/games/adventure/app/, GH Actions runner)
+  - /adventure/api/ → adventure-proxy container (Node.js Express, forwards to Gemini API)
+  - CF tunnel route games.khe.ee → games:80 (direct, no alias)
   - study-game repo base path: vite `base: '/study/'`, BrowserRouter basename `/study`
-  - Runner path: /home/khe/actions-runner, service: actions.runner.khelias-study-game.*
-  - Nested bind mount: launcher/ contains empty study/ dir as mountpoint anchor
-    (Docker can't mkdir inside :ro parent, so the dir must pre-exist in source)
+  - adventure frontend: plain static HTML/JS/CSS, served as-is at /adventure/
+  - Runners (each repo has its own): /home/khe/actions-runner (study-game),
+    /home/khe/actions-runner-adventure (ai-adventure-engine)
+  - Nested bind mount: launcher/study/ and launcher/adventure/ dirs pre-exist as
+    mountpoint anchors (Docker can't mkdir inside :ro parent — see feedback memory)
+  - Networks: games-internal (nginx ↔ adventure-proxy) + proxy (CF tunnel → nginx)
+  - GEMINI_API_KEY stored in services/apps/games/.env on VM (never committed)
 
 Healthchecks: games uses 127.0.0.1 (not localhost — busybox wget DNS issue in alpine).
   cloudflare-tunnel uses `cloudflared version` (distroless image, no curl/wget available).
