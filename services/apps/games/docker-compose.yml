@@ -1,0 +1,20 @@
+services:
+  games:
+    image: nginx:1.30-alpine@sha256:0272e4604ed93c1792f03695a033a6e8546840f86e0de20a884bb17d2c924883
+    container_name: games
+    restart: unless-stopped
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./launcher:/usr/share/nginx/html:ro
+      - /srv/data/games/study:/usr/share/nginx/html/study:ro
+    networks:
+      - proxy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  proxy:
+    external: true
