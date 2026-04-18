@@ -8,7 +8,7 @@
     "node": ">=22"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.88.0",
-    "express": "5.1.0"
+    "@anthropic-ai/sdk": "^0.90.0",
+    "express": "5.2.1"
   }
 }
