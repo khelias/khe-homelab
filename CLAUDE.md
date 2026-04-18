@@ -16,7 +16,7 @@ services/          # Docker Compose stacks, one dir per service
   media/           # Immich, Jellyfin, Audiobookshelf
   productivity/    # Nextcloud, Paperless-ngx
   ai/              # Ollama, n8n, OpenClaw
-  apps/            # study-game (nginx serving Vite build)
+  apps/            # games hub (nginx serving launcher + study-game under /study/)
 infrastructure/    # Proxmox setup notes, network config, ZFS
 scripts/           # Deployment and maintenance scripts
 ```
@@ -50,10 +50,10 @@ scripts/           # Deployment and maintenance scripts
   - IP forwarding: /etc/sysctl.d/99-tailscale.conf
   - Flags: --advertise-routes=192.168.0.0/24 --accept-dns=false
 
-## Current Status (2026-04-15)
+## Current Status (2026-04-18)
 All 17 services working: Immich, Jellyfin, Vaultwarden, Paperless, Audiobookshelf,
 n8n, Uptime Kuma, Homepage, Ollama, Dockge, AdGuard, NPM, Cloudflare Tunnel,
-Nextcloud (33-apache + PG16), OpenClaw, study-game, landing page.
+Nextcloud (33-apache + PG16), OpenClaw, games hub (launcher + study-game), landing page.
 
 AdGuard: pre-configured via AdGuardHome.yaml (bind mount), split-horizon
 DNS with explicit per-service rewrites (no wildcard). openclaw.khe.ee and
@@ -122,12 +122,19 @@ OpenClaw: DONE — running at https://openclaw.khe.ee via CF tunnel + CF Access 
     SOUL.md (personality), USER.md (homelab context), AGENTS.md (safety rules)
   - docker-essentials skill installed (ClawHub) for container management
 
-study-game: DONE — nginx:1.30-alpine serves /srv/data/study-game/dist via proxy network
-  - Auto-deploy via GitHub Actions self-hosted runner (registered on VM as khe user)
+games hub: DONE — single nginx:1.30-alpine container (services/apps/games/) routes
+  - / → launcher (git-tracked in services/apps/games/launcher/)
+  - /study/ → study-game (/srv/data/games/study/, GH Actions runner deploys here)
+  - Faas 2 reserved: /adventure/ (ai-adventure-engine frontend) + /adventure/api/ (Gemini proxy)
+  - Container name: `games`; carries transient proxy-network alias `study-game`
+    because the CF tunnel route for games.khe.ee still targets http://study-game:80.
+    Remove alias + update CF Zero Trust route to http://games:80 as cleanup.
+  - study-game repo base path: vite `base: '/study/'`, BrowserRouter basename `/study`
   - Runner path: /home/khe/actions-runner, service: actions.runner.khelias-study-game.*
-  - Push to main → build → copy dist to /srv/data/study-game/dist → live at games.khe.ee
+  - Nested bind mount: launcher/ contains empty study/ dir as mountpoint anchor
+    (Docker can't mkdir inside :ro parent, so the dir must pre-exist in source)
 
-Healthchecks: study-game uses 127.0.0.1 (not localhost — busybox wget DNS issue in alpine).
+Healthchecks: games uses 127.0.0.1 (not localhost — busybox wget DNS issue in alpine).
   cloudflare-tunnel uses `cloudflared version` (distroless image, no curl/wget available).
 
 Ollama: CPU-only, qwen2.5:7b loaded. Performance tuning:

@@ -24,7 +24,7 @@ graph TB
         Media["<b>Media</b><br/>Immich · Jellyfin<br/>Audiobookshelf"]
         Prod["<b>Productivity</b><br/>Nextcloud · Paperless-ngx"]
         AI["<b>AI</b><br/>Ollama · n8n · OpenClaw"]
-        Apps["<b>Apps</b><br/>Landing Page · study-game"]
+        Apps["<b>Apps</b><br/>Landing Page · games hub"]
     end
 
     DVM --> HDD[(ZFS Mirror · 2× 12TB<br/>NFS /srv)]
@@ -68,7 +68,7 @@ Jellyfin and Immich machine-learning both use `/dev/dri` for Quick Sync accelera
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/n8n.svg" width="22" /> | **n8n** | `n8n.khe.ee` | Workflow automation (CF Access protected) |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/uptime-kuma.svg" width="22" /> | **Uptime Kuma** | `status.khe.ee` | Service monitoring and alerts |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/claude-ai.svg" width="22" /> | **OpenClaw** | `openclaw.khe.ee` | AI devops agent with sandboxed Docker access (CF Access protected) |
-| 🎮 | **study-game** | `games.khe.ee` | Study game app, auto-deployed from GitHub |
+| 🎮 | **games hub** | `games.khe.ee` | Launcher + study-game (`/study/`), auto-deployed from GitHub |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/ollama.svg" width="22" /> | Ollama | LAN only | Local AI models (qwen2.5:7b, CPU-only) |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/adguard-home.svg" width="22" /> | AdGuard Home | LAN only | DNS ad-blocking + split-horizon DNS |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/dockge.svg" width="22" /> | Dockge | LAN only | Docker Compose management UI |
@@ -109,7 +109,7 @@ Operational work is kept to a minimum by pushing everything into code and cron.
 - **Renovate** — watches every pinned image tag and opens PRs for updates (digests + changelogs).
 - **GitHub Actions self-hosted runner** — a runner registered on the Docker VM picks up
   jobs from the `study-game` source repo: push to `main` → Vite build → `dist/` copied to
-  `/srv/data/study-game/dist` → live in seconds. Nginx container here just serves the folder.
+  `/srv/data/games/study` → live in seconds. The games-hub nginx container serves that folder under `/study/`.
 - **Certificate renewal** — NPM auto-renews the wildcard cert via Cloudflare DNS API. No manual steps.
 - **Backup script** — `scripts/backup.sh` dumps all Postgres DBs and snapshots configs on a schedule.
 
@@ -161,7 +161,7 @@ services/
 ├── media/           Immich, Jellyfin, Audiobookshelf
 ├── productivity/    Nextcloud, Paperless-ngx
 ├── ai/              Ollama, n8n, OpenClaw (+ workspace/ for agent config)
-└── apps/            Landing Page, study-game
+└── apps/            Landing Page, games hub (launcher + study-game)
 
 infrastructure/      Proxmox, network, Cloudflare, and Tailscale documentation
 scripts/             Setup, deploy, backup, and hardening scripts

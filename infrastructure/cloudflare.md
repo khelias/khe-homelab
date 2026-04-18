@@ -21,7 +21,7 @@ Tunnel routes directly to Docker containers. LAN traffic goes via NPM (split-hor
 | books.khe.ee        | audiobookshelf:80           | audiobookshelf:80           | NPM: unlimited upload, 600s timeout |
 | n8n.khe.ee          | n8n:5678                    | — (CF Access)               | CF Access OTP on all networks |
 | status.khe.ee       | uptime-kuma:3001            | uptime-kuma:3001            | |
-| games.khe.ee        | study-game:80               | — (CF only)                 | no AdGuard rewrite |
+| games.khe.ee        | study-game:80 (→ games)     | — (CF only)                 | no AdGuard rewrite; alias in games compose until route updated to games:80 |
 | openclaw.khe.ee     | openclaw:18789              | — (CF Access)               | CF Access OTP on all networks |
 
 Not exposed via tunnel (LAN only): AdGuard (:8080), Dockge (:5001), NPM admin (:81), Proxmox (:8006)
