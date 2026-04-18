@@ -8,12 +8,7 @@ services:
       - ./launcher:/usr/share/nginx/html:ro
       - /srv/data/games/study:/usr/share/nginx/html/study:ro
     networks:
-      proxy:
-        # Transitional alias: CF tunnel route for games.khe.ee still targets
-        # http://study-game:80. Remove this alias after updating the CF route
-        # to http://games:80 in the Zero Trust dashboard.
-        aliases:
-          - study-game
+      - proxy
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:80"]
       interval: 30s
