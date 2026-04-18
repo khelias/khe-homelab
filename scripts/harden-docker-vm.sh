@@ -79,12 +79,16 @@ echo "Configuring automatic security updates..."
 sudo apt-get install -y unattended-upgrades
 echo 'Unattended-Upgrade::Automatic-Reboot "false";' | sudo tee /etc/apt/apt.conf.d/51auto-reboot
 
-# 5. Install cron and schedule nightly backup.sh
-echo "Installing cron and scheduling backup.sh..."
-sudo apt-get install -y cron
+# 5. Install cron and schedule nightly backups.
+# Offsite (restic → R2) runs at 03:00 after local (02:00). Requires
+# ~/homelab/.env.offsite — see infrastructure/offsite-backup.md.
+echo "Installing cron and scheduling backups..."
+sudo apt-get install -y cron restic
 sudo systemctl enable --now cron
 BACKUP_CRON="0 2 * * * cd $HOME/homelab && ./scripts/backup.sh >> /srv/backups/backup.log 2>&1"
-( crontab -l 2>/dev/null | grep -v "backup.sh" ; echo "$BACKUP_CRON" ) | crontab -
+OFFSITE_CRON="0 3 * * * cd $HOME/homelab && ./scripts/offsite-backup.sh >> /srv/backups/offsite-backup.log 2>&1"
+( crontab -l 2>/dev/null | grep -vE "(backup|offsite-backup)\.sh" ; \
+  echo "$BACKUP_CRON" ; echo "$OFFSITE_CRON" ) | crontab -
 sudo mkdir -p /srv/backups
 sudo chown "$USER:$USER" /srv/backups
 
