@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="et">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Privaatsus — KHE Mängud</title>
-  <meta name="description" content="Privaatsusteade games.khe.ee jaoks">
+  <title>Privacy — KHE Games</title>
+  <meta name="description" content="Privacy notice for games.khe.ee">
   <link rel="preload" href="/fonts/inter-400.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/inter-500.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -35,7 +35,7 @@
     :root {
       --bg: #09090b;
       --text: #fafafa;
-      --text-dim: #d4d4d8;
+      --text-dim: #a1a1aa;
       --text-muted: #71717a;
       --text-faint: #52525b;
       --border: rgba(255, 255, 255, 0.08);
@@ -84,6 +84,11 @@
       transition: color 0.15s, gap 0.15s;
     }
     a.back:hover { color: var(--text); gap: 0.5rem; }
+    a.back:focus-visible {
+      outline: 2px solid rgba(139, 92, 246, 0.25);
+      outline-offset: 3px;
+      border-radius: 4px;
+    }
     a.back svg { width: 14px; height: 14px; }
 
     h1 {
@@ -141,54 +146,52 @@
 <main>
   <a class="back" href="/">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-    Mängud
+    Back to Games
   </a>
 
-  <h1>Privaatsus</h1>
-  <p class="updated">Viimati uuendatud: 2026-04-18</p>
+  <h1>Privacy</h1>
+  <p class="updated">Last updated: 2026-04-18</p>
 
-  <p>games.khe.ee on avalik isiklik koduserveri leht. Reklaame ei näidata,
-  kasutajakontosid ei küsita ja külastajate käitumist ei jälgita
-  (analytics puudub).</p>
+  <p>games.khe.ee is a public personal home-server page. No advertising,
+  no user accounts, no visitor behaviour tracking (no analytics).</p>
 
-  <h2>Küpsised</h2>
-  <p>Lehel endal küpsiseid ei seata. Cloudflare CDN võib seada oma
-  bot-protection küpsise <code>_cf_bm</code> (~30 min eluaeg) — see on
-  EU ePrivacy reeglite mõttes "rangelt vajalik" ega vaja nõusolekut.</p>
+  <h2>Cookies</h2>
+  <p>The page itself sets no cookies. Cloudflare's CDN may set its bot
+  management cookie <code>_cf_bm</code> (~30 min lifetime) — considered
+  strictly necessary under EU ePrivacy rules and requires no consent.</p>
 
-  <h2>Lokaalne salvestus</h2>
+  <h2>Local storage</h2>
   <ul>
-    <li><strong>Nutimängud (/study/)</strong> — mängu seis (taseme progress jms)
-        salvestatakse brauseri <code>localStorage</code>'isse. Server seda ei näe.</li>
-    <li><strong>AI Seiklus (/adventure/)</strong> — mängu seis salvestatakse
-        brauseri <code>localStorage</code>'isse.</li>
+    <li><strong>Smart Games (/study/)</strong> — game state (level progress, etc.)
+        is stored in the browser's <code>localStorage</code>. The server never sees it.</li>
+    <li><strong>AI Adventure (/adventure/)</strong> — game state is stored in the
+        browser's <code>localStorage</code>.</li>
   </ul>
 
-  <h2>AI Seikluse puhul</h2>
-  <p>"AI Seiklus" saadab mängija sisestatud teksti tehisintellekti API-le
-  (Anthropic Claude või Google Gemini) loo genereerimiseks. Päring liigub
-  läbi serveris jooksva proxy ja edasi vastava teenusepakkuja juurde.</p>
-  <p>Need teenusepakkujad on <strong>USA-põhised</strong> ja võivad päringu
-  sisu töödelda vastavalt oma reeglitele:</p>
+  <h2>AI Adventure specifics</h2>
+  <p>"AI Adventure" forwards player-entered text to an AI provider API
+  (Anthropic Claude or Google Gemini) to generate the story. Requests
+  pass through a server-side proxy on to the chosen provider.</p>
+  <p>These providers are <strong>US-based</strong> and may process request
+  content per their own policies:</p>
   <ul>
     <li>Anthropic — <a href="https://www.anthropic.com/legal/privacy" target="_blank" rel="noopener">privacy policy</a></li>
     <li>Google Gemini — <a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noopener">terms</a></li>
   </ul>
-  <p><strong>Soovitus:</strong> ära sisesta mängu päringutes pärisnimesid,
-  aadresse, isikukoode ega muud isikuandmeid mida sa ei tahaks kolmandale
-  poole saata.</p>
+  <p><strong>Advice:</strong> do not enter real names, addresses, national ID
+  numbers, or other personal data you would not want to send to a third party.</p>
 
-  <h2>Hostimine ja võrk</h2>
+  <h2>Hosting and network</h2>
   <ul>
-    <li>Server asub Tallinnas, koduses LAN-is.</li>
-    <li>Avalik ligipääs läheb läbi Cloudflare'i (DNS, tunnel, TLS).
-        Cloudflare näeb päringu metaandmeid (IP, URL, user agent) ja toimib
-        TLS-i lõpp-punktina.</li>
-    <li>Fondid serveeritakse oma serverist, mitte kolmandalt poolelt.</li>
+    <li>Server is in Tallinn, on a home LAN.</li>
+    <li>Public access goes through Cloudflare (DNS, tunnel, TLS).
+        Cloudflare can see request metadata (IP, URL, user agent) and acts as
+        the TLS endpoint.</li>
+    <li>Fonts are served from this server, not a third party.</li>
   </ul>
 
-  <h2>Kontakt</h2>
-  <p>Küsimused: <a href="https://github.com/khelias" target="_blank" rel="noopener">github.com/khelias</a></p>
+  <h2>Contact</h2>
+  <p>Questions: <a href="https://github.com/khelias" target="_blank" rel="noopener">github.com/khelias</a></p>
 </main>
 
 </body>
