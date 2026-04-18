@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="et">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mängud — KHE</title>
-  <meta name="description" content="Elias'te pere mängukogu">
+  <title>Games — KHE</title>
+  <meta name="description" content="Elias family games">
   <link rel="preload" href="/fonts/inter-400.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/inter-600.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -47,6 +47,9 @@
       --border: rgba(255, 255, 255, 0.08);
       --border-hover: rgba(255, 255, 255, 0.18);
       --card-bg: rgba(255, 255, 255, 0.02);
+      --accent-from: rgba(99, 102, 241, 0.15);
+      --accent-to: rgba(139, 92, 246, 0.05);
+      --accent-border: rgba(139, 92, 246, 0.25);
     }
 
     body {
@@ -83,19 +86,40 @@
 
     header { margin-bottom: 3rem; }
 
-    .back-link {
+    /* KHE monogram — clickable, returns to khe.ee. Same style family as the
+       landing page's hero monogram, sized down for header use. */
+    .monogram {
       display: inline-flex;
       align-items: center;
-      gap: 0.375rem;
-      color: var(--text-muted);
-      text-decoration: none;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      border: 1px solid var(--accent-border);
+      background: linear-gradient(135deg, var(--accent-from), var(--accent-to));
       font-size: 0.8rem;
-      font-weight: 400;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      color: var(--text);
+      text-decoration: none;
       margin-bottom: 2rem;
-      transition: color 0.15s, gap 0.15s;
+      backdrop-filter: blur(6px);
+      box-shadow: 0 4px 16px -4px rgba(99, 102, 241, 0.15);
+      transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+                  border-color 0.2s;
     }
-    .back-link:hover { color: var(--text); gap: 0.5rem; }
-    .back-link svg { width: 14px; height: 14px; }
+    .monogram:hover {
+      transform: translateY(-2px);
+      border-color: rgba(139, 92, 246, 0.45);
+    }
+    .monogram:focus-visible {
+      outline: 2px solid var(--accent-border);
+      outline-offset: 3px;
+    }
+    .game-card:focus-visible {
+      outline: 2px solid var(--accent-border);
+      outline-offset: 3px;
+    }
 
     h1 {
       font-size: 2.5rem;
@@ -255,12 +279,9 @@
 <body>
   <div class="container">
     <header>
-      <a href="https://khe.ee" class="back-link">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-        khe.ee
-      </a>
-      <h1>Mängud</h1>
-      <p class="subtitle">Elias'te pere mängukogu</p>
+      <a href="https://khe.ee" class="monogram" aria-label="Back to khe.ee">KHE</a>
+      <h1>Games</h1>
+      <p class="subtitle">Elias family games</p>
     </header>
 
     <main>
@@ -268,10 +289,10 @@
         <div class="game-icon">
           <svg viewBox="0 0 24 24"><path d="M4 19.5v-15A2.5 2.5 0 016.5 2H20v20H6.5a2.5 2.5 0 010-5H20"/><path d="M9 7h6M9 11h4"/></svg>
         </div>
-        <div class="game-title">Nutimängud</div>
-        <p class="game-desc">Lugemine, matemaatika ja loogika läbi lõbusate ülesannete. Lastele ja kogu perele.</p>
+        <div class="game-title">Smart Games</div>
+        <p class="game-desc">Reading, math, and logic through playful exercises. For kids and the whole family.</p>
         <span class="game-cta">
-          Mängi
+          Play
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
         </span>
       </a>
@@ -280,10 +301,10 @@
         <div class="game-icon">
           <svg viewBox="0 0 24 24"><path d="M12 2l2.6 5.3 5.9.8-4.3 4.1 1 5.8L12 15.3l-5.2 2.7 1-5.8L3.5 8.1l5.9-.8L12 2z"/></svg>
         </div>
-        <div class="game-title">AI Seiklus</div>
-        <p class="game-desc">AI-juhitud grupiseiklus eesti keeles. Valid žanri, loo genereerib ise ja kõik mängivad koos.</p>
+        <div class="game-title">AI Adventure</div>
+        <p class="game-desc">AI-driven group adventure (played in Estonian). Pick a genre — the story writes itself and everyone plays along.</p>
         <span class="game-cta">
-          Mängi
+          Play
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
         </span>
       </a>
@@ -292,7 +313,7 @@
     <footer>
       Self-hosted in Tallinn
       <span class="divider">·</span>
-      <a href="/privacy">Privaatsus</a>
+      <a href="/privacy">Privacy</a>
     </footer>
   </div>
 </body>

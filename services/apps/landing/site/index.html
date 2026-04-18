@@ -42,11 +42,14 @@
     :root {
       --bg: #09090b;
       --text: #fafafa;
-      --text-dim: #d4d4d8;
+      --text-dim: #a1a1aa;
       --text-muted: #71717a;
       --text-faint: #52525b;
       --border: rgba(255, 255, 255, 0.08);
-      --border-hover: rgba(255, 255, 255, 0.2);
+      --border-hover: rgba(255, 255, 255, 0.18);
+      --accent-from: rgba(99, 102, 241, 0.15);
+      --accent-to: rgba(139, 92, 246, 0.05);
+      --accent-border: rgba(139, 92, 246, 0.25);
     }
 
     body {
@@ -91,17 +94,18 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 64px;
-      height: 64px;
-      border-radius: 16px;
-      border: 1px solid var(--border);
-      background: rgba(255, 255, 255, 0.02);
-      font-size: 0.95rem;
+      width: 80px;
+      height: 80px;
+      border-radius: 18px;
+      border: 1px solid var(--accent-border);
+      background: linear-gradient(135deg, var(--accent-from), var(--accent-to));
+      font-size: 1.625rem;
       font-weight: 600;
       letter-spacing: 0.06em;
-      color: var(--text-dim);
+      color: var(--text);
       margin-bottom: 2rem;
       backdrop-filter: blur(6px);
+      box-shadow: 0 4px 20px -4px rgba(99, 102, 241, 0.15);
     }
 
     h1 {
@@ -116,7 +120,7 @@
       color: var(--text-muted);
       font-size: 0.95rem;
       font-weight: 300;
-      margin-bottom: 3rem;
+      margin-bottom: 2rem;
     }
 
     nav {
@@ -145,9 +149,16 @@
     }
 
     nav a:hover {
-      transform: translateY(-2px);
+      transform: translateY(-3px);
       border-color: var(--border-hover);
       color: var(--text);
+    }
+
+    nav a:focus-visible,
+    footer a:focus-visible {
+      outline: 2px solid var(--accent-border);
+      outline-offset: 3px;
+      border-radius: 10px;
     }
 
     nav svg {
