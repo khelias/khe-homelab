@@ -41,5 +41,14 @@ Identity: One-time PIN via email (no OAuth setup needed).
 
 Zone: khe.ee
 All *.khe.ee records are CNAME → tunnel (proxied).
+`www` is CNAME → `khe.ee` (proxied), handled by redirect rule below.
 Split-horizon: local DNS via AdGuard rewrites *.khe.ee → 192.168.0.11.
 Router DNS: primary 192.168.0.11 (AdGuard), fallback 1.1.1.1.
+
+## Redirect Rules
+
+Rules → Redirect Rules.
+
+| Rule name    | Match                       | Action                                                       |
+|--------------|-----------------------------|--------------------------------------------------------------|
+| www to apex  | Hostname equals www.khe.ee  | 301 → `concat("https://khe.ee", http.request.uri.path)`, preserve query |
