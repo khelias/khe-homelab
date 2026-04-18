@@ -53,7 +53,7 @@ scripts/           # Deployment and maintenance scripts
 ## Current Status (2026-04-18)
 All 17 services working: Immich, Jellyfin, Vaultwarden, Paperless, Audiobookshelf,
 n8n, Uptime Kuma, Homepage, Ollama, Dockge, AdGuard, NPM, Cloudflare Tunnel,
-Nextcloud (33-apache + PG16), OpenClaw, games hub (launcher + study-game), landing page.
+Nextcloud (33-apache + PG18), OpenClaw, games hub (launcher + study-game), landing page.
 
 AdGuard: pre-configured via AdGuardHome.yaml (bind mount), split-horizon
 DNS with explicit per-service rewrites (no wildcard). openclaw.khe.ee and
