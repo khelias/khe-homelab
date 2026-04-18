@@ -5,106 +5,189 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Kaido Henrik Elias</title>
   <meta name="description" content="Software architect — projects and links">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="preload" href="/fonts/inter-400.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/inter-500.woff2" as="font" type="font/woff2" crossorigin>
   <style>
+    @font-face {
+      font-family: 'Inter';
+      font-style: normal;
+      font-weight: 300;
+      font-display: swap;
+      src: url('/fonts/inter-300.woff2') format('woff2');
+    }
+    @font-face {
+      font-family: 'Inter';
+      font-style: normal;
+      font-weight: 400;
+      font-display: swap;
+      src: url('/fonts/inter-400.woff2') format('woff2');
+    }
+    @font-face {
+      font-family: 'Inter';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url('/fonts/inter-500.woff2') format('woff2');
+    }
+    @font-face {
+      font-family: 'Inter';
+      font-style: normal;
+      font-weight: 600;
+      font-display: swap;
+      src: url('/fonts/inter-600.woff2') format('woff2');
+    }
+
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #09090b;
+      --text: #fafafa;
+      --text-dim: #d4d4d8;
+      --text-muted: #71717a;
+      --text-faint: #52525b;
+      --border: rgba(255, 255, 255, 0.08);
+      --border-hover: rgba(255, 255, 255, 0.2);
+    }
 
     body {
       font-family: 'Inter', system-ui, sans-serif;
-      background: #09090b;
-      color: #fafafa;
+      background: var(--bg);
+      color: var(--text);
       min-height: 100vh;
       display: flex;
-      justify-content: center;
-      align-items: center;
+      flex-direction: column;
       -webkit-font-smoothing: antialiased;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* subtle background glow — same as games launcher */
+    body::before {
+      content: '';
+      position: fixed;
+      top: -20%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 80%;
+      height: 60%;
+      background: radial-gradient(ellipse at center, rgba(99, 102, 241, 0.08), transparent 70%);
+      pointer-events: none;
+      z-index: 0;
     }
 
     main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
       text-align: center;
-      padding: 2rem;
+      padding: 3rem 1.5rem;
+      position: relative;
+      z-index: 1;
     }
 
-    /* Monogram */
     .monogram {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 56px;
-      height: 56px;
-      border-radius: 14px;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      font-size: 0.9rem;
+      width: 64px;
+      height: 64px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.02);
+      font-size: 0.95rem;
       font-weight: 600;
-      letter-spacing: 0.05em;
-      color: #a1a1aa;
-      margin-bottom: 1.75rem;
+      letter-spacing: 0.06em;
+      color: var(--text-dim);
+      margin-bottom: 2rem;
+      backdrop-filter: blur(6px);
     }
 
     h1 {
-      font-size: 1.75rem;
-      font-weight: 500;
-      letter-spacing: -0.02em;
-      margin-bottom: 0.375rem;
+      font-size: 2.5rem;
+      font-weight: 600;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      margin-bottom: 0.5rem;
     }
 
     .tagline {
-      color: #71717a;
-      font-size: 0.875rem;
+      color: var(--text-muted);
+      font-size: 0.95rem;
       font-weight: 300;
-      margin-bottom: 2.25rem;
+      margin-bottom: 3rem;
     }
 
-    /* Links */
     nav {
       display: flex;
       gap: 0.5rem;
       justify-content: center;
       flex-wrap: wrap;
-      margin-bottom: 2.5rem;
     }
 
     nav a {
       display: inline-flex;
       align-items: center;
-      gap: 0.45rem;
-      padding: 0.5rem 1rem;
-      border-radius: 8px;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      background: transparent;
-      color: #d4d4d8;
+      gap: 0.5rem;
+      padding: 0.625rem 1.125rem;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.02);
+      color: var(--text-dim);
       text-decoration: none;
-      font-size: 0.85rem;
+      font-size: 0.875rem;
       font-weight: 400;
-      transition: all 0.15s;
+      transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+                  border-color 0.2s,
+                  color 0.2s;
+      backdrop-filter: blur(6px);
     }
 
     nav a:hover {
-      border-color: rgba(255, 255, 255, 0.2);
-      color: #fafafa;
+      transform: translateY(-2px);
+      border-color: var(--border-hover);
+      color: var(--text);
     }
 
     nav svg {
-      width: 14px;
-      height: 14px;
-      opacity: 0.6;
+      width: 16px;
+      height: 16px;
+      opacity: 0.7;
+      transition: opacity 0.2s;
     }
 
-    nav a:hover svg {
-      opacity: 1;
-    }
+    nav a:hover svg { opacity: 1; }
 
     footer {
-      color: #3f3f46;
-      font-size: 0.65rem;
+      padding: 2rem 1.5rem;
+      text-align: center;
+      color: var(--text-faint);
+      font-size: 0.7rem;
       font-weight: 300;
       letter-spacing: 0.04em;
+      position: relative;
+      z-index: 1;
     }
 
+    footer .divider {
+      margin: 0 0.5rem;
+      color: var(--text-faint);
+      opacity: 0.5;
+    }
+
+    footer a {
+      color: var(--text-faint);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    footer a:hover { color: var(--text-dim); }
+
     @media (max-width: 480px) {
-      nav { flex-direction: column; align-items: center; }
+      h1 { font-size: 2rem; }
+      nav { flex-direction: column; align-items: stretch; max-width: 240px; margin: 0 auto; }
+      nav a { justify-content: center; }
     }
   </style>
 </head>
@@ -129,9 +212,13 @@
       LinkedIn
     </a>
   </nav>
-
-  <footer>Self-hosted in Tallinn</footer>
 </main>
+
+<footer>
+  Self-hosted in Tallinn
+  <span class="divider">·</span>
+  <a href="/privacy">Privacy</a>
+</footer>
 
 </body>
 </html>
