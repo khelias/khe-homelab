@@ -41,7 +41,7 @@ services:
       start_period: 60s
 
   paperless-db:
-    image: postgres:16-alpine@sha256:93d55776e04376e19adb2733e3ccebb4392ee7dd86d8ff238503b30fe719c84f
+    image: postgres:18-alpine@sha256:52098013b4b64a746626437d38afc03cabff6cdeb4d3d92e2342aa95f0ce56ea
     container_name: paperless-db
     restart: unless-stopped
     environment:
