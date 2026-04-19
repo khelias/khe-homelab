@@ -123,7 +123,9 @@ async function callClaude({ prompt, schema, systemPrompt }) {
     tool_choice: { type: 'tool', name: 'respond' },
     messages: [{ role: 'user', content: prompt }],
   };
-  if (systemPrompt) createParams.system = systemPrompt;
+  if (systemPrompt) {
+    createParams.system = [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }];
+  }
   const message = await anthropic.messages.create(createParams, { timeout: UPSTREAM_TIMEOUT_MS });
 
   const toolUse = message.content.find((b) => b.type === 'tool_use');
