@@ -58,7 +58,7 @@ app.post('/gemini', async (req, res) => {
 });
 
 app.post('/generate', async (req, res) => {
-  const { prompt, schema, provider = DEFAULT_PROVIDER } = req.body || {};
+  const { prompt, schema, provider = DEFAULT_PROVIDER, systemPrompt } = req.body || {};
   if (typeof prompt !== 'string' || !prompt || typeof schema !== 'object' || !schema) {
     return res.status(400).json({ error: 'prompt (string) and schema (object) are required' });
   }
@@ -67,8 +67,8 @@ app.post('/generate', async (req, res) => {
   }
   try {
     const result = provider === 'claude'
-      ? await callClaude({ prompt, schema })
-      : await callGemini({ prompt, schema });
+      ? await callClaude({ prompt, schema, systemPrompt })
+      : await callGemini({ prompt, schema, systemPrompt });
     console.log(`proxy ok: provider=${provider} model=${result.model}`);
     res.json({ provider, model: result.model, data: result.data });
   } catch (err) {
@@ -104,28 +104,27 @@ function normalizeSchemaForClaude(node) {
   return node;
 }
 
-async function callClaude({ prompt, schema }) {
+async function callClaude({ prompt, schema, systemPrompt }) {
   if (!anthropic) {
     const err = new Error('Claude not configured on this proxy');
     err.status = 503;
     throw err;
   }
-  const message = await anthropic.messages.create(
-    {
-      model: CLAUDE_MODEL,
-      max_tokens: 16000,
-      tools: [
-        {
-          name: 'respond',
-          description: 'Submit the structured response that matches the requested schema.',
-          input_schema: normalizeSchemaForClaude(schema),
-        },
-      ],
-      tool_choice: { type: 'tool', name: 'respond' },
-      messages: [{ role: 'user', content: prompt }],
-    },
-    { timeout: UPSTREAM_TIMEOUT_MS },
-  );
+  const createParams = {
+    model: CLAUDE_MODEL,
+    max_tokens: 16000,
+    tools: [
+      {
+        name: 'respond',
+        description: 'Submit the structured response that matches the requested schema.',
+        input_schema: normalizeSchemaForClaude(schema),
+      },
+    ],
+    tool_choice: { type: 'tool', name: 'respond' },
+    messages: [{ role: 'user', content: prompt }],
+  };
+  if (systemPrompt) createParams.system = systemPrompt;
+  const message = await anthropic.messages.create(createParams, { timeout: UPSTREAM_TIMEOUT_MS });
 
   const toolUse = message.content.find((b) => b.type === 'tool_use');
   if (!toolUse || typeof toolUse.input !== 'object') {
@@ -134,7 +133,7 @@ async function callClaude({ prompt, schema }) {
   return { model: CLAUDE_MODEL, data: toolUse.input };
 }
 
-async function callGemini({ prompt, schema }) {
+async function callGemini({ prompt, schema, systemPrompt }) {
   if (!GEMINI_API_KEY) {
     const err = new Error('Gemini not configured on this proxy');
     err.status = 503;
@@ -143,17 +142,19 @@ async function callGemini({ prompt, schema }) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
   try {
+    const geminiBody = {
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: {
+        responseMimeType: 'application/json',
+        responseSchema: schema,
+        temperature: 0.8,
+      },
+    };
+    if (systemPrompt) geminiBody.systemInstruction = { parts: [{ text: systemPrompt }] };
     const upstream = await fetch(geminiUrl(GEMINI_MODEL), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: {
-          responseMimeType: 'application/json',
-          responseSchema: schema,
-          temperature: 0.8,
-        },
-      }),
+      body: JSON.stringify(geminiBody),
       signal: controller.signal,
     });
     const body = await upstream.json();
