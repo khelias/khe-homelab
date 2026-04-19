@@ -65,11 +65,14 @@ app.post('/generate', async (req, res) => {
   if (provider !== 'claude' && provider !== 'gemini') {
     return res.status(400).json({ error: `unknown provider: ${provider}` });
   }
+  const t0 = Date.now();
   try {
     const result = provider === 'claude'
       ? await callClaude({ prompt, schema, systemPrompt })
       : await callGemini({ prompt, schema, systemPrompt });
-    console.log(`proxy ok: provider=${provider} model=${result.model}`);
+    const ms = Date.now() - t0;
+    const cacheHit = result.cacheHit;
+    console.log(`proxy ok: provider=${provider} model=${result.model} ms=${ms}${cacheHit != null ? ` cache=${cacheHit}` : ''}`);
     res.json({ provider, model: result.model, data: result.data });
   } catch (err) {
     if (err.name === 'AbortError') {
@@ -132,7 +135,9 @@ async function callClaude({ prompt, schema, systemPrompt }) {
   if (!toolUse || typeof toolUse.input !== 'object') {
     throw new Error('Claude did not emit a structured tool_use block');
   }
-  return { model: CLAUDE_MODEL, data: toolUse.input };
+  const usage = message.usage;
+  const cacheHit = usage?.cache_read_input_tokens > 0 ? `${usage.cache_read_input_tokens}tok` : 'miss';
+  return { model: CLAUDE_MODEL, data: toolUse.input, cacheHit };
 }
 
 async function callGemini({ prompt, schema, systemPrompt }) {
