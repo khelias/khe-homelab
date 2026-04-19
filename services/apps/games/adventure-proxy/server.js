@@ -69,6 +69,7 @@ app.post('/generate', async (req, res) => {
     const result = provider === 'claude'
       ? await callClaude({ prompt, schema })
       : await callGemini({ prompt, schema });
+    console.log(`proxy ok: provider=${provider} model=${result.model}`);
     res.json({ provider, model: result.model, data: result.data });
   } catch (err) {
     if (err.name === 'AbortError') {
