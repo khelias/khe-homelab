@@ -58,7 +58,7 @@ app.post('/gemini', async (req, res) => {
 });
 
 app.post('/generate', async (req, res) => {
-  const { prompt, schema, provider = DEFAULT_PROVIDER, systemPrompt } = req.body || {};
+  const { prompt, schema, provider = DEFAULT_PROVIDER, systemPrompt, language } = req.body || {};
   if (typeof prompt !== 'string' || !prompt || typeof schema !== 'object' || !schema) {
     return res.status(400).json({ error: 'prompt (string) and schema (object) are required' });
   }
@@ -70,9 +70,32 @@ app.post('/generate', async (req, res) => {
     const result = provider === 'claude'
       ? await callClaude({ prompt, schema, systemPrompt })
       : await callGemini({ prompt, schema, systemPrompt });
+
+    // Turn responses have { scene, choices, parameters, gameOver }. For those:
+    //   1) Validate choice costs: reject silently by logging, caller trusts AI.
+    //   2) If language is Estonian, run scene + gameOverText through Gemini editor.
+    const isTurnShape = result?.data && typeof result.data.scene === 'string' && Array.isArray(result.data.choices);
+    let editorMs = 0;
+    let editorApplied = false;
+    if (isTurnShape) {
+      logChoiceCostViolations(result.data, provider);
+      if (language === 'et' && GEMINI_API_KEY) {
+        const te = Date.now();
+        try {
+          await estonianEditorPass(result.data);
+          editorApplied = true;
+        } catch (e) {
+          console.warn(`editor-pass failed (continuing with unedited): ${e.message || e}`);
+        }
+        editorMs = Date.now() - te;
+      }
+    }
+
     const ms = Date.now() - t0;
     const cacheHit = result.cacheHit;
-    console.log(`proxy ok: provider=${provider} model=${result.model} ms=${ms}${cacheHit != null ? ` cache=${cacheHit}` : ''}`);
+    console.log(
+      `proxy ok: provider=${provider} model=${result.model} ms=${ms}${cacheHit != null ? ` cache=${cacheHit}` : ''}${editorApplied ? ` editor=${editorMs}ms` : ''}`,
+    );
     res.json({ provider, model: result.model, data: result.data });
   } catch (err) {
     if (err.name === 'AbortError') {
@@ -84,6 +107,110 @@ app.post('/generate', async (req, res) => {
     res.status(status).json({ error: err.message || 'Proxy error' });
   }
 });
+
+// Warn in logs if any choice has no cost (all expectedChanges zero/positive)
+// or if a choice is missing expectedChanges entirely. Does not block — the AI
+// self-check is primary; this is telemetry so we can spot drift.
+function logChoiceCostViolations(turn, provider) {
+  if (!Array.isArray(turn.choices)) return;
+  const violations = [];
+  turn.choices.forEach((c, i) => {
+    const changes = Array.isArray(c.expectedChanges) ? c.expectedChanges : [];
+    if (changes.length === 0) { violations.push(`choice[${i}] has no expectedChanges`); return; }
+    const hasNegative = changes.some((ch) => typeof ch.change === 'number' && ch.change < 0);
+    if (!hasNegative) violations.push(`choice[${i}] has no negative cost: ${JSON.stringify(changes)}`);
+  });
+  if (violations.length > 0) {
+    console.warn(`choice-cost violations (provider=${provider}): ${violations.join(' | ')}`);
+  }
+}
+
+// Estonian editor pass: send the scene (and optional gameOverText) through
+// Gemini Flash with a strict editorial prompt. Fixes invented words, wrong
+// word register, and non-native sentence structure while preserving facts.
+// Mutates `turn.scene` and `turn.gameOverText` in place.
+const EDITOR_SYSTEM = `Sa oled eesti kirjanduse toimetaja. Saad ilukirjandusliku lõigu ja parandad eesti keele vigu.
+
+PARANDA:
+- Sõnad, mida eesti keeles ei ole (hallutsinatsioonid, valed liitsõnad)
+- Sõnad, mis on valel registril (loomahääl masina kohta, murdesõna proosa sees)
+- Otsetõlked inglise keelest (calque'd), kohmakad lauseehitused
+- Ebaühtlane ajavorm ühe lõigu sees
+- Valed sõnajärjed ("Pinged all pinna" → "Pinged pinna all")
+
+ÄRA MUUDA:
+- Fakte, tegelaste nimesid, sündmuste sisu
+- Atmosfääri ega tooni
+- Pikkust olulisel määral — paranda sõnu, mitte kompositsiooni
+
+Vasta AINULT parandatud tekstiga, ilma selgituseta. Kui tekstis pole vigu, vasta täpselt sama tekstiga.`;
+
+const EDITOR_SCHEMA = {
+  type: 'OBJECT',
+  properties: { corrected: { type: 'STRING' } },
+  required: ['corrected'],
+};
+
+// Global budget for the entire editor pass (both scene + gameOverText together).
+// nginx proxy_read_timeout is 120s; upstream AI call can use up to 115s; we
+// keep editor-pass well under the remaining margin so the total stays ≤ 120s.
+const EDITOR_TOTAL_BUDGET_MS = 25_000;
+
+async function estonianEditorPass(turnData) {
+  const tasks = [];
+  if (turnData.scene && typeof turnData.scene === 'string' && turnData.scene.trim().length > 10) {
+    tasks.push(['scene', turnData.scene]);
+  }
+  if (turnData.gameOverText && typeof turnData.gameOverText === 'string' && turnData.gameOverText.trim().length > 20) {
+    tasks.push(['gameOverText', turnData.gameOverText]);
+  }
+  if (tasks.length === 0) return;
+
+  const sharedController = new AbortController();
+  const budgetTimer = setTimeout(() => sharedController.abort(), EDITOR_TOTAL_BUDGET_MS);
+
+  try {
+    const results = await Promise.all(tasks.map(async ([key, text]) => {
+      try {
+        const edited = await editorCall(text, sharedController.signal);
+        return [key, edited];
+      } catch (e) {
+        // Per-task failure: log and leave field unedited. Don't fail the whole pass.
+        console.warn(`editor-pass ${key} failed: ${e.message || e}`);
+        return [key, null];
+      }
+    }));
+    for (const [key, edited] of results) {
+      if (edited && edited.length > 0) turnData[key] = edited;
+    }
+  } finally {
+    clearTimeout(budgetTimer);
+  }
+}
+
+async function editorCall(text, externalSignal) {
+  const body = {
+    contents: [{ role: 'user', parts: [{ text }] }],
+    generationConfig: {
+      responseMimeType: 'application/json',
+      responseSchema: EDITOR_SCHEMA,
+      temperature: 0.2,
+    },
+    systemInstruction: { parts: [{ text: EDITOR_SYSTEM }] },
+  };
+  const res = await fetch(geminiUrl(GEMINI_MODEL), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    signal: externalSignal,
+  });
+  if (!res.ok) throw new Error(`editor HTTP ${res.status}`);
+  const raw = await res.json();
+  const responseText = raw?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!responseText) throw new Error('editor returned empty response');
+  const parsed = JSON.parse(responseText);
+  return typeof parsed.corrected === 'string' ? parsed.corrected : null;
+}
 
 // Game schemas were written for Gemini's responseSchema, which accepts
 // uppercase type names ("OBJECT", "STRING", ...). JSON Schema (and thus
