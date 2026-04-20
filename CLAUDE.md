@@ -137,7 +137,7 @@ games hub: DONE — services/apps/games/ stack (nginx + adventure-proxy)
   - Networks: games-internal (nginx ↔ adventure-proxy) + proxy (CF tunnel → nginx)
   - GEMINI_API_KEY + ANTHROPIC_API_KEY stored in services/apps/games/.env on VM (never committed)
 
-adventure-proxy (2026-04-20 hardened):
+adventure-proxy:
   - Estonian editor-pass: when request body has language='et', scene + gameOverText
     are routed through Gemini Flash with an editorial system prompt (fixes
     hallucinated words, wrong verb register, calques). 25s shared budget; failures
@@ -160,7 +160,7 @@ adventure-proxy (2026-04-20 hardened):
   - Frontend + proxy are tightly coupled (schema shapes, request body). Commit
     both repos together when touching request/response contract.
 
-Adventure game engine redesign (2026-04-20):
+Adventure game engine rules:
   - Narrative gameOver: 1 param at worst = phase transition (AI narrates
     consequence, game continues), 2+ params worst = second AI call with
     forceEnd:'unrecoverable' for a written 3-5 paragraph conclusion. Hardcoded
@@ -168,7 +168,7 @@ Adventure game engine redesign (2026-04-20):
   - Rule #4 (hidden "threat worsens each turn") removed — all parameter
     changes must now come from visible choice expectedChanges.
   - Docs: ai-adventure-engine/docs/ARCHITECTURE.md (C4 + flows + cost + security),
-    CHANGELOG.md, scripts/README.md (playtest harness).
+    ROADMAP.md (phases + principles), scripts/README.md (playtest harness).
   - Playtest: cd ~/Projects/ai-adventure-engine && npm run playtest -- --duration=Short
 
 Healthchecks: games uses 127.0.0.1 (not localhost — busybox wget DNS issue in alpine).
