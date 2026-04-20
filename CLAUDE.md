@@ -126,16 +126,50 @@ games hub: DONE — services/apps/games/ stack (nginx + adventure-proxy)
   - / → launcher (git-tracked in services/apps/games/launcher/, Inter-font dark design)
   - /study/ → study-game (/srv/data/games/study/, GH Actions runner deploys here)
   - /adventure/ → ai-adventure-engine (/srv/data/games/adventure/app/, GH Actions runner)
-  - /adventure/api/ → adventure-proxy container (Node.js Express, forwards to Gemini API)
+  - /adventure/api/ → adventure-proxy container (Node.js Express, Claude Sonnet 4.6 default / Gemini Flash fallback)
   - CF tunnel route games.khe.ee → games:80 (direct, no alias)
   - study-game repo base path: vite `base: '/study/'`, BrowserRouter basename `/study`
-  - adventure frontend: plain static HTML/JS/CSS, served as-is at /adventure/
+  - adventure frontend: React+Vite+TS (ai-adventure-engine repo), GH Actions builds → /srv/data/games/adventure/app/
   - Runners (each repo has its own): /home/khe/actions-runner (study-game),
     /home/khe/actions-runner-adventure (ai-adventure-engine)
   - Nested bind mount: launcher/study/ and launcher/adventure/ dirs pre-exist as
     mountpoint anchors (Docker can't mkdir inside :ro parent — see feedback memory)
   - Networks: games-internal (nginx ↔ adventure-proxy) + proxy (CF tunnel → nginx)
-  - GEMINI_API_KEY stored in services/apps/games/.env on VM (never committed)
+  - GEMINI_API_KEY + ANTHROPIC_API_KEY stored in services/apps/games/.env on VM (never committed)
+
+adventure-proxy (2026-04-20 hardened):
+  - Estonian editor-pass: when request body has language='et', scene + gameOverText
+    are routed through Gemini Flash with an editorial system prompt (fixes
+    hallucinated words, wrong verb register, calques). 25s shared budget; failures
+    fall back to unedited text. Keeps total response ≤ nginx 120s ceiling.
+  - Schema allowlist: POST /generate rejects any schema whose sorted top-level
+    properties keys don't match one of the 4 known shapes (story/custom/sequel/turn).
+    Without this, the proxy is a free generic Claude/Gemini API.
+    **When adding a new schema in ai-adventure-engine/src/game/prompts.ts, update
+    ALLOWED_SCHEMA_SHAPES in server.js too.**
+  - Origin check: Origin OR Referer must match games.khe.ee or a localhost dev
+    origin. 403 otherwise. Filters naive curl abuse.
+  - Real per-visitor rate limit: nginx.conf uses $http_cf_connecting_ip as
+    limit_req_zone key (fallback $remote_addr via map). Without the map,
+    $binary_remote_addr sees only cloudflared's socket IP — all visitors would
+    share one 30-req/min counter.
+  - Choice-cost violations logged as warnings (not blocked). Watch proxy logs
+    if a playtest shows no-cost choices.
+  - Docker build cache can mask server.js edits — use `docker compose build
+    --no-cache` + `up -d --force-recreate` if a change doesn't take effect.
+  - Frontend + proxy are tightly coupled (schema shapes, request body). Commit
+    both repos together when touching request/response contract.
+
+Adventure game engine redesign (2026-04-20):
+  - Narrative gameOver: 1 param at worst = phase transition (AI narrates
+    consequence, game continues), 2+ params worst = second AI call with
+    forceEnd:'unrecoverable' for a written 3-5 paragraph conclusion. Hardcoded
+    template string dropped to fallback-only.
+  - Rule #4 (hidden "threat worsens each turn") removed — all parameter
+    changes must now come from visible choice expectedChanges.
+  - Docs: ai-adventure-engine/docs/ARCHITECTURE.md (C4 + flows + cost + security),
+    CHANGELOG.md, scripts/README.md (playtest harness).
+  - Playtest: cd ~/Projects/ai-adventure-engine && npm run playtest -- --duration=Short
 
 Healthchecks: games uses 127.0.0.1 (not localhost — busybox wget DNS issue in alpine).
   cloudflare-tunnel uses `cloudflared version` (distroless image, no curl/wget available).
