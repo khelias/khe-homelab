@@ -21,6 +21,55 @@ const geminiUrl = (model) =>
 const app = express();
 app.use(express.json({ limit: '1mb', type: '*/*' }));
 
+// ---- Abuse protections ----
+//
+// 1. Schema allowlist: reject requests whose JSON Schema does not match one of
+//    the four known game shapes. Without this, the proxy is a free generic
+//    Claude/Gemini API for whoever finds the URL.
+// 2. Origin check: require Origin or Referer to match an allowed origin.
+//    Filters casual curl abuse; real attackers can spoof but then they still
+//    hit the schema allowlist + per-IP rate limit in nginx.
+// 3. Rate limit: enforced by nginx (see nginx.conf) using CF-Connecting-IP.
+//
+// Shapes are identified by the sorted top-level keys of schema.properties.
+// When adding a new schema in prompts.ts, add its fingerprint here too.
+const ALLOWED_SCHEMA_SHAPES = new Set([
+  'stories',                                         // storyGenerationSchema
+  'parameters,roles',                                // customStorySchema
+  'newAbilities,newParameters',                      // sequelSchema
+  'choices,gameOver,gameOverText,parameters,scene',  // turnSchema
+]);
+
+function schemaFingerprint(schema) {
+  if (!schema || typeof schema !== 'object' || !schema.properties || typeof schema.properties !== 'object') {
+    return null;
+  }
+  return Object.keys(schema.properties).sort().join(',');
+}
+
+function isKnownSchema(schema) {
+  const fp = schemaFingerprint(schema);
+  return fp != null && ALLOWED_SCHEMA_SHAPES.has(fp);
+}
+
+// Allowed origins for the game UI. Localhost entries let `npm run dev`
+// and `npm run preview` hit the proxy during development.
+const ALLOWED_ORIGIN_PREFIXES = [
+  'https://games.khe.ee',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:4173',
+  'http://127.0.0.1:4173',
+];
+
+function isAllowedOrigin(req) {
+  const origin = req.get('origin') || '';
+  if (origin && ALLOWED_ORIGIN_PREFIXES.some((a) => origin === a)) return true;
+  const referer = req.get('referer') || '';
+  if (referer && ALLOWED_ORIGIN_PREFIXES.some((a) => referer.startsWith(a + '/'))) return true;
+  return false;
+}
+
 app.get('/healthz', (_req, res) => res.status(200).send('ok'));
 
 // Legacy endpoint used by older cached frontends. Forwards a Gemini-shaped
@@ -29,6 +78,9 @@ app.get('/healthz', (_req, res) => res.status(200).send('ok'));
 app.post('/gemini', async (req, res) => {
   if (!GEMINI_API_KEY) {
     return res.status(503).json({ error: 'Gemini not configured on this proxy' });
+  }
+  if (!isAllowedOrigin(req)) {
+    return res.status(403).json({ error: 'Origin not allowed' });
   }
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
@@ -58,9 +110,15 @@ app.post('/gemini', async (req, res) => {
 });
 
 app.post('/generate', async (req, res) => {
+  if (!isAllowedOrigin(req)) {
+    return res.status(403).json({ error: 'Origin not allowed' });
+  }
   const { prompt, schema, provider = DEFAULT_PROVIDER, systemPrompt, language } = req.body || {};
   if (typeof prompt !== 'string' || !prompt || typeof schema !== 'object' || !schema) {
     return res.status(400).json({ error: 'prompt (string) and schema (object) are required' });
+  }
+  if (!isKnownSchema(schema)) {
+    return res.status(400).json({ error: 'schema shape is not in the allowlist' });
   }
   if (provider !== 'claude' && provider !== 'gemini') {
     return res.status(400).json({ error: `unknown provider: ${provider}` });
