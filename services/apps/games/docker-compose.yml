@@ -8,7 +8,6 @@ services:
       - ./launcher:/usr/share/nginx/html:ro
       - /srv/data/games/study:/usr/share/nginx/html/study:ro
       - /srv/data/games/adventure/app:/usr/share/nginx/html/adventure:ro
-      - /srv/data/games/adventure-v2/app:/usr/share/nginx/html/adventure-v2:ro
     networks:
       - proxy
       - games-internal
