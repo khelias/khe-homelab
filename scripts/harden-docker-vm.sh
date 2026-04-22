@@ -92,7 +92,23 @@ OFFSITE_CRON="0 3 * * * cd $HOME/homelab && ./scripts/offsite-backup.sh >> /srv/
 sudo mkdir -p /srv/backups
 sudo chown "$USER:$USER" /srv/backups
 
-# 6. Lock down .env files (600 — owner read/write only).
+# 6. Hardware watchdog — force-reset the VM if the kernel hangs.
+# Proxmox emulates iTCO_wdt (Intel TCO) with 30s timeout; the daemon pings
+# it every 10s. Deliberately minimal config — NO load/memory/network tests,
+# those cause false-positive reboots on transient spikes or network blips.
+echo "Installing hardware watchdog daemon..."
+sudo apt-get install -y watchdog
+sudo tee /etc/watchdog.conf > /dev/null <<'WATCHDOG'
+# Managed by scripts/harden-docker-vm.sh
+watchdog-device = /dev/watchdog
+interval = 10
+realtime = yes
+priority = 1
+log-dir = /var/log/watchdog
+WATCHDOG
+sudo systemctl enable --now watchdog
+
+# 7. Lock down .env files (600 — owner read/write only).
 # Compose reads them as the running user; group/world read is never needed.
 echo "Locking .env file permissions..."
 find "$HOME/homelab/services" -name .env -not -name .env.example \
