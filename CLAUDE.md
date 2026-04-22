@@ -49,6 +49,11 @@ scripts/           # Deployment and maintenance scripts
   - Gives full LAN access remotely (Proxmox UI, Dockge, AdGuard, NPM admin)
   - IP forwarding: /etc/sysctl.d/99-tailscale.conf
   - Flags: --advertise-routes=192.168.0.0/24 --accept-dns=false
+  - Tailscale admin DNS: Global nameserver = VM's Tailscale IP (see
+    `tailscale ip -4` on VM) + "Override DNS servers" ON. Tailscale clients
+    (Mac, iPhone) resolve via AdGuard on LAN, mobile data, and foreign WiFi
+    alike — no separate DoH endpoint needed. If AdGuard is down, Tailscale
+    clients lose DNS until reconnect (acceptable trade-off; failure is loud).
 
 ## Current Status (2026-04-18)
 All 17 services working: Immich, Jellyfin, Vaultwarden, Paperless, Audiobookshelf,
@@ -58,7 +63,20 @@ Nextcloud (33-apache + PG18), OpenClaw, games hub (launcher + study-game), landi
 AdGuard: pre-configured via AdGuardHome.yaml (bind mount), split-horizon
 DNS with explicit per-service rewrites (no wildcard). openclaw.khe.ee and
 games.khe.ee intentionally omitted — resolve via Cloudflare (HTTPS needed).
-Router DNS: 192.168.0.11 (primary) + 1.1.1.1 (fallback) — ACTIVE.
+Router DHCP DNS: 192.168.0.11 ONLY. Never advertise 1.1.1.1 (or any upstream)
+as a "secondary" — clients race both servers in parallel (happy-eyeballs) and
+Cloudflare wins every time, so ad/tracker filtering silently bypasses AdGuard
+for ~80%+ of traffic. If AdGuard is down, the whole LAN noticing fast is a
+feature. Upstream DoH (Cloudflare/Quad9) happens inside AdGuard, not via DHCP.
+  - Blocklists: AdGuard DNS filter + OISD big (~330k rules) + Hagezi Pro Plus
+    (~245k rules, covers EU/EE trackers like Cxense/Piano/Gemius).
+  - ratelimit: 100 req/s per /24 subnet (AdGuard's ratelimit_whitelist does NOT
+    accept CIDR — bare IPs only — so a higher limit is the LAN-friendly knob).
+  - Memory limit 512M (256M was too tight once OISD big + Hagezi loaded).
+  - Live AdGuardHome.yaml is .gitignored (holds admin bcrypt + sessions).
+    Baseline in AdGuardHome.template.yaml; apply changes as delta-patches
+    (short ad-hoc Python yaml.safe_load/dump) to preserve runtime state.
+    Replacing the live file wholesale wipes admin creds and sessions.
 
 Cloudflare: tunnel routes directly to Docker containers (except photos.khe.ee).
   Access policies (OTP via email) protect: dash.khe.ee, openclaw.khe.ee,
@@ -182,6 +200,6 @@ Ollama: CPU-only, qwen2.5:7b loaded. Performance tuning:
   Resource limits: 10G RAM, 6 CPUs (leaves 2 vCPUs for other services)
 
 Immich machine-learning: OpenVINO image (CPU inference).
-  Resource limits: 4G RAM, 4 CPUs. start_period: 120s (model load on first start).
+  Resource limits: 4G RAM, 4 CPUs. start_period: 180s (model load on first start).
 
 Strategic roadmap lives in ROADMAP.md.
