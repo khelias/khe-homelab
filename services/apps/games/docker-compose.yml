@@ -20,8 +20,9 @@ services:
       retries: 3
 
   adventure-proxy:
-    build: ./adventure-proxy
-    image: games-adventure-proxy:local
+    # Image built by ai-adventure-engine's GitHub Actions runner on this VM
+    # (see that repo's .github/workflows/deploy.yml → "Build proxy image").
+    image: games-adventure-proxy:latest
     container_name: adventure-proxy
     restart: unless-stopped
     environment:

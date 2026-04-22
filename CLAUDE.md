@@ -129,7 +129,10 @@ games hub: DONE — services/apps/games/ stack (nginx + adventure-proxy)
   - /adventure/api/ → adventure-proxy container (Node.js Express, Claude Sonnet 4.6 default / Gemini Flash fallback)
   - CF tunnel route games.khe.ee → games:80 (direct, no alias)
   - study-game repo base path: vite `base: '/study/'`, BrowserRouter basename `/study`
-  - adventure frontend: React+Vite+TS (ai-adventure-engine repo), GH Actions builds → /srv/data/games/adventure/app/
+  - adventure frontend + proxy: ai-adventure-engine repo. GH Actions runner on
+    VM builds the frontend (→ /srv/data/games/adventure/app/) AND the proxy
+    image (`games-adventure-proxy:latest`). khe-homelab compose references the
+    image by tag — no build context here.
   - Runners (each repo has its own): /home/khe/actions-runner (study-game),
     /home/khe/actions-runner-adventure (ai-adventure-engine)
   - Nested bind mount: launcher/study/ and launcher/adventure/ dirs pre-exist as
@@ -137,16 +140,17 @@ games hub: DONE — services/apps/games/ stack (nginx + adventure-proxy)
   - Networks: games-internal (nginx ↔ adventure-proxy) + proxy (CF tunnel → nginx)
   - GEMINI_API_KEY + ANTHROPIC_API_KEY stored in services/apps/games/.env on VM (never committed)
 
-adventure-proxy:
+adventure-proxy (source lives in ai-adventure-engine/proxy/, image built by
+that repo's runner on this VM as `games-adventure-proxy:latest`):
   - Estonian editor-pass: when request body has language='et', scene + gameOverText
     are routed through Gemini Flash with an editorial system prompt (fixes
     hallucinated words, wrong verb register, calques). 25s shared budget; failures
     fall back to unedited text. Keeps total response ≤ nginx 120s ceiling.
   - Schema allowlist: POST /generate rejects any schema whose sorted top-level
     properties keys don't match one of the 4 known shapes (story/custom/sequel/turn).
-    Without this, the proxy is a free generic Claude/Gemini API.
-    **When adding a new schema in ai-adventure-engine/src/game/prompts.ts, update
-    ALLOWED_SCHEMA_SHAPES in server.js too.**
+    Without this, the proxy is a free generic Claude/Gemini API. Schema + proxy
+    now live in the same repo — update `src/game/prompts.ts` and
+    `proxy/server.js` (ALLOWED_SCHEMA_SHAPES) in the same commit.
   - Origin check: Origin OR Referer must match games.khe.ee or a localhost dev
     origin. 403 otherwise. Filters naive curl abuse.
   - Real per-visitor rate limit: nginx.conf uses $http_cf_connecting_ip as
@@ -155,10 +159,9 @@ adventure-proxy:
     share one 30-req/min counter.
   - Choice-cost violations logged as warnings (not blocked). Watch proxy logs
     if a playtest shows no-cost choices.
-  - Docker build cache can mask server.js edits — use `docker compose build
-    --no-cache` + `up -d --force-recreate` if a change doesn't take effect.
-  - Frontend + proxy are tightly coupled (schema shapes, request body). Commit
-    both repos together when touching request/response contract.
+  - Deploy: push to ai-adventure-engine main → runner rebuilds image locally.
+    Until auto-restart is wired, bounce the container on VM:
+    `cd ~/homelab/services/apps/games && docker compose up -d --force-recreate adventure-proxy`.
 
 Adventure game engine rules:
   - Narrative gameOver: 1 param at worst = phase transition (AI narrates
