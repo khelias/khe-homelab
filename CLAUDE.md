@@ -43,6 +43,11 @@ scripts/           # Deployment and maintenance scripts
   - VM apt sources include non-free-firmware for Intel firmware packages
   - /dev/dri mounted into jellyfin and immich-server containers
 - VM user: khe, SSH key auth only
+- VM watchdog: `watchdog` daemon pings `/dev/watchdog` (iTCO_wdt, Proxmox-
+  emulated Intel TCO, 30s timeout). If daemon wedges (kernel hang, OOM, I/O
+  lock), hardware force-resets the VM within 30s — Proxmox then boots it
+  back up. Conservative config: only pings the device, NO load/memory/
+  network checks (those cause false-positive reboots). See `/etc/watchdog.conf`.
 - Cloudflare Tunnel: khe-homelab (token in VM .env file)
 - Tailscale VPN: installed on VM host (not Docker), subnet router for 192.168.0.0/24
   - Remote SSH: `ssh khe@docker-vm` (MagicDNS)
