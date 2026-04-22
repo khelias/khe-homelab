@@ -1,0 +1,74 @@
+services:
+  # Docker socket proxy — narrow API surface for autoheal.
+  # Only what autoheal needs: list containers (read) + restart them.
+  # POST=0 with ALLOW_RESTARTS=1 permits only restart/start/stop, nothing else.
+  autoheal-socket-proxy:
+    image: tecnativa/docker-socket-proxy:v0.4.2@sha256:1f3a6f303320723d199d2316a3e82b2e2685d86c275d5e3deeaf182573b47476
+    container_name: autoheal-socket-proxy
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      CONTAINERS: 1      # GET /containers (list + inspect for healthcheck state)
+      POST: 0            # No generic writes
+      ALLOW_RESTARTS: 1  # Only restart/start/stop — the one thing autoheal does
+      AUTH: 0
+      SECRETS: 0
+      SWARM: 0
+      TASKS: 0
+      CONFIGS: 0
+      IMAGES: 0
+      NETWORKS: 0
+      VOLUMES: 0
+      INFO: 0
+      LOG_LEVEL: warning
+    networks:
+      - autoheal-socket
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:2375/_ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # Autoheal — monitors Docker healthchecks on all containers and restarts
+  # any that go "unhealthy". Fills the gap left by `restart: unless-stopped`
+  # which only reacts to container *crashes*, not healthcheck failures
+  # (e.g. the stuck ML worker that prompted this setup).
+  autoheal:
+    # 1.2.0 tag's entrypoint requires $DOCKER_SOCK to be a unix-socket FILE
+    # (`if [ -e "$DOCKER_SOCK" ]`), which breaks the tcp:// socket-proxy
+    # pattern. latest+digest pin avoids this and preserves reproducibility.
+    image: willfarrell/autoheal:latest@sha256:70b31c72b7c2e468f30c9c54c60e1bcbebe4cebf028e70875f5bfae34455fef7
+    container_name: autoheal
+    restart: unless-stopped
+    depends_on:
+      autoheal-socket-proxy:
+        condition: service_healthy
+    environment:
+      # Monitor every container with a healthcheck defined. Opt-out via
+      # label `autoheal=False` on individual services.
+      AUTOHEAL_CONTAINER_LABEL: all
+      # Poll docker API every 10s for unhealthy containers.
+      AUTOHEAL_INTERVAL: 10
+      # Wait 30s after a container reports unhealthy before restarting.
+      # Complements (does not replace) each container's own `start_period`.
+      AUTOHEAL_START_PERIOD: 30
+      # Route through the socket proxy instead of mounting docker.sock directly.
+      DOCKER_SOCK: tcp://autoheal-socket-proxy:2375
+      TZ: Europe/Tallinn
+    networks:
+      - autoheal-socket
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+
+networks:
+  autoheal-socket:
+    driver: bridge
+    internal: true  # No external access — only autoheal <-> socket-proxy
