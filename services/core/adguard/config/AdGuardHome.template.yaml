@@ -28,8 +28,12 @@ dns:
   protection_enabled: true
   filtering_enabled: true
   blocking_mode: default
-  blocked_response_ttl: 60
-  ratelimit: 20
+  blocked_response_ttl: 10
+  # Per-subnet DNS ratelimit. Bumped from 20 -> 100 so browser preconnect
+  # bursts (many tabs, Safari/Chrome prefetch, iOS background apps) aren't
+  # throttled. AdGuard's ratelimit_whitelist only accepts bare IPs (no CIDR),
+  # so a plain higher limit is the right knob for a trusted LAN.
+  ratelimit: 100
   enable_dnssec: true
   cache_size: 4194304
   cache_ttl_min: 300
@@ -60,18 +64,24 @@ filtering:
   safe_browsing_enabled: false
   parental_enabled: false
 filters:
+  # AdGuard DNS filter — baseline ads + trackers, low false positives.
   - enabled: true
     url: https://adguardteam.github.io/HostlistsRegistry/assets/filter_1.txt
     name: AdGuard DNS filter
     id: 1
+  # OISD big: comprehensive community-maintained ad/tracker domain list,
+  # wider coverage than OISD small including regional ad networks.
   - enabled: true
-    url: https://adguardteam.github.io/HostlistsRegistry/assets/filter_4.txt
-    name: AdGuard Tracking Protection
-    id: 4
-  - enabled: true
-    url: https://small.oisd.nl/domainswild
-    name: OISD small (replaces AdAway)
+    url: https://big.oisd.nl
+    name: OISD big
     id: 100
+  # Hagezi Pro Plus: actively maintained, strong privacy coverage incl. EU
+  # trackers (Cxense, Piano, Gemius, Adform) that Delfi/Postimees/ERR use.
+  # Balanced tier — blocks ads+trackers without breaking common services.
+  - enabled: true
+    url: https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/pro.plus.txt
+    name: Hagezi Pro Plus
+    id: 101
 querylog:
   enabled: true
   interval: 168h
@@ -79,4 +89,4 @@ querylog:
 statistics:
   enabled: true
   interval: 168h
-schema_version: 29
+schema_version: 34
