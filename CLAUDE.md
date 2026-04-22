@@ -12,7 +12,7 @@ Communicate in Estonian. Code comments and config files in English.
 ## Project Structure
 ```
 services/          # Docker Compose stacks, one dir per service
-  core/            # Network infra: NPM, AdGuard, Cloudflare tunnel, Vaultwarden, Dockge, Uptime Kuma, Homepage
+  core/            # Network infra: NPM, AdGuard, Cloudflare tunnel, Vaultwarden, Dockge, Uptime Kuma, Homepage, autoheal
   media/           # Immich, Jellyfin, Audiobookshelf
   productivity/    # Nextcloud, Paperless-ngx
   ai/              # Ollama, n8n, OpenClaw
@@ -60,10 +60,11 @@ scripts/           # Deployment and maintenance scripts
     alike — no separate DoH endpoint needed. If AdGuard is down, Tailscale
     clients lose DNS until reconnect (acceptable trade-off; failure is loud).
 
-## Current Status (2026-04-18)
-All 17 services working: Immich, Jellyfin, Vaultwarden, Paperless, Audiobookshelf,
+## Current Status (2026-04-22)
+All 18 services working: Immich, Jellyfin, Vaultwarden, Paperless, Audiobookshelf,
 n8n, Uptime Kuma, Homepage, Ollama, Dockge, AdGuard, NPM, Cloudflare Tunnel,
-Nextcloud (33-apache + PG18), OpenClaw, games hub (launcher + study-game), landing page.
+Nextcloud (33-apache + PG18), OpenClaw, games hub (launcher + study-game),
+landing page, autoheal (sidecar).
 
 AdGuard: pre-configured via AdGuardHome.yaml (bind mount), split-horizon
 DNS with explicit per-service rewrites (no wildcard). openclaw.khe.ee and
@@ -200,7 +201,7 @@ Adventure game engine rules:
 Healthchecks: games uses 127.0.0.1 (not localhost — busybox wget DNS issue in alpine).
   cloudflare-tunnel uses `cloudflared version` (distroless image, no curl/wget available).
 
-Resilience / alerting stack (three layers, each catches what the others miss):
+Resilience / alerting stack (four layers, each catches what the others miss):
   1. `watchdog` daemon on VM → iTCO_wdt (30s HW timeout) catches kernel hangs
   2. `autoheal` sidecar (services/core/autoheal/) via docker-socket-proxy →
      restarts any container whose healthcheck reports `unhealthy`. Covers the
@@ -210,6 +211,9 @@ Resilience / alerting stack (three layers, each catches what the others miss):
      services/ai/openclaw/.env, chat_id stored in private memory, not repo).
      Kuma DB backs up nightly via backup.sh, so monitor+notification config
      survives VM rebuild from the restore tarball.
+  4. External UptimeRobot pings `khe.ee` every 5 min — the only layer that
+     can alert when the whole VM / Proxmox / home internet is unreachable
+     (when 1–3 have no network to notify through). UptimeRobot iOS app push.
 
 Ollama: CPU-only, qwen2.5:7b loaded. Performance tuning:
   OLLAMA_NUM_THREAD=8, OLLAMA_KEEP_ALIVE=-1, OLLAMA_FLASH_ATTENTION=1
