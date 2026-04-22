@@ -23,12 +23,6 @@ Direction and priorities for the homelab — what it should become, beyond curre
 - **Disaster recovery runbook + tested restore** — actually restore a Postgres dump
   into a spare container and verify. Today we trust the backup script to work
   without evidence it does under pressure.
-- **External uptime monitor** — Uptime Kuma alerts the Telegram bot when any
-  service is down, and autoheal + HW watchdog cover container/kernel recovery.
-  What's still missing: a check from *outside* the homelab (UptimeRobot, Better
-  Uptime) pinging `khe.ee` — catches the case where the whole VM / home
-  internet is down and the internal stack can't notify anyone.
-
 ## Long-term (when app-heavy projects arrive)
 
 - **Komodo as GitOps controller** — once adventure-engine, spliit, or similar

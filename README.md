@@ -118,6 +118,10 @@ Three independent layers, each catching what the others miss:
    HTTP/DNS monitor; all notify the same Telegram bot (`@khe_homelab_bot`,
    shared with OpenClaw). Alert lands on the owner's phone within ~90s. Kuma
    DB is in `backup.sh`, so monitor + notification config survives a VM rebuild.
+4. **Whole homelab down — external UptimeRobot.** Pings `khe.ee` every 5 min
+   from outside the home network, pushes to the UptimeRobot iOS app. The only
+   layer that can notify when the VM, Proxmox, or the home internet itself is
+   unreachable (when layers 1–3 can't reach any network).
 
 ## Automation
 
