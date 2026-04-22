@@ -19,7 +19,7 @@ services:
         limits:
           memory: 512M  # 256M too tight with OISD big (330k rules) + Hagezi Pro Plus (245k rules)
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:80"]
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:80"]
       interval: 30s
       timeout: 10s
       retries: 3

@@ -64,6 +64,9 @@ services:
     image: redis:8.6-alpine@sha256:c5e375abb885e6b2021c0377879e4890bf76f9065b8922ffc113f2b226b9fc17
     container_name: paperless-redis
     restart: unless-stopped
+    # Celery broker + cache; no persistent volume mounted, so persistence is a
+    # no-op anyway — disable it and cap memory to match nextcloud-redis pattern.
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --save "" --appendonly no
     environment:
       - TZ=Europe/Tallinn
     healthcheck:

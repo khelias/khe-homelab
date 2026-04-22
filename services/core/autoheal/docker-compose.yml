@@ -42,8 +42,9 @@ services:
   autoheal:
     # 1.2.0 tag's entrypoint requires $DOCKER_SOCK to be a unix-socket FILE
     # (`if [ -e "$DOCKER_SOCK" ]`), which breaks the tcp:// socket-proxy
-    # pattern. latest+digest pin avoids this and preserves reproducibility.
-    image: willfarrell/autoheal:latest@sha256:70b31c72b7c2e468f30c9c54c60e1bcbebe4cebf028e70875f5bfae34455fef7
+    # pattern. Digest-only pin avoids this (no tag → digest is authoritative;
+    # with :latest+digest some clients silently re-resolve the tag).
+    image: willfarrell/autoheal@sha256:70b31c72b7c2e468f30c9c54c60e1bcbebe4cebf028e70875f5bfae34455fef7
     container_name: autoheal
     restart: unless-stopped
     depends_on:
