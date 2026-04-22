@@ -200,6 +200,17 @@ Adventure game engine rules:
 Healthchecks: games uses 127.0.0.1 (not localhost — busybox wget DNS issue in alpine).
   cloudflare-tunnel uses `cloudflared version` (distroless image, no curl/wget available).
 
+Resilience / alerting stack (three layers, each catches what the others miss):
+  1. `watchdog` daemon on VM → iTCO_wdt (30s HW timeout) catches kernel hangs
+  2. `autoheal` sidecar (services/core/autoheal/) via docker-socket-proxy →
+     restarts any container whose healthcheck reports `unhealthy`. Covers the
+     gap left by Docker's `restart: unless-stopped` (crash-only)
+  3. Uptime Kuma monitors every service + Telegram push to the owner's phone
+     via the existing `@khe_homelab_bot` (same bot as OpenClaw; bot token in
+     services/ai/openclaw/.env, chat_id stored in private memory, not repo).
+     Kuma DB backs up nightly via backup.sh, so monitor+notification config
+     survives VM rebuild from the restore tarball.
+
 Ollama: CPU-only, qwen2.5:7b loaded. Performance tuning:
   OLLAMA_NUM_THREAD=8, OLLAMA_KEEP_ALIVE=-1, OLLAMA_FLASH_ATTENTION=1
   Resource limits: 10G RAM, 6 CPUs (leaves 2 vCPUs for other services)
