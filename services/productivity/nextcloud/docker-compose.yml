@@ -84,6 +84,8 @@ services:
     shm_size: '512mb'
     environment:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      # Consumed by init-db.sh (runs once on empty data dir) to create the
+      # non-superuser nextcloud DB user. Postgres itself ignores this var name.
       - NEXTCLOUD_DB_PASSWORD=${NEXTCLOUD_DB_PASSWORD}
       - TZ=Europe/Tallinn
     volumes:
