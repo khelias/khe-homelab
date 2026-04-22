@@ -70,7 +70,7 @@ Jellyfin and Immich machine-learning both use `/dev/dri` for Quick Sync accelera
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/claude-ai.svg" width="22" /> | **OpenClaw** | `openclaw.khe.ee` | AI devops agent with sandboxed Docker access (CF Access protected) |
 | 🎮 | **games hub** | `games.khe.ee` | Launcher + study-game (`/study/`), auto-deployed from GitHub |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/ollama.svg" width="22" /> | Ollama | LAN only | Local AI models (qwen2.5:7b, CPU-only) |
-| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/adguard-home.svg" width="22" /> | AdGuard Home | LAN only | DNS ad-blocking + split-horizon DNS |
+| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/adguard-home.svg" width="22" /> | AdGuard Home | LAN + Tailscale | DNS ad-blocking + split-horizon DNS (filters mobile data too, via Tailscale) |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/dockge.svg" width="22" /> | Dockge | LAN only | Docker Compose management UI |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/nginx-proxy-manager.svg" width="22" /> | Nginx Proxy Manager | LAN only | Reverse proxy + wildcard SSL for LAN traffic |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/cloudflare.svg" width="22" /> | Cloudflare Tunnel | — | Secure external access (no open ports) |
@@ -100,6 +100,25 @@ every LAN service gets HTTPS without per-service certs. AdGuard does split-horiz
 - OpenClaw's Docker access goes through `docker-socket-proxy` (read-only + restart, no exec/create)
 - All secrets in `.env` files on the VM, never committed
 
+## Resilience
+
+Three independent layers, each catching what the others miss:
+
+1. **Kernel hang — hardware watchdog.** The Docker VM runs the `watchdog` daemon
+   pinging `/dev/watchdog` (Proxmox-emulated iTCO, 30s hardware timeout). If the
+   kernel wedges — OOM, I/O lock, driver bug — the hypervisor force-resets the
+   VM and Proxmox boots it back up. Conservative config: only pings the device,
+   no load/memory/network checks (those cause false-positive reboots on blips).
+2. **Unhealthy container — autoheal sidecar.** `willfarrell/autoheal` talks to a
+   narrow-scope `docker-socket-proxy` (same pattern OpenClaw uses) and restarts
+   any container whose Docker healthcheck reports `unhealthy`. Fills the gap
+   left by `restart: unless-stopped`, which only reacts to full crashes. This
+   caught a stuck immich-ml worker the day it was deployed.
+3. **Service down — Uptime Kuma + Telegram push.** Every service has a Kuma
+   HTTP/DNS monitor; all notify the same Telegram bot (`@khe_homelab_bot`,
+   shared with OpenClaw). Alert lands on the owner's phone within ~90s. Kuma
+   DB is in `backup.sh`, so monitor + notification config survives a VM rebuild.
+
 ## Automation
 
 Operational work is kept to a minimum by pushing everything into code and cron.
@@ -122,7 +141,13 @@ Operational work is kept to a minimum by pushing everything into code and cron.
 192.168.0.2-99    Reserved for static devices
 ```
 
-Router DNS → `192.168.0.11` (AdGuard, primary) + `1.1.1.1` (fallback).
+Router DHCP hands out `192.168.0.11` (AdGuard) as the **only** DNS — no secondary.
+"Fallback" DNS servers sound safe but trigger happy-eyeballs racing: clients query
+both in parallel and Cloudflare always wins, so ad/tracker filtering silently
+bypasses AdGuard for ~80%+ of traffic. Better to fail loudly if AdGuard is down.
+Tailscale admin pushes the same AdGuard DNS to remote devices, so filtering
+follows phones/laptops on mobile data and foreign WiFi too.
+
 All external traffic goes through Cloudflare Tunnel — zero ports open on the router.
 
 ## Setup

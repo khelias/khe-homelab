@@ -7,11 +7,9 @@ Direction and priorities for the homelab — what it should become, beyond curre
 - **Resource limits on every long-running container** — so a single runaway service
   can't OOM the 32GB VM and take down all 17 services. Conservative defaults for
   web services, heavier for Nextcloud / Immich / Paperless.
-- **Uptime Kuma SQLite backup** — already have Postgres + Vaultwarden + NPM in
-  `backup.sh`; add Uptime Kuma's `/app/data` so monitor config and incident history
-  survive a volume loss.
-- **Dockge socket access via `docker-socket-proxy`** — mirror the OpenClaw pattern
-  (read-only + restricted actions) instead of mounting `/var/run/docker.sock` directly.
+- **Dockge socket access via `docker-socket-proxy`** — mirror the OpenClaw /
+  autoheal pattern (read-only + restricted actions) instead of mounting
+  `/var/run/docker.sock` directly.
 - **Healthcheck cleanup** — standardise `start_period`, replace trivial checks
   (Nextcloud cron `stat`, Ollama `list`) with real probes.
 
@@ -25,8 +23,11 @@ Direction and priorities for the homelab — what it should become, beyond curre
 - **Disaster recovery runbook + tested restore** — actually restore a Postgres dump
   into a spare container and verify. Today we trust the backup script to work
   without evidence it does under pressure.
-- **Observability revamp** — cover every production service in Uptime Kuma; add
-  ntfy (or Telegram) push channel for alerts. Today outages would be silent.
+- **External uptime monitor** — Uptime Kuma alerts the Telegram bot when any
+  service is down, and autoheal + HW watchdog cover container/kernel recovery.
+  What's still missing: a check from *outside* the homelab (UptimeRobot, Better
+  Uptime) pinging `khe.ee` — catches the case where the whole VM / home
+  internet is down and the internal stack can't notify anyone.
 
 ## Long-term (when app-heavy projects arrive)
 
