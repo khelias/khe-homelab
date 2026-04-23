@@ -75,7 +75,21 @@ Cloudflare wins every time, so ad/tracker filtering silently bypasses AdGuard
 for ~80%+ of traffic. If AdGuard is down, the whole LAN noticing fast is a
 feature. Upstream DoH (Cloudflare/Quad9) happens inside AdGuard, not via DHCP.
   - Blocklists: AdGuard DNS filter + OISD big (~330k rules) + Hagezi Pro Plus
-    (~245k rules, covers EU/EE trackers like Cxense/Piano/Gemius).
+    (~245k rules, covers EU/EE trackers like Cxense/Piano/Gemius) + Hagezi
+    Threat Intelligence Feed (malware/phishing, paired with built-in Safe
+    Browsing for layered defence — reputation DB + static list).
+  - Safe Browsing ON (`filtering.safebrowsing_enabled: true`, Google/Mozilla
+    reputation DB). NB: AdGuard's key is `safebrowsing_enabled` (one word) —
+    `safe_browsing_enabled` is a silent no-op.
+  - user_rules (custom overrides): `||connect.facebook.net^` (FB Pixel) and
+    `||cxswyjy.com^` (Creality printer Chinese telemetry). Crealitycloud.com
+    left alone so the Creality Cloud app still works.
+  - Per-client filtering (parental + safesearch + blocked social services for
+    kids, unrestricted for parents) is the right architecture but requires
+    ≥1 MAC/IP per persistent client — AdGuard crash-loops on empty `ids:[]`.
+    Not provisioned yet; wire up when the kids' device IDs are collected.
+    Apply to the LIVE AdGuardHome.yaml via delta-patch only — never commit
+    MAC/IP addresses to the template (public repo, device identifiers leak).
   - ratelimit: 100 req/s per /24 subnet (AdGuard's ratelimit_whitelist does NOT
     accept CIDR — bare IPs only — so a higher limit is the LAN-friendly knob).
   - Memory limit 512M (256M was too tight once OISD big + Hagezi loaded).
