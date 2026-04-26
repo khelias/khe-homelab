@@ -1,0 +1,35 @@
+name: Validate Homelab Config
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Compose and Dockerfile validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Shell syntax
+        run: bash -n scripts/*.sh
+
+      - name: Validate changed service configs
+        if: github.event_name == 'pull_request'
+        run: ./scripts/validate-compose.sh changed "${{ github.event.pull_request.base.sha }}" "${{ github.sha }}"
+
+      - name: Validate all service configs
+        if: github.event_name != 'pull_request'
+        run: ./scripts/validate-compose.sh all

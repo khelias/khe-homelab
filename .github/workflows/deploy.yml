@@ -1,0 +1,73 @@
+name: Deploy Homelab
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Deploy stacks changed since the VM checkout, or all stacks
+        required: true
+        default: changed
+        type: choice
+        options:
+          - changed
+          - all
+      stack:
+        description: Optional stack path, for example services/ai/n8n
+        required: false
+        type: string
+      force_recreate:
+        description: Recreate containers even when Docker Compose sees no change
+        required: true
+        default: false
+        type: boolean
+      dry_run:
+        description: Print selected stacks without running Docker Compose
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: homelab-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: [self-hosted, linux, homelab]
+    timeout-minutes: 45
+
+    steps:
+      - name: Deploy from VM checkout
+        env:
+          MODE: ${{ inputs.mode }}
+          STACK: ${{ inputs.stack }}
+          FORCE_RECREATE: ${{ inputs.force_recreate }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+
+          cd /home/khe/homelab
+          before="$(git rev-parse HEAD)"
+
+          git fetch origin main
+          git pull --ff-only origin main
+
+          after="$(git rev-parse HEAD)"
+          flags=()
+          if [ "$FORCE_RECREATE" = "true" ]; then
+            flags+=(--force-recreate)
+          fi
+          if [ "$DRY_RUN" = "true" ]; then
+            flags+=(--dry-run)
+          fi
+
+          if [ -n "$STACK" ]; then
+            ./scripts/deploy-stacks.sh stack "$STACK" "${flags[@]}"
+          elif [ "$MODE" = "all" ]; then
+            ./scripts/deploy-stacks.sh all "${flags[@]}"
+          else
+            ./scripts/deploy-stacks.sh changed "$before" "$after" "${flags[@]}"
+          fi
