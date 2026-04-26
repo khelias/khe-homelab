@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="et">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Games — KHE</title>
-  <meta name="description" content="Elias family games">
+  <title>Mängud — KHE</title>
+  <meta name="description" content="Eliase pere mängud">
   <link rel="preload" href="/fonts/inter-400.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/inter-600.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -86,6 +86,14 @@
 
     header { margin-bottom: 3rem; }
 
+    .header-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
     /* KHE monogram — clickable, returns to khe.ee. Same style family as the
        landing page's hero monogram, sized down for header use. */
     .monogram {
@@ -102,7 +110,6 @@
       letter-spacing: 0.06em;
       color: var(--text);
       text-decoration: none;
-      margin-bottom: 2rem;
       backdrop-filter: blur(6px);
       box-shadow: 0 4px 16px -4px rgba(99, 102, 241, 0.15);
       transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
@@ -119,6 +126,37 @@
     .game-card:focus-visible {
       outline: 2px solid var(--accent-border);
       outline-offset: 3px;
+    }
+
+    .language-switcher {
+      display: inline-flex;
+      gap: 0.2rem;
+      padding: 0.18rem;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.03);
+    }
+    .language-switcher button {
+      min-width: 2.7rem;
+      min-height: 2.35rem;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      font: 600 0.7rem/1 'Inter', system-ui;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+    .language-switcher button[aria-pressed="true"] {
+      border-color: rgba(139, 92, 246, 0.5);
+      background: rgba(139, 92, 246, 0.24);
+      color: var(--text);
+    }
+    .language-switcher button:focus-visible {
+      outline: 2px solid var(--accent-border);
+      outline-offset: 2px;
     }
 
     h1 {
@@ -272,6 +310,7 @@
 
     @media (max-width: 480px) {
       body { padding: 2.5rem 1rem 1.5rem; }
+      .header-top { margin-bottom: 1.6rem; }
       h1 { font-size: 2rem; }
     }
   </style>
@@ -279,42 +318,131 @@
 <body>
   <div class="container">
     <header>
-      <a href="https://khe.ee" class="monogram" aria-label="Back to khe.ee">KHE</a>
-      <h1>Games</h1>
-      <p class="subtitle">Elias family games</p>
+      <div class="header-top">
+        <a href="https://khe.ee" class="monogram" aria-label="Tagasi khe.ee lehele" data-i18n-aria="monogramAria">KHE</a>
+        <div class="language-switcher" role="group" aria-label="Keel" data-i18n-aria="languageLabel">
+          <button type="button" data-lang-option="et" aria-pressed="true">ET</button>
+          <button type="button" data-lang-option="en" aria-pressed="false">EN</button>
+        </div>
+      </div>
+      <h1 data-i18n="heading">Mängud</h1>
+      <p class="subtitle" data-i18n="subtitle">Eliase pere väikesed veebimängud</p>
     </header>
 
     <main>
-      <a href="/study/" class="game-card card-study">
+      <a href="/study/?lang=et" class="game-card card-study" data-game-link="study">
         <div class="game-icon">
           <svg viewBox="0 0 24 24"><path d="M4 19.5v-15A2.5 2.5 0 016.5 2H20v20H6.5a2.5 2.5 0 010-5H20"/><path d="M9 7h6M9 11h4"/></svg>
         </div>
-        <div class="game-title">Smart Games</div>
-        <p class="game-desc">Reading, math, and logic through playful exercises. For kids and the whole family.</p>
+        <div class="game-title" data-i18n="studyTitle">Tarkade Mängud</div>
+        <p class="game-desc" data-i18n="studyDesc">Lugemine, matemaatika ja loogika lühikeste harjutusmängudena. Sobib lastele, aga töötab ka pere ühise ajutrennina.</p>
         <span class="game-cta">
-          Play
+          <span data-i18n="playCta">Mängi</span>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
         </span>
       </a>
 
-      <a href="/adventure/" class="game-card card-adventure">
+      <a href="/adventure/?lang=et" class="game-card card-adventure" data-game-link="adventure">
         <div class="game-icon">
           <svg viewBox="0 0 24 24"><path d="M12 2l2.6 5.3 5.9.8-4.3 4.1 1 5.8L12 15.3l-5.2 2.7 1-5.8L3.5 8.1l5.9-.8L12 2z"/></svg>
         </div>
         <div class="game-title">AI Adventure</div>
-        <p class="game-desc">AI-driven group adventure (played in Estonian). Pick a genre — the story writes itself and everyone plays along.</p>
+        <p class="game-desc" data-i18n="adventureDesc">AI jutustajaga seltskonnaseiklus 3-6 mängijale. Vali keel, žanr ja mängu pikkus; lugu sünnib käigu kaupa teie otsustest.</p>
         <span class="game-cta">
-          Play
+          <span data-i18n="playCta">Mängi</span>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
         </span>
       </a>
     </main>
 
     <footer>
-      Self-hosted in Tallinn
+      <span data-i18n="footer">Ise majutatud Tallinnas</span>
       <span class="divider">·</span>
-      <a href="/privacy">Privacy</a>
+      <a href="/privacy?lang=et" data-i18n="privacyLink" data-link="privacy">Privaatsus</a>
     </footer>
   </div>
+  <script>
+    const STORAGE_KEY = 'app_locale';
+    const SUPPORTED = ['et', 'en'];
+    const COPY = {
+      et: {
+        title: 'Mängud — KHE',
+        description: 'Eliase pere mängud',
+        monogramAria: 'Tagasi khe.ee lehele',
+        languageLabel: 'Keel',
+        heading: 'Mängud',
+        subtitle: 'Eliase pere väikesed veebimängud',
+        studyTitle: 'Tarkade Mängud',
+        studyDesc: 'Lugemine, matemaatika ja loogika lühikeste harjutusmängudena. Sobib lastele, aga töötab ka pere ühise ajutrennina.',
+        adventureDesc: 'AI jutustajaga seltskonnaseiklus 3-6 mängijale. Vali keel, žanr ja mängu pikkus; lugu sünnib käigu kaupa teie otsustest.',
+        playCta: 'Mängi',
+        footer: 'Ise majutatud Tallinnas',
+        privacyLink: 'Privaatsus',
+      },
+      en: {
+        title: 'Games — KHE',
+        description: 'Elias family games',
+        monogramAria: 'Back to khe.ee',
+        languageLabel: 'Language',
+        heading: 'Games',
+        subtitle: 'Small web games for the Elias family',
+        studyTitle: 'Smart Games',
+        studyDesc: 'Reading, math, and logic as quick exercise games. Built for kids, useful for the whole family.',
+        adventureDesc: 'An AI-narrated group adventure for 3-6 players. Choose the language, genre, and session length; the story grows from your decisions turn by turn.',
+        playCta: 'Play',
+        footer: 'Self-hosted in Tallinn',
+        privacyLink: 'Privacy',
+      },
+    };
+
+    function normalizeLocale(value) {
+      return SUPPORTED.includes(value) ? value : null;
+    }
+
+    function initialLocale() {
+      const params = new URLSearchParams(window.location.search);
+      return normalizeLocale(params.get('lang'))
+        || normalizeLocale(params.get('locale'))
+        || normalizeLocale(window.localStorage.getItem(STORAGE_KEY))
+        || (navigator.language.toLowerCase().startsWith('et') ? 'et' : 'en');
+    }
+
+    function setQueryLocale(locale) {
+      const url = new URL(window.location.href);
+      url.searchParams.set('lang', locale);
+      url.searchParams.delete('locale');
+      window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+    }
+
+    function applyLocale(locale) {
+      const copy = COPY[locale] || COPY.et;
+      document.documentElement.lang = locale;
+      document.title = copy.title;
+      document.querySelector('meta[name="description"]').setAttribute('content', copy.description);
+      window.localStorage.setItem(STORAGE_KEY, locale);
+      setQueryLocale(locale);
+
+      document.querySelectorAll('[data-i18n]').forEach((node) => {
+        const key = node.getAttribute('data-i18n');
+        if (copy[key]) node.textContent = copy[key];
+      });
+      document.querySelectorAll('[data-i18n-aria]').forEach((node) => {
+        const key = node.getAttribute('data-i18n-aria');
+        if (copy[key]) node.setAttribute('aria-label', copy[key]);
+      });
+      document.querySelectorAll('[data-lang-option]').forEach((button) => {
+        button.setAttribute('aria-pressed', button.getAttribute('data-lang-option') === locale ? 'true' : 'false');
+      });
+      document.querySelector('[data-game-link="study"]').setAttribute('href', `/study/?lang=${locale}`);
+      document.querySelector('[data-game-link="adventure"]').setAttribute('href', `/adventure/?lang=${locale}`);
+      document.querySelector('[data-link="privacy"]').setAttribute('href', `/privacy?lang=${locale}`);
+    }
+
+    document.querySelectorAll('[data-lang-option]').forEach((button) => {
+      button.addEventListener('click', () => applyLocale(button.getAttribute('data-lang-option')));
+    });
+
+    applyLocale(initialLocale());
+  </script>
 </body>
 </html>
