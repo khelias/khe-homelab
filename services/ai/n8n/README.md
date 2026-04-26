@@ -71,6 +71,9 @@ After import, open n8n and configure:
 
 - `Build Cloudflare Query`: replace `replace-with-cloudflare-account-id` with the Cloudflare account ID.
 - `Fetch Cloudflare Analytics`: assign the `Cloudflare Analytics API` HTTP Header Auth credential.
+- `Send Telegram Summary`: assign a Telegram API credential, replace `replace-with-telegram-chat-id`,
+  then enable the node. It is disabled in the template so an unconfigured Telegram node cannot break
+  the file-writing report path.
 - Keep the workflow disabled until a manual execution succeeds.
 
 The workflow uses these nodes:
@@ -105,6 +108,22 @@ The workflow uses these nodes:
    - Operation: Write File to Disk
    - File path and name: `/reports/public/portfolio-metrics.json`
    - Input binary field: `data`
+9. Code: Build Telegram Summary
+   - Builds a short text summary from the public allowlisted metrics.
+10. Telegram: Send Telegram Summary
+   - Sends the short summary to the configured chat.
+   - Disabled in the template until credential and chat ID are configured.
+
+### Telegram credential
+
+Use the same bot as Uptime Kuma only if you want these reports in the same chat.
+In n8n, create a `Telegram API` credential and paste the bot token there. Do not
+commit the bot token to this repo.
+
+To find the chat ID, send a message to the bot and use either Telegram's
+`getUpdates` endpoint locally or a temporary n8n Telegram trigger. For a private
+1:1 chat, the ID is usually a positive number. For groups, it is usually a
+negative number.
 
 ### Cloudflare GraphQL body
 
