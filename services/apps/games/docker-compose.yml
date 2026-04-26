@@ -6,8 +6,8 @@ services:
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - /srv/data/games/launcher:/usr/share/nginx/html:ro
-      - /srv/data/games/study:/usr/share/nginx/html/study:ro
-      - /srv/data/games/adventure/app:/usr/share/nginx/html/adventure:ro
+      - /srv/data/games/study:/srv/data/games/study:ro
+      - /srv/data/games/adventure/app:/srv/data/games/adventure:ro
     networks:
       - proxy
       - games-internal
