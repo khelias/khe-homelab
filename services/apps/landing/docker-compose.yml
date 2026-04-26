@@ -6,7 +6,7 @@ services:
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - /srv/data/sites/khe:/usr/share/nginx/html:ro
-      - ${HOMELAB_REPORTS_HOST_DIR:-/srv/data/reports/khe}/public:/usr/share/nginx/html/reports:ro
+      - ${HOMELAB_REPORTS_HOST_DIR:-/srv/data/reports/khe}/public:/usr/share/nginx/reports:ro
     networks:
       - proxy
     healthcheck:
