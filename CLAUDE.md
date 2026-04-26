@@ -177,9 +177,10 @@ games hub: DONE — services/apps/games/ stack (nginx + adventure-proxy)
   - Runners (each repo has its own): /home/khe/actions-runner (study-game),
     /home/khe/actions-runner-adventure (ai-adventure-engine),
     /home/khe/actions-runner-sites (khe-sites)
-  - Nested bind mount: /srv/data/games/launcher/study and
-    /srv/data/games/launcher/adventure dirs pre-exist as mountpoint anchors
-    (Docker can't mkdir inside :ro parent — see feedback memory)
+  - Study and adventure are mounted outside the launcher root and served by
+    nginx from /srv/data/games via per-location `root`. Do not nest these bind
+    mounts under /usr/share/nginx/html; that makes nginx see launcher
+    placeholders and returns 403 for /study/ and /adventure/.
   - Networks: games-internal (nginx ↔ adventure-proxy) + proxy (CF tunnel → nginx)
   - GEMINI_API_KEY + ANTHROPIC_API_KEY stored in services/apps/games/.env on VM (never committed)
 
