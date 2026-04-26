@@ -7,9 +7,9 @@ Direction and priorities for the homelab — what it should become, beyond curre
 - **Resource limits on every long-running container** — so a single runaway service
   can't OOM the 32GB VM and take down all 17 services. Conservative defaults for
   web services, heavier for Nextcloud / Immich / Paperless.
-- **Dockge socket access via `docker-socket-proxy`** — mirror the OpenClaw /
-  autoheal pattern (read-only + restricted actions) instead of mounting
-  `/var/run/docker.sock` directly.
+- **Dockge socket-proxy live validation** — config now routes Dockge through
+  `docker-socket-proxy`; deploy it and test stack create/update/down/build so
+  the endpoint allowlist can be tightened further if Dockge permits it.
 - **Healthcheck cleanup** — standardise `start_period`, replace trivial checks
   (Nextcloud cron `stat`, Ollama `list`) with real probes.
 

@@ -22,7 +22,7 @@ DEPLOY_ORDER=(
   "ai/n8n"
   "ai/openclaw"
   "apps/landing"
-  "apps/study-game"
+  "apps/games"
 )
 
 # Services that require external setup before they can run.
@@ -39,8 +39,28 @@ is_skipped() {
   return 1
 }
 
+validate_deploy_order() {
+  local missing=0
+
+  for service in "${DEPLOY_ORDER[@]}"; do
+    if is_skipped "$service"; then
+      continue
+    fi
+
+    if [ ! -f "$SERVICES_DIR/$service/docker-compose.yml" ]; then
+      echo "Missing compose file for $service: $SERVICES_DIR/$service/docker-compose.yml" >&2
+      missing=1
+    fi
+  done
+
+  if [ "$missing" -ne 0 ]; then
+    exit 1
+  fi
+}
+
 case "$ACTION" in
   up)
+    validate_deploy_order
     echo "=== Deploying all services ==="
     for service in "${DEPLOY_ORDER[@]}"; do
       if is_skipped "$service"; then
@@ -55,6 +75,7 @@ case "$ACTION" in
     done
     ;;
   down)
+    validate_deploy_order
     echo "=== Stopping all services ==="
     for service in $(printf '%s\n' "${DEPLOY_ORDER[@]}" | tac); do
       dir="$SERVICES_DIR/$service"
@@ -65,6 +86,7 @@ case "$ACTION" in
     done
     ;;
   pull)
+    validate_deploy_order
     echo "=== Pulling latest images ==="
     for service in "${DEPLOY_ORDER[@]}"; do
       dir="$SERVICES_DIR/$service"
