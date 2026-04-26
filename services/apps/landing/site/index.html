@@ -90,6 +90,45 @@
       z-index: 1;
     }
 
+    .language-switcher {
+      position: fixed;
+      top: 1.5rem;
+      right: 1.5rem;
+      z-index: 2;
+      display: inline-flex;
+      gap: 0.2rem;
+      padding: 0.18rem;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(6px);
+    }
+
+    .language-switcher button {
+      min-width: 2.7rem;
+      min-height: 2.35rem;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      font: 600 0.7rem/1 'Inter', system-ui;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+
+    .language-switcher button[aria-pressed="true"] {
+      border-color: var(--accent-border);
+      background: rgba(139, 92, 246, 0.18);
+      color: var(--text);
+    }
+
+    .language-switcher button:focus-visible {
+      outline: 2px solid var(--accent-border);
+      outline-offset: 2px;
+    }
+
     .monogram {
       display: inline-flex;
       align-items: center;
@@ -196,6 +235,7 @@
     footer a:hover { color: var(--text-dim); }
 
     @media (max-width: 480px) {
+      .language-switcher { top: 1rem; right: 1rem; }
       h1 { font-size: 2rem; }
       nav { flex-direction: column; align-items: stretch; max-width: 240px; margin: 0 auto; }
       nav a { justify-content: center; }
@@ -204,15 +244,20 @@
 </head>
 <body>
 
+<div class="language-switcher" role="group" aria-label="Language" data-i18n-aria="languageLabel">
+  <button type="button" data-lang-option="et" aria-pressed="false">ET</button>
+  <button type="button" data-lang-option="en" aria-pressed="true">EN</button>
+</div>
+
 <main>
   <div class="monogram">KHE</div>
   <h1>Kaido Henrik Elias</h1>
-  <p class="tagline">Software architect by trade. Tinkerer by nature.</p>
+  <p class="tagline" data-i18n="tagline">Software architect by trade. Tinkerer by nature.</p>
 
   <nav>
-    <a href="https://games.khe.ee">
+    <a href="https://games.khe.ee/?lang=en" data-link="games">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 12h4M8 10v4"/><circle cx="15" cy="10.5" r="1"/><circle cx="18" cy="13.5" r="1"/></svg>
-      Games
+      <span data-i18n="gamesLink">Games</span>
     </a>
     <a href="https://github.com/khelias" target="_blank" rel="noopener">
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
@@ -226,10 +271,83 @@
 </main>
 
 <footer>
-  Self-hosted in Tallinn
+  <span data-i18n="footer">Self-hosted in Tallinn</span>
   <span class="divider">·</span>
-  <a href="/privacy">Privacy</a>
+  <a href="/privacy?lang=en" data-i18n="privacyLink" data-link="privacy">Privacy</a>
 </footer>
+
+<script>
+  const STORAGE_KEY = 'app_locale';
+  const SUPPORTED = ['et', 'en'];
+  const COPY = {
+    et: {
+      title: 'Kaido Henrik Elias',
+      description: 'Tarkvaraarhitekt — projektid ja lingid',
+      languageLabel: 'Keel',
+      tagline: 'Tarkvaraarhitekt töö poolest. Nokitseja loomult.',
+      gamesLink: 'Mängud',
+      footer: 'Ise majutatud Tallinnas',
+      privacyLink: 'Privaatsus',
+    },
+    en: {
+      title: 'Kaido Henrik Elias',
+      description: 'Software architect — projects and links',
+      languageLabel: 'Language',
+      tagline: 'Software architect by trade. Tinkerer by nature.',
+      gamesLink: 'Games',
+      footer: 'Self-hosted in Tallinn',
+      privacyLink: 'Privacy',
+    },
+  };
+
+  function normalizeLocale(value) {
+    return SUPPORTED.includes(value) ? value : null;
+  }
+
+  function initialLocale() {
+    const params = new URLSearchParams(window.location.search);
+    return normalizeLocale(params.get('lang'))
+      || normalizeLocale(params.get('locale'))
+      || normalizeLocale(window.localStorage.getItem(STORAGE_KEY))
+      || 'en';
+  }
+
+  function setQueryLocale(locale) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('lang', locale);
+    url.searchParams.delete('locale');
+    window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+  }
+
+  function applyLocale(locale) {
+    const copy = COPY[locale] || COPY.en;
+    document.documentElement.lang = locale;
+    document.title = copy.title;
+    document.querySelector('meta[name="description"]').setAttribute('content', copy.description);
+    window.localStorage.setItem(STORAGE_KEY, locale);
+    setQueryLocale(locale);
+
+    document.querySelectorAll('[data-i18n]').forEach((node) => {
+      const key = node.getAttribute('data-i18n');
+      if (copy[key]) node.textContent = copy[key];
+    });
+    document.querySelectorAll('[data-i18n-aria]').forEach((node) => {
+      const key = node.getAttribute('data-i18n-aria');
+      if (copy[key]) node.setAttribute('aria-label', copy[key]);
+    });
+    document.querySelectorAll('[data-lang-option]').forEach((button) => {
+      button.setAttribute('aria-pressed', button.getAttribute('data-lang-option') === locale ? 'true' : 'false');
+    });
+    document.querySelector('[data-link="games"]').setAttribute('href', `https://games.khe.ee/?lang=${locale}`);
+    document.querySelector('[data-link="privacy"]').setAttribute('href', `/privacy?lang=${locale}`);
+  }
+
+  document.querySelectorAll('[data-lang-option]').forEach((button) => {
+    button.addEventListener('click', () => applyLocale(button.getAttribute('data-lang-option')));
+  });
+
+  applyLocale(initialLocale());
+</script>
 
 </body>
 </html>

@@ -319,7 +319,7 @@
   <div class="container">
     <header>
       <div class="header-top">
-        <a href="https://khe.ee" class="monogram" aria-label="Tagasi khe.ee lehele" data-i18n-aria="monogramAria">KHE</a>
+        <a href="https://khe.ee/?lang=et" class="monogram" aria-label="Tagasi khe.ee lehele" data-i18n-aria="monogramAria" data-link="khe">KHE</a>
         <div class="language-switcher" role="group" aria-label="Keel" data-i18n-aria="languageLabel">
           <button type="button" data-lang-option="et" aria-pressed="true">ET</button>
           <button type="button" data-lang-option="en" aria-pressed="false">EN</button>
@@ -433,6 +433,7 @@
       document.querySelectorAll('[data-lang-option]').forEach((button) => {
         button.setAttribute('aria-pressed', button.getAttribute('data-lang-option') === locale ? 'true' : 'false');
       });
+      document.querySelector('[data-link="khe"]').setAttribute('href', `https://khe.ee/?lang=${locale}`);
       document.querySelector('[data-game-link="study"]').setAttribute('href', `/study/?lang=${locale}`);
       document.querySelector('[data-game-link="adventure"]').setAttribute('href', `/adventure/?lang=${locale}`);
       document.querySelector('[data-link="privacy"]').setAttribute('href', `/privacy?lang=${locale}`);
