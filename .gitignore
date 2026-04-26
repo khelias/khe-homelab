@@ -8,6 +8,7 @@
 data/
 volumes/
 logs/
+.deploy/
 
 # AdGuard live config — rewritten by the container at runtime + holds admin creds.
 # Canonical baseline lives in AdGuardHome.template.yaml; copy to AdGuardHome.yaml on first deploy.
