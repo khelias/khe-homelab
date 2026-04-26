@@ -13,9 +13,11 @@ services:
       - DB_POSTGRESDB_USER=${POSTGRES_USER:-n8n}
       - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
       - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      - N8N_RESTRICT_FILE_ACCESS_TO=/reports
       - TZ=Europe/Tallinn
     volumes:
       - n8n_data:/home/node/.n8n
+      - ${HOMELAB_REPORTS_HOST_DIR:-/srv/data/reports/khe}:/reports
     depends_on:
       n8n-db:
         condition: service_healthy
