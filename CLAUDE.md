@@ -161,7 +161,7 @@ OpenClaw: DONE — running at https://openclaw.khe.ee via CF tunnel + CF Access 
   - docker-essentials skill installed (ClawHub) for container management
 
 games hub: DONE — services/apps/games/ stack (nginx + adventure-proxy)
-  - / → launcher (git-tracked in services/apps/games/launcher/, Inter-font dark design)
+  - / → launcher (khe-sites repo deploys to /srv/data/games/launcher/)
   - /study/ → study-game (/srv/data/games/study/, GH Actions runner deploys here)
   - /adventure/ → ai-adventure-engine (/srv/data/games/adventure/app/, GH Actions runner)
   - /adventure/api/ → adventure-proxy container (Node.js Express, Claude Sonnet 4.6 default / Gemini Flash fallback)
@@ -171,10 +171,15 @@ games hub: DONE — services/apps/games/ stack (nginx + adventure-proxy)
     VM builds the frontend (→ /srv/data/games/adventure/app/) AND the proxy
     image (`games-adventure-proxy:latest`). khe-homelab compose references the
     image by tag — no build context here.
+  - Static sites repo: khe-sites deploys khe.ee to /srv/data/sites/khe and the
+    games launcher to /srv/data/games/launcher. Runner:
+    /home/khe/actions-runner-sites.
   - Runners (each repo has its own): /home/khe/actions-runner (study-game),
-    /home/khe/actions-runner-adventure (ai-adventure-engine)
-  - Nested bind mount: launcher/study/ and launcher/adventure/ dirs pre-exist as
-    mountpoint anchors (Docker can't mkdir inside :ro parent — see feedback memory)
+    /home/khe/actions-runner-adventure (ai-adventure-engine),
+    /home/khe/actions-runner-sites (khe-sites)
+  - Nested bind mount: /srv/data/games/launcher/study and
+    /srv/data/games/launcher/adventure dirs pre-exist as mountpoint anchors
+    (Docker can't mkdir inside :ro parent — see feedback memory)
   - Networks: games-internal (nginx ↔ adventure-proxy) + proxy (CF tunnel → nginx)
   - GEMINI_API_KEY + ANTHROPIC_API_KEY stored in services/apps/games/.env on VM (never committed)
 

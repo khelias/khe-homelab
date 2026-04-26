@@ -130,9 +130,9 @@ Operational work is kept to a minimum by pushing everything into code and cron.
 - **GitOps** — every `docker-compose.yml`, Homepage config, AdGuard config, and OpenClaw agent workspace
   is version-controlled here. Rebuilding any service is `git pull && docker compose up -d`.
 - **Renovate** — watches every pinned image tag and opens PRs for updates (digests + changelogs).
-- **GitHub Actions self-hosted runner** — a runner registered on the Docker VM picks up
-  jobs from the `study-game` source repo: push to `main` → Vite build → `dist/` copied to
-  `/srv/data/games/study` → live in seconds. The games-hub nginx container serves that folder under `/study/`.
+- **GitHub Actions self-hosted runners** — repo-specific runners on the Docker VM deploy
+  `khe-sites` (`khe.ee` and the games launcher), `study-game`, and `ai-adventure-engine`
+  into `/srv/data/...` directories served by nginx.
 - **Certificate renewal** — NPM auto-renews the wildcard cert via Cloudflare DNS API. No manual steps.
 - **Backup script** — `scripts/backup.sh` dumps all Postgres DBs and snapshots configs on a schedule.
 

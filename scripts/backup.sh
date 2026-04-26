@@ -179,20 +179,22 @@ else
   rm -f "$BACKUP_DIR/crontab.err"
 fi
 
-# GitHub Actions self-hosted runner identity. The full dir contains _diag/
+# GitHub Actions self-hosted runner identities. The full dirs contain _diag/
 # logs (large, noisy) — capture only the registration + credential files.
-RUNNER_DIR="$HOME/actions-runner"
-if [ -d "$RUNNER_DIR" ]; then
-  echo "-> system: actions-runner identity"
-  err="$BACKUP_DIR/actions-runner.err"
-  if ! tar czf "$BACKUP_DIR/actions-runner.tar.gz" -C "$RUNNER_DIR" \
-        .runner .credentials .credentials_rsaparams 2>"$err"; then
-    rm -f "$BACKUP_DIR/actions-runner.tar.gz"
-    fail "tar failed: actions-runner (see $(basename "$err"))"
-  else
-    rm -f "$err"
+for RUNNER_DIR in "$HOME/actions-runner" "$HOME/actions-runner-adventure" "$HOME/actions-runner-sites"; do
+  if [ -d "$RUNNER_DIR" ]; then
+    runner_name="$(basename "$RUNNER_DIR")"
+    echo "-> system: $runner_name identity"
+    err="$BACKUP_DIR/$runner_name.err"
+    if ! tar czf "$BACKUP_DIR/$runner_name.tar.gz" -C "$RUNNER_DIR" \
+          .runner .credentials .credentials_rsaparams 2>"$err"; then
+      rm -f "$BACKUP_DIR/$runner_name.tar.gz"
+      fail "tar failed: $runner_name (see $(basename "$err"))"
+    else
+      rm -f "$err"
+    fi
   fi
-fi
+done
 
 # --- Summary ---
 DURATION=$(( $(date +%s) - START_TS ))
