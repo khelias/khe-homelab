@@ -181,6 +181,42 @@
         360,
         140
       ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const report = $input.first().json;\nconst generatedAt = new Date(report.generatedAt).toLocaleString('et-EE', {\n  timeZone: 'Europe/Tallinn',\n  dateStyle: 'medium',\n  timeStyle: 'short'\n});\n\nconst lines = [\n  'Weekly homelab report',\n  `Generated: ${generatedAt}`,\n  `Period: last ${report.periodDays} days`,\n  '',\n  ...report.sites.map((site) => `${site.host}: ${site.visits} visits, ${site.pageViews} page views`),\n  '',\n  'Public metrics: https://khe.ee/reports/portfolio-metrics.json'\n];\n\nreturn [{\n  json: {\n    text: lines.join('\\n')\n  }\n}];"
+      },
+      "id": "fe89daed-5e86-43cb-b991-0cfdcdbefc7e",
+      "name": "Build Telegram Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        100,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "replace-with-telegram-chat-id",
+        "text": "={{ $json.text }}",
+        "replyMarkup": "none",
+        "additionalFields": {
+          "disable_web_page_preview": true
+        }
+      },
+      "id": "575126b8-21bb-4234-a5c8-aa5aac1b2c07",
+      "name": "Send Telegram Summary",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        360,
+        360
+      ],
+      "disabled": true
     }
   ],
   "connections": {
@@ -251,6 +287,11 @@
             "node": "Public Metrics JSON File",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Build Telegram Summary",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -260,6 +301,17 @@
         [
           {
             "node": "Write Public Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Telegram Summary": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Summary",
             "type": "main",
             "index": 0
           }
