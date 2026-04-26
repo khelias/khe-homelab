@@ -15,6 +15,11 @@ services:
       start_period: 10s
     networks:
       - proxy
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.50'
 
 networks:
   proxy:

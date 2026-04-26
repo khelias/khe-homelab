@@ -29,6 +29,11 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.50'
 
   n8n-db:
     image: postgres:18-alpine@sha256:52098013b4b64a746626437d38afc03cabff6cdeb4d3d92e2342aa95f0ce56ea
@@ -49,6 +54,11 @@ services:
       start_period: 30s
     networks:
       - n8n-internal
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+          cpus: '1.00'
 
 volumes:
   n8n_data:
