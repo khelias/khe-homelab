@@ -50,12 +50,12 @@ jobs:
           set -euo pipefail
 
           cd /home/khe/homelab
-          before="$(git rev-parse HEAD)"
+          marker=".deploy/last-successful-sha"
 
           git fetch origin main
           git pull --ff-only origin main
 
-          after="$(git rev-parse HEAD)"
+          target="$(git rev-parse HEAD)"
           flags=()
           if [ "$FORCE_RECREATE" = "true" ]; then
             flags+=(--force-recreate)
@@ -69,5 +69,21 @@ jobs:
           elif [ "$MODE" = "all" ]; then
             ./scripts/deploy-stacks.sh all "${flags[@]}"
           else
-            ./scripts/deploy-stacks.sh changed "$before" "$after" "${flags[@]}"
+            if [ -f "$marker" ]; then
+              before="$(cat "$marker")"
+            else
+              echo "No previous deploy marker found; deploying all stacks to establish a baseline."
+              before=""
+            fi
+
+            if [ -n "$before" ]; then
+              ./scripts/deploy-stacks.sh changed "$before" "$target" "${flags[@]}"
+            else
+              ./scripts/deploy-stacks.sh all "${flags[@]}"
+            fi
+          fi
+
+          if [ "$DRY_RUN" != "true" ]; then
+            mkdir -p "$(dirname "$marker")"
+            printf '%s\n' "$target" > "$marker"
           fi
