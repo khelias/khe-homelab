@@ -1,0 +1,278 @@
+{
+  "name": "Weekly Homelab Report",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "weeksInterval": 1,
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 8,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      },
+      "id": "7bbf8747-dbf9-4f46-95c3-3ea1a332a0e1",
+      "name": "Weekly Monday 08:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -900,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const accountTag = 'replace-with-cloudflare-account-id';\nif (accountTag === 'replace-with-cloudflare-account-id') {\n  throw new Error('Set the Cloudflare account ID in this node before activating the workflow.');\n}\n\nconst end = new Date();\nconst start = new Date(end.getTime() - 7 * 24 * 60 * 60 * 1000);\nconst startIso = start.toISOString();\nconst endIso = end.toISOString();\n\nconst query = `query WeeklyRum($accountTag: string!, $start: Time!, $end: Time!) {\n  viewer {\n    accounts(filter: { accountTag: $accountTag }) {\n      kheTotal: rumPageloadEventsAdaptiveGroups(limit: 1, filter: { datetime_geq: $start, datetime_leq: $end, requestHost: \"khe.ee\", bot: 0 }) {\n        count\n        sum { visits }\n      }\n      kheTopPages: rumPageloadEventsAdaptiveGroups(limit: 8, orderBy: [count_DESC], filter: { datetime_geq: $start, datetime_leq: $end, requestHost: \"khe.ee\", bot: 0 }) {\n        count\n        sum { visits }\n        dimensions { requestPath }\n      }\n      gamesTotal: rumPageloadEventsAdaptiveGroups(limit: 1, filter: { datetime_geq: $start, datetime_leq: $end, requestHost: \"games.khe.ee\", bot: 0 }) {\n        count\n        sum { visits }\n      }\n      gamesTopPages: rumPageloadEventsAdaptiveGroups(limit: 8, orderBy: [count_DESC], filter: { datetime_geq: $start, datetime_leq: $end, requestHost: \"games.khe.ee\", bot: 0 }) {\n        count\n        sum { visits }\n        dimensions { requestPath }\n      }\n    }\n  }\n}`;\n\nreturn [{\n  json: {\n    generatedAt: endIso,\n    period: {\n      start: startIso,\n      end: endIso,\n      days: 7\n    },\n    request: {\n      query,\n      variables: {\n        accountTag,\n        start: startIso,\n        end: endIso\n      }\n    }\n  }\n}];"
+      },
+      "id": "83eaf73f-4986-4b0a-b825-f5694e02133d",
+      "name": "Build Cloudflare Query",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -660,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.cloudflare.com/client/v4/graphql",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.request }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "b78cd19e-78f7-446d-820d-d6f830dc8afc",
+      "name": "Fetch Cloudflare Analytics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -420,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const source = $input.first().json;\nif (source.errors?.length) {\n  throw new Error(`Cloudflare GraphQL error: ${JSON.stringify(source.errors)}`);\n}\n\nconst account = source.data?.viewer?.accounts?.[0] ?? {};\nconst meta = $('Build Cloudflare Query').first().json;\n\nfunction totals(rows) {\n  const row = Array.isArray(rows) ? rows[0] : undefined;\n  return {\n    pageViews: Number(row?.count ?? 0),\n    visits: Number(row?.sum?.visits ?? 0)\n  };\n}\n\nfunction topPages(rows) {\n  return (Array.isArray(rows) ? rows : [])\n    .map((row) => ({\n      path: row?.dimensions?.requestPath || '/',\n      pageViews: Number(row?.count ?? 0),\n      visits: Number(row?.sum?.visits ?? 0)\n    }))\n    .filter((row) => row.pageViews > 0);\n}\n\nreturn [{\n  json: {\n    generatedAt: meta.generatedAt,\n    period: meta.period,\n    sites: [\n      {\n        host: 'khe.ee',\n        ...totals(account.kheTotal),\n        topPages: topPages(account.kheTopPages)\n      },\n      {\n        host: 'games.khe.ee',\n        ...totals(account.gamesTotal),\n        topPages: topPages(account.gamesTopPages)\n      }\n    ],\n    uptimeSummary: {\n      source: 'manual',\n      publicServicesHealthy: null\n    },\n    visibility: 'internal',\n    notes: [\n      'Internal operational report. Do not publish this raw file.',\n      'Public portfolio metrics are written separately from an allowlist.'\n    ]\n  }\n}];"
+      },
+      "id": "8573aa14-ec76-4266-b473-49f7973633e2",
+      "name": "Build Internal Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "toJson",
+        "mode": "once",
+        "binaryPropertyName": "data",
+        "options": {
+          "fileName": "weekly-homelab.json",
+          "format": true,
+          "encoding": "utf8"
+        }
+      },
+      "id": "86309f81-94a5-49fa-81bc-009b75918187",
+      "name": "Internal JSON File",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        100,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "/reports/internal/weekly-homelab.json",
+        "dataPropertyName": "data",
+        "options": {}
+      },
+      "id": "bc2f6852-6ae1-4ed9-919b-984d90ee3bcd",
+      "name": "Write Internal Report",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        360,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const source = $input.first().json;\nif (source.errors?.length) {\n  throw new Error(`Cloudflare GraphQL error: ${JSON.stringify(source.errors)}`);\n}\n\nconst account = source.data?.viewer?.accounts?.[0] ?? {};\nconst meta = $('Build Cloudflare Query').first().json;\n\nfunction totals(rows) {\n  const row = Array.isArray(rows) ? rows[0] : undefined;\n  return {\n    pageViews: Number(row?.count ?? 0),\n    visits: Number(row?.sum?.visits ?? 0)\n  };\n}\n\nreturn [{\n  json: {\n    generatedAt: meta.generatedAt,\n    periodDays: meta.period.days,\n    sites: [\n      {\n        host: 'khe.ee',\n        ...totals(account.kheTotal)\n      },\n      {\n        host: 'games.khe.ee',\n        ...totals(account.gamesTotal)\n      }\n    ],\n    source: 'Cloudflare Web Analytics + n8n'\n  }\n}];"
+      },
+      "id": "0b11d7a9-2d4d-4d14-8b3d-e319a9f1572b",
+      "name": "Build Public Metrics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "toJson",
+        "mode": "once",
+        "binaryPropertyName": "data",
+        "options": {
+          "fileName": "portfolio-metrics.json",
+          "format": true,
+          "encoding": "utf8"
+        }
+      },
+      "id": "c518e29f-0cdc-447a-af7c-6df04f5764cc",
+      "name": "Public Metrics JSON File",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        100,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "/reports/public/portfolio-metrics.json",
+        "dataPropertyName": "data",
+        "options": {}
+      },
+      "id": "8c4639bf-bca0-43c5-8981-bd486129cdf9",
+      "name": "Write Public Metrics",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        360,
+        140
+      ]
+    }
+  ],
+  "connections": {
+    "Weekly Monday 08:00": {
+      "main": [
+        [
+          {
+            "node": "Build Cloudflare Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Cloudflare Query": {
+      "main": [
+        [
+          {
+            "node": "Fetch Cloudflare Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Cloudflare Analytics": {
+      "main": [
+        [
+          {
+            "node": "Build Internal Report",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Build Public Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Internal Report": {
+      "main": [
+        [
+          {
+            "node": "Internal JSON File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Internal JSON File": {
+      "main": [
+        [
+          {
+            "node": "Write Internal Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Public Metrics": {
+      "main": [
+        [
+          {
+            "node": "Public Metrics JSON File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Public Metrics JSON File": {
+      "main": [
+        [
+          {
+            "node": "Write Public Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Tallinn"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "active": false
+}
