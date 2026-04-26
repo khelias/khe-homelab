@@ -65,7 +65,7 @@ Jellyfin and Immich machine-learning both use `/dev/dri` for Quick Sync accelera
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/jellyfin.svg" width="22" /> | **Jellyfin** | `jellyfin.khe.ee` | Media server with Quick Sync HW transcoding |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/paperless-ngx.svg" width="22" /> | **Paperless-ngx** | `docs.khe.ee` | Document archive with OCR (Estonian + English) |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/audiobookshelf.svg" width="22" /> | **Audiobookshelf** | `books.khe.ee` | Audiobooks and podcasts |
-| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/n8n.svg" width="22" /> | **n8n** | `n8n.khe.ee` | Workflow automation (CF Access protected) |
+| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/n8n.svg" width="22" /> | **n8n** | `n8n.khe.ee` | Workflow automation and weekly homelab report generation (CF Access protected) |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/uptime-kuma.svg" width="22" /> | **Uptime Kuma** | `status.khe.ee` | Service monitoring and alerts |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/claude-ai.svg" width="22" /> | **OpenClaw** | `openclaw.khe.ee` | AI devops agent with sandboxed Docker access (CF Access protected) |
 | 🎮 | **games hub** | `games.khe.ee` | Launcher + study-game (`/study/`), auto-deployed from GitHub |
@@ -137,6 +137,9 @@ Operational work is kept to a minimum by pushing everything into code and cron.
 - **GitHub Actions self-hosted runners** — repo-specific runners on the Docker VM deploy
   `khe-sites` (`khe.ee` and the games launcher), `study-game`, and `ai-adventure-engine`
   into `/srv/data/...` directories served by nginx.
+- **n8n weekly report** — generates internal homelab reports plus a small public
+  portfolio metrics file; only `/srv/data/reports/khe/public` is served read-only
+  by the public landing nginx at `/reports/`.
 - **Certificate renewal** — NPM auto-renews the wildcard cert via Cloudflare DNS API. No manual steps.
 - **Backup script** — `scripts/backup.sh` dumps all Postgres DBs and snapshots configs on a schedule.
 
