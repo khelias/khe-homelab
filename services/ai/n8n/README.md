@@ -54,41 +54,63 @@ In n8n, store the token as an HTTP Header Auth credential:
 
 ### Workflow shape
 
-Use these nodes:
+The importable workflow lives at:
+
+```text
+services/ai/n8n/workflows/weekly-homelab-report.json
+```
+
+Import it on the Docker VM:
+
+```bash
+docker cp /home/khe/homelab/services/ai/n8n/workflows/weekly-homelab-report.json n8n:/tmp/weekly-homelab-report.json
+docker exec n8n n8n import:workflow --input=/tmp/weekly-homelab-report.json
+```
+
+After import, open n8n and configure:
+
+- `Build Cloudflare Query`: replace `replace-with-cloudflare-account-id` with the Cloudflare account ID.
+- `Fetch Cloudflare Analytics`: assign the `Cloudflare Analytics API` HTTP Header Auth credential.
+- Keep the workflow disabled until a manual execution succeeds.
+
+The workflow uses these nodes:
 
 1. Schedule Trigger
    - Weekly, Monday 08:00, timezone `Europe/Tallinn`
-2. HTTP Request: Cloudflare Web Analytics
+2. Code: Build Cloudflare Query
+   - Builds the GraphQL request body and rolling 7 day period.
+3. HTTP Request: Cloudflare Web Analytics
    - Method: `POST`
    - URL: `https://api.cloudflare.com/client/v4/graphql`
    - Auth: the Cloudflare HTTP Header Auth credential above
    - Header: `Content-Type: application/json`
    - Body: JSON
-3. Code: Build reports
+4. Code: Build reports
    - Build a full internal report for your own review.
    - Build a public portfolio summary from a strict allowlist.
    - Do not include IP addresses, user agents, or visitor-level data.
-4. Convert to File
+5. Convert to File
    - Operation: Convert to JSON
    - File name: `weekly-homelab.json`
    - Format JSON: on
-5. Read/Write Files from Disk
+6. Read/Write Files from Disk
    - Operation: Write File to Disk
    - File path and name: `/reports/internal/weekly-homelab.json`
    - Input binary field: `data`
-6. Convert to File
+7. Convert to File
    - Operation: Convert to JSON
    - File name: `portfolio-metrics.json`
    - Format JSON: on
-7. Read/Write Files from Disk
+8. Read/Write Files from Disk
    - Operation: Write File to Disk
    - File path and name: `/reports/public/portfolio-metrics.json`
    - Input binary field: `data`
 
 ### Cloudflare GraphQL body
 
-Use a 7 day range and filter by host instead of beacon token. The beacon token
-is not necessarily the same as Cloudflare's internal `siteTag`.
+The workflow uses a rolling 7 day range and filters by host instead of beacon
+token. The beacon token is not necessarily the same as Cloudflare's internal
+`siteTag`.
 
 ```json
 {
