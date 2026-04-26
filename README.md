@@ -114,14 +114,18 @@ Three independent layers, each catching what the others miss:
    any container whose Docker healthcheck reports `unhealthy`. Fills the gap
    left by `restart: unless-stopped`, which only reacts to full crashes. This
    caught a stuck immich-ml worker the day it was deployed.
-3. **Service down — Uptime Kuma + Telegram push.** Every service has a Kuma
+3. **Runaway service — Compose resource limits.** Every long-running container
+   has conservative memory and CPU limits in its `docker-compose.yml`; media,
+   database, AI, and document workloads get larger caps than static web
+   services. This keeps one bad process from consuming the whole 32GB VM.
+4. **Service down — Uptime Kuma + Telegram push.** Every service has a Kuma
    HTTP/DNS monitor; all notify the same Telegram bot (`@khe_homelab_bot`,
    shared with OpenClaw). Alert lands on the owner's phone within ~90s. Kuma
    DB is in `backup.sh`, so monitor + notification config survives a VM rebuild.
-4. **Whole homelab down — external UptimeRobot.** Pings `khe.ee` every 5 min
+5. **Whole homelab down — external UptimeRobot.** Pings `khe.ee` every 5 min
    from outside the home network, pushes to the UptimeRobot iOS app. The only
    layer that can notify when the VM, Proxmox, or the home internet itself is
-   unreachable (when layers 1–3 can't reach any network).
+   unreachable (when layers 1–4 can't reach any network).
 
 ## Automation
 

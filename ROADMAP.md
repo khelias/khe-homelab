@@ -4,9 +4,10 @@ Direction and priorities for the homelab — what it should become, beyond curre
 
 ## Near-term (next few sessions)
 
-- **Resource limits on every long-running container** — so a single runaway service
-  can't OOM the 32GB VM and take down all 17 services. Conservative defaults for
-  web services, heavier for Nextcloud / Immich / Paperless.
+- **Resource-limit tuning from metrics** — initial `deploy.resources.limits`
+  now cover every long-running container. Watch Docker stats / service behavior
+  and tune caps where Nextcloud, Immich, Paperless, Jellyfin, or Ollama show
+  real workload pressure.
 - **Dockge socket-proxy live validation** — config now routes Dockge through
   `docker-socket-proxy`; deploy it and test stack create/update/down/build so
   the endpoint allowlist can be tightened further if Dockge permits it.

@@ -39,6 +39,11 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2.00'
 
   paperless-db:
     image: postgres:18-alpine@sha256:52098013b4b64a746626437d38afc03cabff6cdeb4d3d92e2342aa95f0ce56ea
@@ -59,6 +64,11 @@ services:
       start_period: 30s
     networks:
       - paperless-internal
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.00'
 
   paperless-redis:
     image: redis:8.6-alpine@sha256:c5e375abb885e6b2021c0377879e4890bf76f9065b8922ffc113f2b226b9fc17
@@ -77,6 +87,11 @@ services:
       start_period: 10s
     networks:
       - paperless-internal
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+          cpus: '0.50'
 
 volumes:
   paperless_data:
