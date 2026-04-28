@@ -51,7 +51,7 @@ Why NFS over virtual disk (zvol):
 ## VM Layout
 | VM ID | Name       | Purpose              | vCPU | RAM   | OS | OS Disk |
 |-------|------------|----------------------|------|-------|----|---------|
-| 100   | docker-vm  | Main Docker host     | 8    | 24GB  | Debian 13 (cloud-init) | NVMe (local-lvm) 32GB |
+| 100   | docker-vm  | Main Docker host     | 8    | 24GB  | Debian 13 (cloud-init) | NVMe (local-lvm) 256GB |
 | 101   | playground | Testing/experiments  | 4    | 8GB   | Debian 13 (cloud-init) | NVMe (local-lvm) |
 
 ## Security
