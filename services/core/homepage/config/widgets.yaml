@@ -14,8 +14,8 @@
     cache: 15
 
 - resources:
-    label: Docker VM
+    label: Docker VM root
     cpu: true
     memory: true
-    disk: /srv
+    disk: /
     expanded: true
