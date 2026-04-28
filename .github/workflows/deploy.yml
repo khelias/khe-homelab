@@ -87,3 +87,11 @@ jobs:
             mkdir -p "$(dirname "$marker")"
             printf '%s\n' "$target" > "$marker"
           fi
+
+      - name: Clean Docker cache and unused images
+        if: ${{ always() && !inputs.dry_run }}
+        run: |
+          set -euo pipefail
+
+          cd /home/khe/homelab
+          ./scripts/docker-cleanup.sh
