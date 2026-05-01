@@ -60,11 +60,11 @@ scripts/           # Deployment and maintenance scripts
     alike — no separate DoH endpoint needed. If AdGuard is down, Tailscale
     clients lose DNS until reconnect (acceptable trade-off; failure is loud).
 
-## Current Status (2026-04-22)
-All 18 services working: Immich, Jellyfin, Vaultwarden, Paperless, Audiobookshelf,
+## Current Status (2026-05-01)
+All 19 services working: Immich, Jellyfin, Vaultwarden, Paperless, Audiobookshelf,
 n8n, Uptime Kuma, Homepage, Ollama, Dockge, AdGuard, NPM, Cloudflare Tunnel,
 Nextcloud (33-apache + PG18), OpenClaw, games hub (launcher + study-game),
-landing page, autoheal (sidecar).
+landing page, trips (private travel atlas), autoheal (sidecar).
 
 AdGuard: pre-configured via AdGuardHome.yaml (bind mount), split-horizon
 DNS with explicit per-service rewrites (no wildcard). openclaw.khe.ee and
@@ -217,6 +217,16 @@ Adventure game engine rules:
   - Docs: ai-adventure-engine/docs/ARCHITECTURE.md (C4 + flows + cost + security),
     ROADMAP.md (phases + principles), scripts/README.md (playtest harness).
   - Playtest: cd ~/Projects/ai-adventure-engine && npm run playtest -- --duration=Short
+
+trips: DONE — services/apps/trips/ stack (nginx:1.30-alpine, mirrors landing).
+  - trips.khe.ee → trips:80 via CF tunnel (no AdGuard rewrite, CF only for HTTPS)
+  - CF Access protected with the shared Email+Country=EE policy (dash, n8n, openclaw, trips)
+  - Static SPA: bind mount /srv/data/trips/app:/usr/share/nginx/html:ro, SPA fallback to /index.html
+  - Source: ~/Projects/khe/khe-trips (private repo khelias/khe-trips)
+  - GH Actions runner on VM: /home/khe/actions-runner-trips, systemd unit
+    actions.runner.khelias-khe-trips.trips-runner.service, labels self-hosted,linux,homelab
+  - Deploy: push to khe-trips main → runner builds Vite app → syncs dist/ to
+    /srv/data/trips/app → docker compose up -d trips
 
 Healthchecks: games uses 127.0.0.1 (not localhost — busybox wget DNS issue in alpine).
   cloudflare-tunnel uses `cloudflared version` (distroless image, no curl/wget available).
