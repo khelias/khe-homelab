@@ -35,6 +35,10 @@ services:
           cpus: '0.25'
 
   openclaw:
+    # NOTE: bonjour (mDNS) plugin is denied in openclaw.json (in openclaw_config volume) —
+    # CIAO probing fails on bridge networks and crashes the gateway in a loop. If the volume
+    # is recreated, re-apply: `openclaw config set plugins.deny '["bonjour"]' --strict-json`
+    # (or edit openclaw.json directly). mDNS isn't useful here: access is via openclaw.khe.ee.
     build: .
     image: openclaw-custom:2026.4.15
     container_name: openclaw
