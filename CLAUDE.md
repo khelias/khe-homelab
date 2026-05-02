@@ -159,6 +159,9 @@ OpenClaw: DONE — running at https://openclaw.khe.ee via CF tunnel + CF Access 
   - Agent workspace: services/ai/openclaw/workspace/ (git-tracked bind mount)
     SOUL.md (personality), USER.md (homelab context), AGENTS.md (safety rules)
   - docker-essentials skill installed (ClawHub) for container management
+  - bonjour (mDNS) plugin disabled via `plugins.deny: ["bonjour"]` in openclaw.json (in
+    openclaw_config volume). CIAO probing fails on bridge networks and crashes the gateway
+    in a restart loop. If the volume is rebuilt, re-apply the deny — see compose comment.
 
 games hub: DONE — services/apps/games/ stack (nginx + adventure-proxy)
   - / → launcher (khe-sites repo deploys to /srv/data/games/launcher/)
