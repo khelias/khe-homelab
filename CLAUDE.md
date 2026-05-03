@@ -16,7 +16,7 @@ services/          # Docker Compose stacks, one dir per service
   media/           # Immich, Jellyfin, Audiobookshelf
   productivity/    # Nextcloud, Paperless-ngx
   ai/              # Ollama, n8n, OpenClaw
-  apps/            # games hub (nginx serving launcher + study-game under /study/)
+  apps/            # games hub (nginx serving launcher + khe-study under /study/)
 infrastructure/    # Proxmox setup notes, network config, ZFS
 scripts/           # Deployment and maintenance scripts
 ```
@@ -63,7 +63,7 @@ scripts/           # Deployment and maintenance scripts
 ## Current Status (2026-05-01)
 All 19 services working: Immich, Jellyfin, Vaultwarden, Paperless, Audiobookshelf,
 n8n, Uptime Kuma, Homepage, Ollama, Dockge, AdGuard, NPM, Cloudflare Tunnel,
-Nextcloud (33-apache + PG18), OpenClaw, games hub (launcher + study-game),
+Nextcloud (33-apache + PG18), OpenClaw, games hub (launcher + khe-study),
 landing page, trips (private travel atlas), autoheal (sidecar).
 
 AdGuard: pre-configured via AdGuardHome.yaml (bind mount), split-horizon
@@ -165,20 +165,20 @@ OpenClaw: DONE — running at https://openclaw.khe.ee via CF tunnel + CF Access 
 
 games hub: DONE — services/apps/games/ stack (nginx + adventure-proxy)
   - / → launcher (khe-sites repo deploys to /srv/data/games/launcher/)
-  - /study/ → study-game (/srv/data/games/study/, GH Actions runner deploys here)
-  - /adventure/ → ai-adventure-engine (/srv/data/games/adventure/app/, GH Actions runner)
+  - /study/ → khe-study (/srv/data/games/study/, GH Actions runner deploys here)
+  - /adventure/ → khe-ai-adventure (/srv/data/games/adventure/app/, GH Actions runner)
   - /adventure/api/ → adventure-proxy container (Node.js Express, Claude Sonnet 4.6 default / Gemini Flash fallback)
   - CF tunnel route games.khe.ee → games:80 (direct, no alias)
-  - study-game repo base path: vite `base: '/study/'`, BrowserRouter basename `/study`
-  - adventure frontend + proxy: ai-adventure-engine repo. GH Actions runner on
+  - khe-study repo base path: vite `base: '/study/'`, BrowserRouter basename `/study`
+  - adventure frontend + proxy: khe-ai-adventure repo. GH Actions runner on
     VM builds the frontend (→ /srv/data/games/adventure/app/) AND the proxy
     image (`games-adventure-proxy:latest`). khe-homelab compose references the
     image by tag — no build context here.
   - Static sites repo: khe-sites deploys khe.ee to /srv/data/sites/khe and the
     games launcher to /srv/data/games/launcher. Runner:
     /home/khe/actions-runner-sites.
-  - Runners (each repo has its own): /home/khe/actions-runner (study-game),
-    /home/khe/actions-runner-adventure (ai-adventure-engine),
+  - Runners (each repo has its own): /home/khe/actions-runner (khe-study),
+    /home/khe/actions-runner-adventure (khe-ai-adventure),
     /home/khe/actions-runner-sites (khe-sites)
   - Study and adventure are mounted outside the launcher root and served by
     nginx from /srv/data/games via per-location `root`. Do not nest these bind
@@ -187,7 +187,7 @@ games hub: DONE — services/apps/games/ stack (nginx + adventure-proxy)
   - Networks: games-internal (nginx ↔ adventure-proxy) + proxy (CF tunnel → nginx)
   - GEMINI_API_KEY + ANTHROPIC_API_KEY stored in services/apps/games/.env on VM (never committed)
 
-adventure-proxy (source lives in ai-adventure-engine/proxy/, image built by
+adventure-proxy (source lives in khe-ai-adventure/proxy/, image built by
 that repo's runner on this VM as `games-adventure-proxy:latest`):
   - Estonian editor-pass: when request body has language='et', scene + gameOverText
     are routed through Gemini Flash with an editorial system prompt (fixes
@@ -206,7 +206,7 @@ that repo's runner on this VM as `games-adventure-proxy:latest`):
     share one 30-req/min counter.
   - Choice-cost violations logged as warnings (not blocked). Watch proxy logs
     if a playtest shows no-cost choices.
-  - Deploy: push to ai-adventure-engine main → runner rebuilds image locally.
+  - Deploy: push to khe-ai-adventure main → runner rebuilds image locally.
     Until auto-restart is wired, bounce the container on VM:
     `cd ~/homelab/services/apps/games && docker compose up -d --force-recreate adventure-proxy`.
 
@@ -217,9 +217,9 @@ Adventure game engine rules:
     template string dropped to fallback-only.
   - Rule #4 (hidden "threat worsens each turn") removed — all parameter
     changes must now come from visible choice expectedChanges.
-  - Docs: ai-adventure-engine/docs/ARCHITECTURE.md (C4 + flows + cost + security),
+  - Docs: khe-ai-adventure/docs/ARCHITECTURE.md (C4 + flows + cost + security),
     ROADMAP.md (phases + principles), scripts/README.md (playtest harness).
-  - Playtest: cd ~/Projects/ai-adventure-engine && npm run playtest -- --duration=Short
+  - Playtest: cd ~/Projects/khe-ai-adventure && npm run playtest -- --duration=Short
 
 trips: DONE — services/apps/trips/ stack (nginx:1.30-alpine, mirrors landing).
   - trips.khe.ee → trips:80 via CF tunnel (no AdGuard rewrite, CF only for HTTPS)

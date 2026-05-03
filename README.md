@@ -68,7 +68,7 @@ Jellyfin and Immich machine-learning both use `/dev/dri` for Quick Sync accelera
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/n8n.svg" width="22" /> | **n8n** | `n8n.khe.ee` | Workflow automation and weekly homelab report generation (CF Access protected) |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/uptime-kuma.svg" width="22" /> | **Uptime Kuma** | `status.khe.ee` | Service monitoring and alerts |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/claude-ai.svg" width="22" /> | **OpenClaw** | `openclaw.khe.ee` | AI devops agent with sandboxed Docker access (CF Access protected) |
-| 🎮 | **games hub** | `games.khe.ee` | Launcher + study-game (`/study/`), auto-deployed from GitHub |
+| 🎮 | **games hub** | `games.khe.ee` | Launcher + khe-study (`/study/`), auto-deployed from GitHub |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/ollama.svg" width="22" /> | Ollama | LAN only | Local AI models (qwen2.5:7b, CPU-only) |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/adguard-home.svg" width="22" /> | AdGuard Home | LAN + Tailscale | DNS ad-blocking + split-horizon DNS (filters mobile data too, via Tailscale) |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/dockge.svg" width="22" /> | Dockge | LAN only | Docker Compose management UI |
@@ -135,7 +135,7 @@ Operational work is kept to a minimum by pushing everything into code and cron.
   is version-controlled here. Rebuilding any service is `git pull && docker compose up -d`.
 - **Renovate** — watches every pinned image tag and opens PRs for updates (digests + changelogs).
 - **GitHub Actions self-hosted runners** — repo-specific runners on the Docker VM deploy
-  `khe-sites` (`khe.ee` and the games launcher), `study-game`, and `ai-adventure-engine`
+  `khe-sites` (`khe.ee` and the games launcher), `khe-study`, and `khe-ai-adventure`
   into `/srv/data/...` directories served by nginx.
 - **n8n weekly report** — generates internal homelab reports plus a small public
   portfolio metrics file; only `/srv/data/reports/khe/public` is served read-only
@@ -197,7 +197,7 @@ services/
 ├── media/           Immich, Jellyfin, Audiobookshelf
 ├── productivity/    Nextcloud, Paperless-ngx
 ├── ai/              Ollama, n8n, OpenClaw (+ workspace/ for agent config)
-└── apps/            Landing Page, games hub (launcher + study-game)
+└── apps/            Landing Page, games hub (launcher + khe-study)
 
 infrastructure/      Proxmox, network, Cloudflare, and Tailscale documentation
 scripts/             Setup, deploy, backup, and hardening scripts

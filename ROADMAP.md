@@ -61,4 +61,4 @@ Rough order of impact:
   FreshRSS, Changedetection.io, Docmost (wiki)
 - **After RAM upgrade** — Authentik (SSO) or Authelia (lighter alternative)
 - **Own projects** — adventure-engine revival, Spliit (Splitwise alternative),
-  study-game iterations
+  khe-study iterations
