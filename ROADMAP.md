@@ -62,3 +62,11 @@ Rough order of impact:
 - **After RAM upgrade** — Authentik (SSO) or Authelia (lighter alternative)
 - **Own projects** — adventure-engine revival, Spliit (Splitwise alternative),
   khe-study iterations
+- **khe-memory (idea, not started)** — cross-agent memory bank as own project.
+  SQLite + sqlite-vec + Ollama embeddings (`nomic-embed-text`), MCP server over
+  HTTP. Shared store for Claude Code and Codex CLI on both laptops, reached via
+  Tailscale. Differentiators worth pursuing: auto-ingest from existing
+  `~/.claude/projects/` and `~/.codex/sessions/` history (bootstrap problem
+  solved with real data), cross-agent provenance (track which agent wrote each
+  fact, surface conflicts), memory decay / re-validation lifecycle. Lives under
+  `services/ai/memory/`, ~500MB RAM, no extra DB infrastructure.
