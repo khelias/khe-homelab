@@ -2,7 +2,7 @@
 
 Migrate `games.khe.ee` from single study-game nginx to a hub that serves a
 launcher at `/` and study-game under `/study/`. Faas 2 will add
-`/adventure/` (ai-adventure-engine) on top of this same stack.
+`/adventure/` (khe-ai-adventure) on top of this same stack.
 
 Target layout:
 
@@ -22,7 +22,7 @@ down. CF route update is then a cleanup step that can happen any time.
 
 ## Prerequisites
 
-- `study-game` repo branch `feat/games-hub-base-path` merged to main
+- `khe-study` repo branch `feat/games-hub-base-path` merged to main
   (triggers deploy that populates `/srv/data/games/study/` with the
   rebuilt bundle).
 - `khe-homelab` main updated on the VM (`git pull` under `/home/khe/homelab`).
