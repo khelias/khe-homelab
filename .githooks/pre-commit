@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Block commits containing secrets. Installed via scripts/install-hooks.sh
+# which sets core.hooksPath=.githooks. Bypassing this hook with --no-verify
+# is forbidden — see AGENTS.md.
+set -e
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  cat >&2 <<'MSG'
+ERROR: gitleaks not found in PATH.
+
+This repo's pre-commit hook needs gitleaks to scan staged changes.
+
+Install:
+  Linux (Debian):  sudo apt install gitleaks
+  macOS:           brew install gitleaks
+  Windows:         winget install gitleaks.gitleaks
+  Manual:          https://github.com/gitleaks/gitleaks/releases
+
+Then re-run your commit. Do NOT bypass with --no-verify.
+MSG
+  exit 1
+fi
+
+# --staged scans only what's about to be committed (fast, hook-appropriate).
+# --redact replaces matched secrets with "REDACTED" in the output so the
+# error message itself doesn't leak what was caught.
+exec gitleaks protect --staged --redact --verbose
