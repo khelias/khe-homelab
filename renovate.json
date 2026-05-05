@@ -11,16 +11,44 @@
   "platformAutomerge": true,
   "packageRules": [
     {
-      "description": "Group all Docker image updates",
+      "description": "Group critical infrastructure updates for manual review",
       "matchManagers": ["docker-compose"],
-      "groupName": "docker images",
-      "groupSlug": "docker-updates"
+      "matchPackageNames": [
+        "adguard/adguardhome",
+        "jc21/nginx-proxy-manager",
+        "cloudflare/cloudflared",
+        "vaultwarden/server",
+        "nextcloud",
+        "ghcr.io/paperless-ngx/paperless-ngx",
+        "ghcr.io/immich-app/immich-server",
+        "ghcr.io/immich-app/immich-machine-learning",
+        "ghcr.io/immich-app/postgres",
+        "postgres",
+        "docker.io/valkey/valkey",
+        "redis",
+        "tecnativa/docker-socket-proxy"
+      ],
+      "groupName": "critical infrastructure",
+      "groupSlug": "critical-updates"
     },
     {
-      "description": "Automerge patch updates for non-critical services",
+      "description": "Group and automerge patch updates for non-critical services",
       "matchManagers": ["docker-compose"],
+      "matchPackageNames": [
+        "jellyfin/jellyfin",
+        "ghcr.io/advplyr/audiobookshelf",
+        "ollama/ollama",
+        "ghcr.io/gethomepage/homepage",
+        "louislam/uptime-kuma",
+        "louislam/dockge",
+        "docker.n8n.io/n8nio/n8n",
+        "nginx",
+        "busybox",
+        "willfarrell/autoheal"
+      ],
+      "groupName": "non-critical services",
+      "groupSlug": "non-critical-updates",
       "matchUpdateTypes": ["patch"],
-      "matchPackageNames": ["jellyfin/jellyfin", "ghcr.io/advplyr/audiobookshelf", "ollama/ollama"],
       "automerge": true
     },
     {
