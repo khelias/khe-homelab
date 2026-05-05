@@ -1,6 +1,13 @@
 name: Deploy Homelab
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'services/**'
+      - 'scripts/deploy.sh'
+      - 'scripts/deploy-stacks.sh'
+      - '.github/workflows/deploy.yml'
   workflow_dispatch:
     inputs:
       mode:
