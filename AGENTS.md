@@ -57,6 +57,10 @@ docs/              operational-notes.md (service quirks not in README)
    (if it uses env vars). Live `.env` files are `.gitignored`.
 2. **Never commit secrets.** No `.env` files, no API keys, no tokens, no
    bcrypt hashes, no MAC addresses or device identifiers (public repo).
+   A pre-commit gitleaks scan enforces this — install with
+   `./scripts/install-hooks.sh` after cloning. Bypassing with
+   `--no-verify` is forbidden; if the hook flags a false positive,
+   add an exclusion to `.gitleaks.toml` (none yet) and commit that.
 3. **Pin Docker image versions.** No `:latest` in production. Renovate
    bumps tags via PR with digest + changelog.
 4. **Named Docker volumes** for service state, OR bind mounts under
