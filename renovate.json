@@ -11,10 +11,24 @@
   "platformAutomerge": true,
   "packageRules": [
     {
-      "description": "Automerge all Docker patch updates except Nextcloud",
+      "description": "Automerge all Docker patch and minor updates except critical infrastructure",
       "matchManagers": ["docker-compose"],
-      "matchUpdateTypes": ["patch"],
-      "excludePackageNames": ["nextcloud"],
+      "matchUpdateTypes": ["patch", "minor"],
+      "excludePackageNames": [
+        "adguard/adguardhome",
+        "jc21/nginx-proxy-manager",
+        "cloudflare/cloudflared",
+        "vaultwarden/server",
+        "nextcloud",
+        "ghcr.io/paperless-ngx/paperless-ngx",
+        "ghcr.io/immich-app/immich-server",
+        "ghcr.io/immich-app/immich-machine-learning",
+        "ghcr.io/immich-app/postgres",
+        "postgres",
+        "docker.io/valkey/valkey",
+        "redis",
+        "tecnativa/docker-socket-proxy"
+      ],
       "automerge": true
     },
     {
