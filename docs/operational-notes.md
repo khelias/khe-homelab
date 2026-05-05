@@ -212,6 +212,23 @@ returns 403 for `/study/` and `/adventure/`.
   checks (those cause false-positive reboots on blips). See
   `/etc/watchdog.conf` on the VM.
 
+## Backup heartbeats
+
+- `scripts/backup.sh` and `scripts/offsite-backup.sh` ping a configurable
+  URL on exit — `status=up` on success, `status=down` with exit code +
+  failure count on any non-zero exit. Without the URL set, both scripts
+  remain fully silent on this dimension.
+- Configuration lives in `~/homelab/.env.heartbeat` (mode 0600,
+  gitignored via `*.env`). See [`../.env.heartbeat.example`](../.env.heartbeat.example)
+  for the variable names and the matching Uptime Kuma push-monitor setup.
+- Heartbeat target = Uptime Kuma "Push" monitor. Telegram alert
+  fires automatically when the heartbeat is missed past the configured
+  interval. Heartbeat interval should exceed the longest expected run
+  (suggested 28h for daily-cron scripts).
+- The trap fires on **any** exit, including the FATAL early ones
+  (missing env file, wrong perms, repo unreachable). Don't move the
+  trap below those checks.
+
 ## Tailscale
 
 - Installed on VM host (not Docker), subnet router for `192.168.0.0/24`.
