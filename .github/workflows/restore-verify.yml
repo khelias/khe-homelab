@@ -1,0 +1,141 @@
+name: Restore Verify
+
+# Weekly proof that the offsite backup chain actually restores.
+#
+# Pulls the latest restic snapshot from R2, isolates one PostgreSQL dump
+# (nextcloud — chosen because it has the most schema surface and the only
+# DB-init quirk in the fleet), restores it into a throwaway Postgres
+# container, and checks that the schema is queryable. Heartbeat pings
+# Uptime Kuma at the end so a missed verification fires the existing
+# Telegram alert.
+#
+# Why nextcloud-db: if its restore works, the simpler ones (immich,
+# paperless, n8n) almost certainly do — they don't carry the
+# non-superuser CREATEROLE constraint that broke us once. The smoke
+# test count threshold is intentionally low: we're proving the chain,
+# not auditing data.
+
+on:
+  schedule:
+    - cron: '0 4 * * 0'   # Sunday 04:00 UTC, 1h after offsite-backup.sh
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: restore-verify
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Restore latest nextcloud dump
+    runs-on: [self-hosted, linux, homelab]
+    timeout-minutes: 20
+
+    steps:
+      - name: Restore + smoke test
+        env:
+          DUMP_NAME: nextcloud-db.dump
+          DB_USER: nextcloud
+          DB_NAME: nextcloud
+          PG_IMAGE: postgres:16-alpine
+          MIN_TABLES: '50'
+        run: |
+          set -euo pipefail
+
+          ENV_FILE="$HOME/homelab/.env.offsite"
+          HEARTBEAT_ENV="$HOME/homelab/.env.heartbeat"
+
+          : "${ENV_FILE:?required for restic}"
+          [ -f "$ENV_FILE" ] || { echo "missing $ENV_FILE"; exit 2; }
+          set -a
+          # shellcheck disable=SC1090
+          . "$ENV_FILE"
+          set +a
+
+          HEARTBEAT_URL=""
+          if [ -f "$HEARTBEAT_ENV" ]; then
+            # shellcheck disable=SC1090
+            . "$HEARTBEAT_ENV"
+            HEARTBEAT_URL="${HEARTBEAT_URL_RESTORE_VERIFY:-}"
+          fi
+          heartbeat() {
+            [ -n "$HEARTBEAT_URL" ] || return 0
+            curl -fsS --max-time 5 -G \
+              --data-urlencode "status=${1:-up}" \
+              --data-urlencode "msg=${2:-}" \
+              "$HEARTBEAT_URL" >/dev/null 2>&1 || true
+          }
+          on_exit() {
+            local code=$?
+            docker rm -f pg-restore-verify >/dev/null 2>&1 || true
+            rm -rf "$WORKDIR"
+            if [ "$code" -eq 0 ]; then
+              heartbeat up "tables=$TABLES"
+            else
+              heartbeat down "exit=$code stage=$STAGE"
+            fi
+          }
+          STAGE="init"
+          TABLES=0
+          WORKDIR="$(mktemp -d)"
+          trap on_exit EXIT
+
+          STAGE="restic-restore"
+          # Restic snapshot path: /srv/backups/<date>/<dump-name>.
+          # `restic restore latest --include` pulls only the dump we need
+          # — saves ~200MB of unrelated tarballs per run.
+          restic restore latest \
+            --target "$WORKDIR" \
+            --include "/srv/backups/*/${DUMP_NAME}" \
+            --tag cron-daily
+
+          DUMP_PATH="$(find "$WORKDIR" -name "$DUMP_NAME" | sort | tail -1)"
+          [ -s "$DUMP_PATH" ] || { echo "no dump restored"; exit 3; }
+          echo "Restored dump: $DUMP_PATH ($(du -h "$DUMP_PATH" | awk '{print $1}'))"
+
+          STAGE="docker-up"
+          docker run -d --rm \
+            --name pg-restore-verify \
+            -e POSTGRES_PASSWORD=verify \
+            "$PG_IMAGE"
+
+          # Wait for postgres ready — pg_isready returns 0 when accepting
+          # connections. 30s ceiling = generous; alpine starts in <5s.
+          STAGE="docker-wait"
+          for _ in $(seq 30); do
+            if docker exec pg-restore-verify pg_isready -U postgres >/dev/null 2>&1; then
+              break
+            fi
+            sleep 1
+          done
+          docker exec pg-restore-verify pg_isready -U postgres
+
+          STAGE="role-create"
+          # Recreate the non-superuser role + DB the same way init-db.sh
+          # does in production. If this drifts from prod's init-db.sh,
+          # the restore test stops representing reality — keep them in
+          # sync.
+          docker exec pg-restore-verify psql -U postgres <<SQL
+          CREATE ROLE ${DB_USER} WITH LOGIN PASSWORD 'verify';
+          CREATE DATABASE ${DB_NAME} OWNER ${DB_USER};
+          SQL
+
+          STAGE="pg-restore"
+          docker exec -i pg-restore-verify \
+            pg_restore -U "$DB_USER" -d "$DB_NAME" --no-owner --no-acl \
+            < "$DUMP_PATH"
+
+          STAGE="smoke-test"
+          TABLES="$(docker exec pg-restore-verify \
+            psql -U "$DB_USER" -d "$DB_NAME" -At -c \
+            "SELECT count(*) FROM information_schema.tables WHERE table_schema='public'")"
+          echo "Restored table count: $TABLES (threshold: $MIN_TABLES)"
+          if [ "$TABLES" -lt "$MIN_TABLES" ]; then
+            echo "FAIL: too few tables — restore likely incomplete"
+            exit 4
+          fi
+
+          STAGE="done"
+          echo "Restore verification OK."

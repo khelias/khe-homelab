@@ -212,6 +212,24 @@ returns 403 for `/study/` and `/adventure/`.
   checks (those cause false-positive reboots on blips). See
   `/etc/watchdog.conf` on the VM.
 
+## Restore verify (GH Action)
+
+- `.github/workflows/restore-verify.yml` runs Sundays 04:00 UTC on the
+  self-hosted homelab runner. Pulls the latest restic snapshot from R2,
+  restores the `nextcloud-db.dump` (largest schema, only DB-init quirk)
+  into a throwaway Postgres container, and asserts ≥50 public tables
+  before tearing down. Heartbeat pings Kuma at the end.
+- **Why nextcloud-db, not all four DBs:** if its restore works, the
+  others almost certainly do — they don't carry the non-superuser
+  CREATEROLE constraint that bit us once. Limit egress, limit run time.
+- **Sync risk:** the workflow re-creates the `nextcloud` role + DB
+  inline using the same approach `services/productivity/nextcloud/init-db.sh`
+  uses. If you change `init-db.sh`, update the workflow's role-create
+  block in the same commit, otherwise the test stops mirroring prod.
+- **Manual trigger:** Actions tab → Restore Verify → Run workflow.
+  Useful right after touching backup.sh, the Postgres image, or the
+  Nextcloud schema (major version upgrade).
+
 ## Backup heartbeats
 
 - `scripts/backup.sh` and `scripts/offsite-backup.sh` ping a configurable
