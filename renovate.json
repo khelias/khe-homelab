@@ -11,7 +11,14 @@
   "platformAutomerge": true,
   "packageRules": [
     {
-      "description": "Group critical infrastructure updates for manual review",
+      "description": "Automerge all Docker patch updates except Nextcloud",
+      "matchManagers": ["docker-compose"],
+      "matchUpdateTypes": ["patch"],
+      "excludePackageNames": ["nextcloud"],
+      "automerge": true
+    },
+    {
+      "description": "Group critical infrastructure minor/major updates for manual review",
       "matchManagers": ["docker-compose"],
       "matchPackageNames": [
         "adguard/adguardhome",
@@ -28,28 +35,9 @@
         "redis",
         "tecnativa/docker-socket-proxy"
       ],
+      "matchUpdateTypes": ["minor", "major"],
       "groupName": "critical infrastructure",
       "groupSlug": "critical-updates"
-    },
-    {
-      "description": "Group and automerge patch updates for non-critical services",
-      "matchManagers": ["docker-compose"],
-      "matchPackageNames": [
-        "jellyfin/jellyfin",
-        "ghcr.io/advplyr/audiobookshelf",
-        "ollama/ollama",
-        "ghcr.io/gethomepage/homepage",
-        "louislam/uptime-kuma",
-        "louislam/dockge",
-        "docker.n8n.io/n8nio/n8n",
-        "nginx",
-        "busybox",
-        "willfarrell/autoheal"
-      ],
-      "groupName": "non-critical services",
-      "groupSlug": "non-critical-updates",
-      "matchUpdateTypes": ["patch"],
-      "automerge": true
     },
     {
       "description": "Major updates need manual review",
