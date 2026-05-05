@@ -18,9 +18,27 @@ dns:
   port: 53
   bind_hosts:
     - 0.0.0.0
+  # Cloudflare DoH + DNS4EU Protective DoH. Quad9 was dropped 2026-05-05
+  # after AdGuardHome#8014 — Quad9 DoH endpoint drops connections with
+  # "unexpected EOF" intermittently from this network (likely PPPoE MTU
+  # interaction), no upstream fix. DNS4EU is the EU's official replacement
+  # for the now-discontinued dns0.eu, run by Whalebone consortium under
+  # the European Commission, EU-hosted, GDPR-by-design, malware filtering.
   upstream_dns:
     - https://dns.cloudflare.com/dns-query
-    - https://dns.quad9.net/dns-query
+    - https://protective.joindns4.eu/dns-query
+  # Parallel: query both upstreams simultaneously, use first response.
+  # AdGuard's official recommendation when upstreams may be unstable.
+  # Trades ~50 bytes/query bandwidth for resilience against any single
+  # upstream failing — the EOF-style intermittent drops we hit on Quad9
+  # become invisible to clients because Cloudflare answers first.
+  upstream_mode: parallel
+  # Plain DNS fallback to two different operators if both DoH upstreams
+  # fail. Quad9 plain (53/udp) is fine — only Quad9 *DoH* has the EOF
+  # problem. Cloudflare's secondary anycast IP for redundancy.
+  fallback_dns:
+    - 9.9.9.9
+    - 1.0.0.1
   bootstrap_dns:
     - 9.9.9.9
     - 149.112.112.112
