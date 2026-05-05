@@ -13,6 +13,9 @@ Don't duplicate that content here. AGENTS.md only holds rules and pointers.
 - [docs/operational-notes.md](docs/operational-notes.md) - per-service
   dev-facing quirks (AdGuard config keys, NPM upload limits, OpenClaw
   device pairing, games hub mount layout, etc.)
+- [docs/service-choices.md](docs/service-choices.md) - why we run the
+  software we do (AdGuard vs Pi-hole, Immich vs Photoprism, etc.) and
+  what would force a re-evaluation
 - [SECURITY.md](SECURITY.md) - security model
 - [ROADMAP.md](ROADMAP.md) - planned changes
 - [infrastructure/cloudflare.md](infrastructure/cloudflare.md) - CF Tunnel + Access

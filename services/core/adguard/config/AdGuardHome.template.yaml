@@ -52,6 +52,11 @@ dns:
   # throttled. AdGuard's ratelimit_whitelist only accepts bare IPs (no CIDR),
   # so a plain higher limit is the right knob for a trusted LAN.
   ratelimit: 100
+  # Disable private rDNS — local_ptr_upstreams is empty (no internal DNS
+  # holding hostnames for 192.168.0.0/24), so AdGuard auto-disables this
+  # at runtime with a warning. Setting it explicitly silences the warning
+  # and matches actual behaviour.
+  use_private_ptr_resolvers: false
   enable_dnssec: true
   cache_size: 4194304
   cache_ttl_min: 300
