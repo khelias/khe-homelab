@@ -3,6 +3,7 @@
 .env.*
 *.env
 !.env.example
+!.env.heartbeat.example
 
 # Runtime data
 data/

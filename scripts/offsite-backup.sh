@@ -5,6 +5,33 @@
 # One-time setup: see infrastructure/offsite-backup.md.
 set -uo pipefail
 
+# Optional heartbeat ping — silently disabled if no URL configured.
+# Setup: docs/operational-notes.md#backup-heartbeats. Source format:
+#   HEARTBEAT_URL_OFFSITE=https://uptime-kuma.lan/api/push/<token>
+HEARTBEAT_ENV="${HOME}/homelab/.env.heartbeat"
+HEARTBEAT_URL=""
+if [ -f "$HEARTBEAT_ENV" ]; then
+  # shellcheck source=/dev/null
+  . "$HEARTBEAT_ENV"
+  HEARTBEAT_URL="${HEARTBEAT_URL_OFFSITE:-}"
+fi
+heartbeat() {
+  [ -n "$HEARTBEAT_URL" ] || return 0
+  curl -fsS --max-time 5 -G \
+    --data-urlencode "status=${1:-up}" \
+    --data-urlencode "msg=${2:-}" \
+    "$HEARTBEAT_URL" >/dev/null 2>&1 || true
+}
+on_exit() {
+  local code=$?
+  if [ "$code" -eq 0 ]; then
+    heartbeat up "OK"
+  else
+    heartbeat down "exit=$code"
+  fi
+}
+trap on_exit EXIT
+
 # Serialize: cron run at 03:00 + a manual run would contend on the restic
 # repo lock. flock makes the late-comer exit cleanly instead of aborting
 # deep inside restic with a confusing stale-lock trace.
