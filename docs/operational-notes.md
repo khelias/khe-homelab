@@ -26,7 +26,9 @@ file in every session is wasteful; the entries are independent.
 - **`ratelimit_whitelist` does NOT accept CIDR**, only bare IPs. The
   LAN-friendly knob is a higher `ratelimit` value (currently 100 req/s
   per /24).
-- **Memory limit 512M.** 256M was too tight once OISD big + Hagezi loaded.
+- **Memory limit 1G.** 256M was too tight once OISD big + Hagezi loaded; 512M
+  also turned out to be too tight (2-4 OOM-kills/day observed early May 2026,
+  ~10s DNS outage each = "wifi dropped" symptom on clients).
 - **Per-client filtering** (parental + safesearch for kids) is the right
   architecture but requires >=1 MAC/IP per persistent client. AdGuard
   crash-loops on empty `ids: []`. Not provisioned yet; wire when kids'
