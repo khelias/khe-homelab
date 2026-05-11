@@ -39,7 +39,7 @@ jobs:
           DUMP_NAME: nextcloud-db.dump
           DB_USER: nextcloud
           DB_NAME: nextcloud
-          PG_IMAGE: postgres:16-alpine
+          PG_IMAGE: postgres:18-alpine
           MIN_TABLES: '50'
         run: |
           set -euo pipefail
