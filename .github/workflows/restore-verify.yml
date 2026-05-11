@@ -117,9 +117,10 @@ jobs:
           # does in production. If this drifts from prod's init-db.sh,
           # the restore test stops representing reality — keep them in
           # sync.
-          docker exec pg-restore-verify psql -U postgres <<SQL
+          docker exec -i pg-restore-verify psql -v ON_ERROR_STOP=1 -U postgres <<SQL
           CREATE ROLE ${DB_USER} WITH LOGIN PASSWORD 'verify';
           CREATE DATABASE ${DB_NAME} OWNER ${DB_USER};
+          GRANT ALL ON SCHEMA public TO ${DB_USER};
           SQL
 
           STAGE="pg-restore"
