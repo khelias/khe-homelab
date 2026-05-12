@@ -1,0 +1,16 @@
+# Dashboard provider — anything dropped under /var/lib/grafana/dashboards
+# inside the container is auto-loaded. We bind no dashboards on day one;
+# this provider is here so future dashboard JSONs land automatically.
+apiVersion: 1
+
+providers:
+  - name: 'default'
+    orgId: 1
+    folder: ''
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: true

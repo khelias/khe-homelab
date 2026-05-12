@@ -188,6 +188,49 @@ returns 403 for `/study/` and `/adventure/`.
 - Homepage dashboard moved to `dash.khe.ee` (CF Access protected).
 - `HOMEPAGE_ALLOWED_HOSTS=dash.khe.ee` in homepage `.env`.
 
+## Observability (Loki + Grafana + OTel + Alertmanager)
+
+- **Stack layout.** Four sub-stacks under `services/observability/`,
+  each with its own `docker-compose.yml`: `loki/`, `grafana/`,
+  `otel-collector/`, `alertmanager/`. Deploy order is enforced by
+  `scripts/deploy.sh` / `scripts/deploy-stacks.sh` DEPLOY_ORDER:
+  loki first (owns the `observability` network), then alertmanager,
+  grafana, otel-collector.
+- **First deploy.** Copy
+  `services/observability/grafana/.env.example` → `.env` and pick a
+  Grafana admin password. Copy
+  `services/observability/alertmanager/config/alertmanager.yml.example`
+  → `alertmanager.yml`, paste the Telegram bot token + chat ID
+  (grab both from Uptime Kuma's web UI → Settings → Notifications;
+  the same bot is reused). The live `alertmanager.yml` is
+  `.gitignored`.
+- **Loki storage.** Chunks + index live on the ZFS mirror at
+  `/srv/data/loki`, not NVMe — log retention is 30 days and this
+  is bulk data, not hot. First run will need the directory created:
+  `sudo mkdir -p /srv/data/loki && sudo chown 10001:10001 /srv/data/loki`
+  (Loki runs as UID 10001). Without ownership, Loki errors out on
+  boltdb-shipper init.
+- **Log shipping.** OTel Collector reads Docker's per-container JSON
+  log files at `/var/lib/docker/containers/*/*-json.log` (mounted
+  read-only). No Docker socket access in v1 — container ID is
+  derived from the file path and used as the Loki stream label.
+  Container-*name* enrichment (via a hardened socket proxy like
+  the autoheal pattern) is a v2 follow-up; until then queries look
+  up containers by 12-char ID prefix.
+- **Loki ruler.** Alert rules live in
+  `services/observability/loki/config/rules/fake/` — the `fake`
+  subdir is Loki's default tenant ID when `auth_enabled: false`.
+  Bind-mounted read-only; Loki polls every minute, fires via
+  Alertmanager v2 protocol.
+- **Grafana ingress.** LAN-only for v1 via NPM (`grafana.khe.ee`).
+  Add to AdGuard split-horizon DNS + NPM proxy host before the
+  domain resolves. **Do not** expose via Cloudflare Tunnel without
+  CF Access OTP — log search is the door to every container's
+  history. CF integration is a deliberate follow-up step.
+- **Telegram channel.** Reuses the existing Uptime Kuma bot for
+  simplicity. If alert volume gets noisy, split into a second bot
+  + chat to keep uptime pings and log alerts on different channels.
+
 ## Healthchecks
 
 - **games**: uses `127.0.0.1` (NOT `localhost`). Busybox wget DNS issue in

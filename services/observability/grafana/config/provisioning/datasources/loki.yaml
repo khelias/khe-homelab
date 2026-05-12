@@ -1,0 +1,14 @@
+# Grafana datasource provisioning. Loaded at startup; no UI click-ops
+# needed to wire Loki in.
+apiVersion: 1
+
+datasources:
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    isDefault: true
+    editable: false
+    jsonData:
+      maxLines: 5000
+      timeout: 60

@@ -23,6 +23,10 @@ DEPLOY_ORDER=(
   "ai/openclaw"
   "apps/landing"
   "apps/games"
+  "observability/loki"
+  "observability/alertmanager"
+  "observability/grafana"
+  "observability/otel-collector"
 )
 
 usage() {

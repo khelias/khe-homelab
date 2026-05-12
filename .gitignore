@@ -15,6 +15,10 @@ logs/
 # Canonical baseline lives in AdGuardHome.template.yaml; copy to AdGuardHome.yaml on first deploy.
 services/core/adguard/config/AdGuardHome.yaml
 
+# Alertmanager live config — contains the Telegram bot token.
+# Baseline lives in alertmanager.yml.example; copy on first deploy.
+services/observability/alertmanager/config/alertmanager.yml
+
 # Homepage auto-creates this sample file; we don't use Kubernetes.
 services/core/homepage/config/kubernetes.yaml
 

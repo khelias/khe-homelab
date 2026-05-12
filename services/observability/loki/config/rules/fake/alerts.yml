@@ -1,0 +1,36 @@
+# Loki ruler alert rules. With auth_enabled=false in Loki, the tenant
+# directory is literally "fake" — that's the convention, not a typo.
+#
+# Add new groups as the homelab grows. Keep alerts noise-free: a rule
+# that fires on a daily cron's expected stderr is worse than no rule.
+groups:
+  - name: adventure-proxy
+    interval: 1m
+    rules:
+      - alert: AdventureProxyErrorBurst
+        expr: |
+          sum by (container_id) (
+            count_over_time({container_id=~".+"} |= "adventure-proxy" | json | level="ERROR" [5m])
+          ) > 3
+        for: 2m
+        labels:
+          severity: warning
+          container_name: adventure-proxy
+        annotations:
+          summary: "adventure-proxy logged >3 ERROR lines in 5 minutes"
+
+  - name: containers
+    interval: 1m
+    rules:
+      # Anything that crashes hard tends to emit "panic", "fatal", or
+      # "OOMKilled" near the end. Cast a wide net here, narrow later.
+      - alert: ContainerHardCrash
+        expr: |
+          sum by (container_id) (
+            count_over_time({container_id=~".+"} |~ "(?i)panic|fatal error|oom[- ]?killed" [5m])
+          ) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "container emitted panic/fatal/OOM in last 5 minutes"
