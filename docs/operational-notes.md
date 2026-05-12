@@ -188,14 +188,23 @@ returns 403 for `/study/` and `/adventure/`.
 - Homepage dashboard moved to `dash.khe.ee` (CF Access protected).
 - `HOMEPAGE_ALLOWED_HOSTS=dash.khe.ee` in homepage `.env`.
 
-## Observability (Loki + Grafana + OTel + Alertmanager)
+## Observability (Loki + Grafana + Alloy + Alertmanager)
 
 - **Stack layout.** Four sub-stacks under `services/observability/`,
   each with its own `docker-compose.yml`: `loki/`, `grafana/`,
-  `otel-collector/`, `alertmanager/`. Deploy order is enforced by
-  `scripts/deploy.sh` / `scripts/deploy-stacks.sh` DEPLOY_ORDER:
-  loki first (owns the `observability` network), then alertmanager,
-  grafana, otel-collector.
+  `alloy/` (with a sibling `alloy-socket-proxy`), `alertmanager/`.
+  Deploy order is enforced by `scripts/deploy.sh` /
+  `scripts/deploy-stacks.sh` DEPLOY_ORDER: loki first (owns the
+  `observability` network), then alertmanager, grafana, alloy.
+- **Why Alloy, not OTel Collector contrib.** Grafana Alloy is an
+  OpenTelemetry Collector distribution — 100% OTLP compatible — with
+  native Docker discovery (`discovery.docker`) and a native Docker
+  log source (`loki.source.docker`) that the upstream OTel
+  Collector lacks. Promtail reached end-of-life on 2026-03-02, so
+  it was never a candidate. The initial implementation tried
+  upstream OTel Collector + filelog and ended up needing a hand-
+  maintained container_id → container_name map; switching to Alloy
+  removes that whole layer.
 - **First deploy.** Copy
   `services/observability/grafana/.env.example` → `.env` and pick a
   Grafana admin password. Copy
@@ -210,39 +219,35 @@ returns 403 for `/study/` and `/adventure/`.
   `sudo mkdir -p /srv/data/loki && sudo chown 10001:10001 /srv/data/loki`
   (Loki runs as UID 10001). Without ownership, Loki errors out on
   boltdb-shipper init.
-- **Log shipping.** OTel Collector reads Docker's per-container JSON
-  log files at `/var/lib/docker/containers/*/*-json.log` (mounted
-  read-only). No Docker socket access in v1 — container ID is
-  derived from the file path and used as the Loki stream label.
-  Container-*name* enrichment (via a hardened socket proxy like
-  the autoheal pattern) is a v2 follow-up; until then queries look
-  up containers by 12-char ID prefix.
+- **Log shipping.** Alloy talks to Docker through the hardened
+  `alloy-socket-proxy` (tecnativa/docker-socket-proxy with only
+  `CONTAINERS: 1`, no write surface — same pattern as
+  `services/core/autoheal/`). `loki.source.docker` reads each
+  container's log stream via `GET /containers/{id}/logs` and ships
+  to Loki via the native push API. `container_name`, `stream`, and
+  `cluster` are first-class stream labels — query with
+  `{container_name="adventure-proxy"}`.
 - **Loki ruler.** Alert rules live in
   `services/observability/loki/config/rules/fake/` — the `fake`
   subdir is Loki's default tenant ID when `auth_enabled: false`.
   Bind-mounted read-only; Loki polls every minute, fires via
   Alertmanager v2 protocol.
-- **Grafana ingress.** LAN-only for v1 via NPM (`grafana.khe.ee`).
-  Add to AdGuard split-horizon DNS + NPM proxy host before the
-  domain resolves. **Do not** expose via Cloudflare Tunnel without
-  CF Access OTP — log search is the door to every container's
-  history. CF integration is a deliberate follow-up step.
+- **Grafana dashboard.** The "Homelab — Container logs" dashboard
+  uses a Loki query variable `label_values({cluster="homelab"},
+  container_name)` — the dropdown auto-populates from whatever
+  containers Alloy is currently shipping. No manual refresh, no
+  ID-to-name map. Provisioned read-only via
+  `config/provisioning/dashboards/files/`.
+- **Grafana ingress.** LAN-only for v1 via host port `3030` (NPM
+  is taken by homepage on port 3000) + direct via NPM at
+  `grafana.khe.ee`. Add to AdGuard split-horizon DNS + NPM proxy
+  host before the domain resolves. **Do not** expose via Cloudflare
+  Tunnel without CF Access OTP — log search is the door to every
+  container's history. CF integration is a deliberate follow-up
+  step.
 - **Telegram channel.** Reuses the existing Uptime Kuma bot for
   simplicity. If alert volume gets noisy, split into a second bot
   + chat to keep uptime pings and log alerts on different channels.
-- **Container name in Grafana.** OTel only ships the 12-char
-  container_id as a Loki stream label (name enrichment is a v2 item
-  that needs custom infrastructure). The "Homelab — Container logs"
-  dashboard hides this by mapping IDs to friendly names via a custom
-  template variable. The map goes stale whenever a container is
-  recreated (Renovate bumps, --force-recreate, manual `up -d`). To
-  refresh:
-
-      ./scripts/refresh-grafana-container-map.sh --remote khe@docker-vm
-
-  …then `git add services/observability/grafana/.../khe-homelab-logs.json`
-  and commit. Grafana's provisioning provider re-scans every 30s, so
-  the change shows up without a restart.
 
 ## Healthchecks
 

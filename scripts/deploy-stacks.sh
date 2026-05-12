@@ -26,7 +26,7 @@ DEPLOY_ORDER=(
   "observability/loki"
   "observability/alertmanager"
   "observability/grafana"
-  "observability/otel-collector"
+  "observability/alloy"
 )
 
 usage() {

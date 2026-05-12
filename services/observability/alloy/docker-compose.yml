@@ -1,0 +1,84 @@
+services:
+  # Hardened socket proxy in front of Docker's API — Alloy needs
+  # GET /containers (list + inspect) and GET /containers/{id}/logs to
+  # do native Docker log shipping with per-container metadata.
+  # Same pattern as services/core/autoheal/, just a separate proxy
+  # so the two consumers don't share trust boundaries.
+  alloy-socket-proxy:
+    image: tecnativa/docker-socket-proxy:v0.4.2@sha256:1f3a6f303320723d199d2316a3e82b2e2685d86c275d5e3deeaf182573b47476
+    container_name: alloy-socket-proxy
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      CONTAINERS: 1      # GET /containers/* (list, inspect, logs)
+      POST: 0            # No writes of any kind
+      AUTH: 0
+      SECRETS: 0
+      SWARM: 0
+      TASKS: 0
+      CONFIGS: 0
+      IMAGES: 0
+      NETWORKS: 0
+      VOLUMES: 0
+      INFO: 0
+      LOG_LEVEL: warning
+    networks:
+      - alloy-socket
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+          cpus: '0.25'
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:2375/_ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # Grafana Alloy — OpenTelemetry Collector distribution with native
+  # Docker discovery. Replaces the v1 OTel Collector filelog approach;
+  # ships logs straight to Loki via the native push API with
+  # container_name as a first-class stream label.
+  alloy:
+    image: grafana/alloy:v1.16.1@sha256:51aeb9d829239345070619dad3edd6873186f913c84f45b365b74574fcb38ec0
+    container_name: alloy
+    restart: unless-stopped
+    depends_on:
+      alloy-socket-proxy:
+        condition: service_healthy
+    command:
+      - run
+      - --storage.path=/var/lib/alloy/data
+      - --server.http.listen-addr=0.0.0.0:12345
+      - /etc/alloy/config.alloy
+    environment:
+      - TZ=Europe/Tallinn
+    volumes:
+      - ./config/config.alloy:/etc/alloy/config.alloy:ro
+      - alloy_data:/var/lib/alloy/data
+    networks:
+      - observability
+      - alloy-socket
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:12345/-/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.50'
+
+volumes:
+  alloy_data:
+
+networks:
+  observability:
+    external: true
+  alloy-socket:
+    driver: bridge
+    internal: true  # No external access — only alloy <-> socket-proxy
