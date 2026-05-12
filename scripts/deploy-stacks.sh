@@ -12,6 +12,7 @@ DEPLOY_ORDER=(
   "core/dockge"
   "core/uptime-kuma"
   "core/homepage"
+  "core/autoheal"
   "media/immich"
   "media/jellyfin"
   "media/audiobookshelf"
