@@ -1,0 +1,58 @@
+// Grafana Alloy config — Docker log shipper for every container on
+// this host. Talks to Docker through the hardened alloy-socket-proxy
+// (CONTAINERS: 1 only, no write surface).
+
+// 1. Discover every running container.
+discovery.docker "containers" {
+	host             = "tcp://alloy-socket-proxy:2375"
+	refresh_interval = "30s"
+}
+
+// 2. Convert Docker discovery metadata into Loki stream labels.
+//    __meta_docker_container_name has a leading "/" — strip it.
+//    cluster is static, useful when this homelab is one host of many.
+discovery.relabel "containers" {
+	targets = discovery.docker.containers.targets
+
+	rule {
+		source_labels = ["__meta_docker_container_name"]
+		regex         = "/(.*)"
+		target_label  = "container_name"
+	}
+
+	rule {
+		source_labels = ["__meta_docker_container_log_stream"]
+		target_label  = "stream"
+	}
+
+	rule {
+		target_label = "cluster"
+		replacement  = "homelab"
+	}
+}
+
+// 3. Read each container's logs via Docker's logs API. The socket
+//    proxy enforces read-only; the GET /containers/{id}/logs endpoint
+//    is part of the CONTAINERS allow-list.
+loki.source.docker "containers" {
+	host          = "tcp://alloy-socket-proxy:2375"
+	targets       = discovery.docker.containers.targets
+	relabel_rules = discovery.relabel.containers.rules
+	forward_to    = [loki.write.local.receiver]
+}
+
+// 4. Push to the in-cluster Loki via its native push API. Loki has
+//    auth_enabled: false, so we don't need a tenant header — Loki
+//    defaults to the "fake" tenant.
+loki.write "local" {
+	endpoint {
+		url = "http://loki:3100/loki/api/v1/push"
+	}
+}
+
+// 5. Expose Alloy's own component graph + health on :12345 for
+//    debugging. Bound only to the observability network, not the
+//    LAN — no host port mapping in compose.
+livedebugging {
+	enabled = true
+}
