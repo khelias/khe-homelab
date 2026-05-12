@@ -6,6 +6,11 @@ services:
     image: grafana/grafana:11.6.0@sha256:62d2b9d20a19714ebfe48d1bb405086081bc602aa053e28cf6d73c7537640dfb
     container_name: grafana
     restart: unless-stopped
+    ports:
+      # Direct LAN/Tailscale access before NPM is wired up. NPM ingress
+      # still reaches us via the `proxy` network on container port 3000.
+      # Port 3000 on host is taken by homepage — using 3030 here.
+      - "3030:3000"
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
       - GF_SERVER_ROOT_URL=https://${GRAFANA_DOMAIN}
