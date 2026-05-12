@@ -1,0 +1,271 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": false,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": true,
+  "panels": [
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 22,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "{container_id=~\"$container_id\"}",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Container logs",
+      "type": "logs"
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "tags": [
+    "homelab",
+    "observability"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
+        "description": "Pick one or more containers; the dropdown maps friendly names to 12-char container_ids.",
+        "includeAll": true,
+        "label": "Container",
+        "multi": true,
+        "name": "container_id",
+        "options": [
+          {
+            "selected": false,
+            "text": "All",
+            "value": "$__all"
+          },
+          {
+            "selected": false,
+            "text": "adguard",
+            "value": "c2925035ed40"
+          },
+          {
+            "selected": false,
+            "text": "adventure-proxy",
+            "value": "18364e3ad1b5"
+          },
+          {
+            "selected": false,
+            "text": "alertmanager",
+            "value": "27e39ccb3b7d"
+          },
+          {
+            "selected": false,
+            "text": "audiobookshelf",
+            "value": "7864c8c9813d"
+          },
+          {
+            "selected": false,
+            "text": "autoheal",
+            "value": "1f4873a3c893"
+          },
+          {
+            "selected": false,
+            "text": "autoheal-socket-proxy",
+            "value": "0d73cc4f0122"
+          },
+          {
+            "selected": false,
+            "text": "cloudflare-tunnel",
+            "value": "9e6e75a9e70a"
+          },
+          {
+            "selected": false,
+            "text": "dockge",
+            "value": "29993bc5b0bf"
+          },
+          {
+            "selected": false,
+            "text": "games",
+            "value": "c892e3740712"
+          },
+          {
+            "selected": false,
+            "text": "grafana",
+            "value": "aae8ea220c00"
+          },
+          {
+            "selected": false,
+            "text": "homepage",
+            "value": "636be942c539"
+          },
+          {
+            "selected": false,
+            "text": "immich-machine-learning",
+            "value": "8ce094fa5e84"
+          },
+          {
+            "selected": false,
+            "text": "immich-postgres",
+            "value": "c7f454be878f"
+          },
+          {
+            "selected": false,
+            "text": "immich-server",
+            "value": "4402e37b650f"
+          },
+          {
+            "selected": false,
+            "text": "immich-valkey",
+            "value": "ee0d57dec21c"
+          },
+          {
+            "selected": false,
+            "text": "jellyfin",
+            "value": "8ededdd2463d"
+          },
+          {
+            "selected": false,
+            "text": "landing",
+            "value": "7b13a3fa55bc"
+          },
+          {
+            "selected": false,
+            "text": "loki",
+            "value": "390bf0af8bf3"
+          },
+          {
+            "selected": false,
+            "text": "n8n",
+            "value": "2e422d07dbc9"
+          },
+          {
+            "selected": false,
+            "text": "n8n-db",
+            "value": "4968548e1d0f"
+          },
+          {
+            "selected": false,
+            "text": "nextcloud",
+            "value": "684ba0a6fa06"
+          },
+          {
+            "selected": false,
+            "text": "nextcloud-cron",
+            "value": "1fdb56e9bc89"
+          },
+          {
+            "selected": false,
+            "text": "nextcloud-db",
+            "value": "59860d9806d4"
+          },
+          {
+            "selected": false,
+            "text": "nextcloud-redis",
+            "value": "64261e76eea3"
+          },
+          {
+            "selected": false,
+            "text": "nginx-proxy-manager",
+            "value": "ea9ee9c9d6cf"
+          },
+          {
+            "selected": false,
+            "text": "ollama",
+            "value": "a4ce62fc7aba"
+          },
+          {
+            "selected": false,
+            "text": "openclaw",
+            "value": "270f878182f0"
+          },
+          {
+            "selected": false,
+            "text": "openclaw-socket-proxy",
+            "value": "197d31664e49"
+          },
+          {
+            "selected": false,
+            "text": "otel-collector",
+            "value": "be60429f59c6"
+          },
+          {
+            "selected": false,
+            "text": "paperless",
+            "value": "873c515bb3b1"
+          },
+          {
+            "selected": false,
+            "text": "paperless-db",
+            "value": "ebd876463ae6"
+          },
+          {
+            "selected": false,
+            "text": "paperless-redis",
+            "value": "77768b569a96"
+          },
+          {
+            "selected": false,
+            "text": "trips",
+            "value": "465b4c9d4b18"
+          },
+          {
+            "selected": false,
+            "text": "uptime-kuma",
+            "value": "9f933622b88d"
+          },
+          {
+            "selected": false,
+            "text": "vaultwarden",
+            "value": "70763864cf4a"
+          }
+        ],
+        "query": "adguard : c2925035ed40, adventure-proxy : 18364e3ad1b5, alertmanager : 27e39ccb3b7d, audiobookshelf : 7864c8c9813d, autoheal : 1f4873a3c893, autoheal-socket-proxy : 0d73cc4f0122, cloudflare-tunnel : 9e6e75a9e70a, dockge : 29993bc5b0bf, games : c892e3740712, grafana : aae8ea220c00, homepage : 636be942c539, immich-machine-learning : 8ce094fa5e84, immich-postgres : c7f454be878f, immich-server : 4402e37b650f, immich-valkey : ee0d57dec21c, jellyfin : 8ededdd2463d, landing : 7b13a3fa55bc, loki : 390bf0af8bf3, n8n : 2e422d07dbc9, n8n-db : 4968548e1d0f, nextcloud : 684ba0a6fa06, nextcloud-cron : 1fdb56e9bc89, nextcloud-db : 59860d9806d4, nextcloud-redis : 64261e76eea3, nginx-proxy-manager : ea9ee9c9d6cf, ollama : a4ce62fc7aba, openclaw : 270f878182f0, openclaw-socket-proxy : 197d31664e49, otel-collector : be60429f59c6, paperless : 873c515bb3b1, paperless-db : ebd876463ae6, paperless-redis : 77768b569a96, trips : 465b4c9d4b18, uptime-kuma : 9f933622b88d, vaultwarden : 70763864cf4a",
+        "queryValue": "",
+        "skipUrlSync": false,
+        "type": "custom"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "Europe/Tallinn",
+  "title": "Homelab — Container logs",
+  "uid": "khe-homelab-logs",
+  "version": 1,
+  "weekStart": ""
+}

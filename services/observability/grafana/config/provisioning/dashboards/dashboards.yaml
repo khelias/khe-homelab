@@ -1,7 +1,16 @@
-# Dashboard provider — intentionally empty until v1 has dashboards to
-# load. Enabling a file provider with a path that doesn't exist makes
-# Grafana log a "failed to search for dashboards" error every 30s,
-# which we don't want polluting Loki. Add a provider here together
-# with the first dashboard JSON.
+# Dashboard provider — loads any JSON dashboard from
+# /etc/grafana/provisioning/dashboards/files/ (bind-mounted read-only).
+# Picked up at startup and re-scanned every updateIntervalSeconds.
 apiVersion: 1
-providers: []
+
+providers:
+  - name: homelab
+    orgId: 1
+    folder: Homelab
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: false
+    options:
+      path: /etc/grafana/provisioning/dashboards/files
+      foldersFromFilesStructure: false
