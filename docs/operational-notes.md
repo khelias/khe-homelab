@@ -230,6 +230,19 @@ returns 403 for `/study/` and `/adventure/`.
 - **Telegram channel.** Reuses the existing Uptime Kuma bot for
   simplicity. If alert volume gets noisy, split into a second bot
   + chat to keep uptime pings and log alerts on different channels.
+- **Container name in Grafana.** OTel only ships the 12-char
+  container_id as a Loki stream label (name enrichment is a v2 item
+  that needs custom infrastructure). The "Homelab — Container logs"
+  dashboard hides this by mapping IDs to friendly names via a custom
+  template variable. The map goes stale whenever a container is
+  recreated (Renovate bumps, --force-recreate, manual `up -d`). To
+  refresh:
+
+      ./scripts/refresh-grafana-container-map.sh --remote khe@docker-vm
+
+  …then `git add services/observability/grafana/.../khe-homelab-logs.json`
+  and commit. Grafana's provisioning provider re-scans every 30s, so
+  the change shows up without a restart.
 
 ## Healthchecks
 
