@@ -46,6 +46,7 @@ services/
   productivity/    Nextcloud, Paperless-ngx
   ai/              Ollama, n8n, OpenClaw (+ workspace/ for agent config)
   apps/            landing, games hub, trips
+  observability/   Loki, Grafana, OTel Collector, Alertmanager (one stack)
 infrastructure/    Proxmox, network, Cloudflare, Tailscale docs
 scripts/           setup, deploy.sh, backup.sh, hardening
 docs/              operational-notes.md (service quirks not in README)

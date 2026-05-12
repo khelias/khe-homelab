@@ -18,13 +18,14 @@ graph TB
     CF -->|12 domains direct<br/>CF Access OTP on<br/>dash, n8n, openclaw| DVM
     NPM --> DVM
 
-    subgraph DVM[Docker VM · 192.168.0.11 — 17 services · 27 containers]
+    subgraph DVM[Docker VM · 192.168.0.11 — 18 services · 31 containers]
         direction LR
         Core["<b>Core</b><br/>Homepage · Vaultwarden<br/>Dockge · Uptime Kuma"]
         Media["<b>Media</b><br/>Immich · Jellyfin<br/>Audiobookshelf"]
         Prod["<b>Productivity</b><br/>Nextcloud · Paperless-ngx"]
         AI["<b>AI</b><br/>Ollama · n8n · OpenClaw"]
         Apps["<b>Apps</b><br/>Landing Page · games hub"]
+        Obs["<b>Observability</b><br/>Loki · Grafana<br/>OTel Collector · Alertmanager"]
     end
 
     DVM --> HDD[(ZFS Mirror · 2× 12TB<br/>NFS /srv)]
@@ -74,6 +75,7 @@ Jellyfin and Immich machine-learning both use `/dev/dri` for Quick Sync accelera
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/dockge.svg" width="22" /> | Dockge | LAN only | Docker Compose management UI |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/nginx-proxy-manager.svg" width="22" /> | Nginx Proxy Manager | LAN only | Reverse proxy + wildcard SSL for LAN traffic |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/cloudflare.svg" width="22" /> | Cloudflare Tunnel | — | Secure external access (no open ports) |
+| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/grafana.svg" width="22" /> | Grafana + Loki + OTel + Alertmanager | `grafana.khe.ee` (LAN) | Log aggregation for every container, Telegram alerting via Loki ruler |
 
 ## Security & Access
 
