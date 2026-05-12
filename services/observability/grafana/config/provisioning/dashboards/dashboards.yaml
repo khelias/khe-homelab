@@ -1,16 +1,7 @@
-# Dashboard provider — anything dropped under /var/lib/grafana/dashboards
-# inside the container is auto-loaded. We bind no dashboards on day one;
-# this provider is here so future dashboard JSONs land automatically.
+# Dashboard provider — intentionally empty until v1 has dashboards to
+# load. Enabling a file provider with a path that doesn't exist makes
+# Grafana log a "failed to search for dashboards" error every 30s,
+# which we don't want polluting Loki. Add a provider here together
+# with the first dashboard JSON.
 apiVersion: 1
-
-providers:
-  - name: 'default'
-    orgId: 1
-    folder: ''
-    type: file
-    disableDeletion: false
-    updateIntervalSeconds: 30
-    allowUiUpdates: true
-    options:
-      path: /var/lib/grafana/dashboards
-      foldersFromFilesStructure: true
+providers: []

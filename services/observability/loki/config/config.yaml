@@ -66,11 +66,14 @@ ruler:
 
 # OTLP ingest. Resource attributes listed here become indexed stream labels;
 # everything else lands as structured metadata (queryable, not indexed).
+# container_name is listed for the v2 enrichment work — until then OTel
+# only sets container_id, which is the visible filter label today.
 distributor:
   otlp_config:
     default_resource_attributes_as_index_labels:
       - service.name
       - service.namespace
+      - container_id
       - container_name
       - cluster
 
