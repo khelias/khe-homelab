@@ -12,14 +12,14 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       CONTAINERS: 1      # GET /containers/* (list, inspect, logs)
-      POST: 0            # No writes of any kind
+      NETWORKS: 1        # discovery.docker resolves __meta_docker_network_* labels
+      IMAGES: 1          # __meta_docker_container_image label resolution
+      POST: 0            # No writes of any kind (all reads above remain read-only)
       AUTH: 0
       SECRETS: 0
       SWARM: 0
       TASKS: 0
       CONFIGS: 0
-      IMAGES: 0
-      NETWORKS: 0
       VOLUMES: 0
       INFO: 0
       LOG_LEVEL: warning
