@@ -11,7 +11,7 @@ services:
     command:
       - --config.file=/etc/alertmanager/alertmanager.yml
       - --storage.path=/alertmanager
-      - --log.level=info
+      - --log.level=debug
     environment:
       - TZ=Europe/Tallinn
     volumes:
