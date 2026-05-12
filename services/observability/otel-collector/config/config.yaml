@@ -31,6 +31,14 @@ receivers:
       - type: move
         from: attributes.log
         to: body
+      # Promote container_id straight into the resource scope (the `resource`
+      # processor can't copy from log-level attributes, so we do it here).
+      # Loki only indexes RESOURCE attributes as stream labels — without this
+      # move, container_id lands as structured metadata and can't be filtered
+      # via `{container_id="..."}` queries.
+      - type: move
+        from: attributes.container_id
+        to: resource["container_id"]
       # Drop noise attributes that we either already consumed or don't need.
       - type: remove
         field: attributes.time
@@ -40,26 +48,16 @@ receivers:
         field: attributes["log.file.path"]
 
 processors:
-  # Promote container_id to a resource attribute so Loki indexes it as a
-  # stream label (cheap to filter by). Add a cluster label so when we
-  # eventually have multiple hosts we can tell them apart.
+  # Static resource attributes: cluster (multi-host future-proofing) and
+  # service.namespace (groups all homelab logs under one logical service).
   resource:
     attributes:
-      - key: container_id
-        from_attribute: container_id
-        action: insert
       - key: cluster
         value: homelab
         action: insert
       - key: service.namespace
         value: khe-homelab
         action: insert
-
-  # Drop the per-log container_id attribute now that it's on the resource.
-  attributes:
-    actions:
-      - key: container_id
-        action: delete
 
   batch:
     timeout: 5s
@@ -92,7 +90,7 @@ service:
   pipelines:
     logs:
       receivers: [filelog]
-      processors: [memory_limiter, resource, attributes, batch]
+      processors: [memory_limiter, resource, batch]
       exporters: [otlphttp/loki]
   telemetry:
     metrics:
