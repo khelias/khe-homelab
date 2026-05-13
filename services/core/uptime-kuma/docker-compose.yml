@@ -11,6 +11,7 @@ services:
       - uptime_kuma_data:/app/data
     networks:
       - proxy
+      - observability
     healthcheck:
       test: ["CMD", "node", "/app/extra/healthcheck.js"]
       interval: 30s
@@ -27,4 +28,6 @@ volumes:
 
 networks:
   proxy:
+    external: true
+  observability:
     external: true
