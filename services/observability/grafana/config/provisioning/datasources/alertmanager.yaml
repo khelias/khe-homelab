@@ -1,0 +1,17 @@
+# Grafana datasource provisioning — Alertmanager.
+# Reached over the shared observability network. Enables the built-in
+# alertlist panel and the Alerting > Contact points UI to talk to the
+# same Alertmanager that the Loki ruler fires into, so we can review
+# active and silenced alerts without bouncing to Alertmanager's own UI.
+apiVersion: 1
+
+datasources:
+  - name: Alertmanager
+    uid: alertmanager
+    type: alertmanager
+    access: proxy
+    url: http://alertmanager:9093
+    editable: false
+    jsonData:
+      implementation: prometheus
+      handleGrafanaManagedAlerts: false
