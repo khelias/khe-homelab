@@ -232,6 +232,20 @@ returns 403 for `/study/` and `/adventure/`.
   subdir is Loki's default tenant ID when `auth_enabled: false`.
   Bind-mounted read-only; Loki polls every minute, fires via
   Alertmanager v2 protocol.
+- **Log-content rules must exclude `container_name="loki"`.** Loki
+  logs every executed query at info level *including the LogQL
+  query string itself*. A rule like `... |~ "panic|fatal" ...`
+  matches its own echo as soon as Alloy ships Loki's logs back in,
+  fires forever, and every ad-hoc Explore query against the rule's
+  metric perpetuates the loop. Always add
+  `container_name!="loki"` to the stream selector. Loki's own
+  health is covered by the Uptime Kuma `/ready` probe instead.
+- **`reject_old_samples_max_age` matches `retention_period`** (both
+  720h). Alloy's `loki.source.docker` tails each container from the
+  start of its log file; containers running >7d would otherwise hit
+  HTTP 400 "timestamp too old" on every batch and silently drop
+  all backlog. Anything inside the retention window is acceptable
+  to ingest.
 - **Grafana dashboard.** The "Homelab — Container logs" dashboard
   uses a Loki query variable `label_values({cluster="homelab"},
   container_name)` — the dropdown auto-populates from whatever
@@ -255,6 +269,13 @@ returns 403 for `/study/` and `/adventure/`.
   alpine - localhost doesn't resolve.
 - **cloudflare-tunnel**: uses `cloudflared version` (distroless image, no
   curl/wget available).
+- **alloy**: no container-internal healthcheck. `grafana/alloy` ships
+  without wget/curl, and adding a thin Dockerfile layer just for a
+  probe breaks the "pinned upstream image" convention. Liveness is
+  covered externally by the Uptime Kuma `Alloy` monitor against
+  `http://alloy:12345/-/ready` on the observability network — that's
+  also why `services/core/uptime-kuma` joins `observability` in
+  addition to `proxy`.
 
 ## Hardware passthrough
 
