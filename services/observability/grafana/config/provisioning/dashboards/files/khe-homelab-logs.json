@@ -6,7 +6,16 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
   "id": null,
-  "links": [],
+  "links": [
+    {
+      "icon": "external link",
+      "tags": [],
+      "targetBlank": true,
+      "title": "Overview",
+      "type": "link",
+      "url": "/d/khe-homelab-overview/homelab-overview"
+    }
+  ],
   "liveNow": true,
   "panels": [
     {
