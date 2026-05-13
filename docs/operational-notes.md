@@ -246,12 +246,22 @@ returns 403 for `/study/` and `/adventure/`.
   HTTP 400 "timestamp too old" on every batch and silently drop
   all backlog. Anything inside the retention window is acceptable
   to ingest.
-- **Grafana dashboard.** The "Homelab — Container logs" dashboard
-  uses a Loki query variable `label_values({cluster="homelab"},
-  container_name)` — the dropdown auto-populates from whatever
-  containers Alloy is currently shipping. No manual refresh, no
-  ID-to-name map. Provisioned read-only via
-  `config/provisioning/dashboards/files/`.
+- **Grafana datasources.** Loki + Alertmanager, both provisioned
+  from `config/provisioning/datasources/` over the shared
+  observability network. Alertmanager wires Grafana's
+  `Alerting > Alert groups` page to the same Alertmanager the Loki
+  ruler fires into, so alert review happens in Grafana rather than
+  Alertmanager's bare UI.
+- **Grafana dashboards.** Two, both read-only via
+  `config/provisioning/dashboards/files/`:
+  - `Homelab — Overview` — single-screen state: active alerts,
+    log volume per container, top-5 ERROR/WARN/FAIL rate, top-10
+    Loki ingestion rate stacked.
+  - `Homelab — Container logs` — Explore-style log stream with a
+    `container_name` dropdown sourced from
+    `label_values({cluster="homelab"}, container_name)`. Auto-
+    populates from whatever Alloy is currently shipping, no manual
+    ID-to-name map.
 - **Grafana ingress.** LAN-only for v1 via host port `3030` (NPM
   is taken by homepage on port 3000) + direct via NPM at
   `grafana.khe.ee`. Add to AdGuard split-horizon DNS + NPM proxy
