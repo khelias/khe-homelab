@@ -279,11 +279,13 @@ returns 403 for `/study/` and `/adventure/`.
   alpine - localhost doesn't resolve.
 - **cloudflare-tunnel**: uses `cloudflared version` (distroless image, no
   curl/wget available).
-- **alloy**: no container-internal healthcheck. `grafana/alloy` ships
-  without wget/curl, and adding a thin Dockerfile layer just for a
-  probe breaks the "pinned upstream image" convention. Liveness is
-  covered externally by the Uptime Kuma `Alloy` monitor against
-  `http://alloy:12345/-/ready` on the observability network — that's
+- **alloy**, **loki** (>= 3.7): no container-internal healthcheck.
+  `grafana/alloy` ships without wget/curl; `grafana/loki` 3.7+ is
+  fully distroless (no shell either). Adding a thin Dockerfile
+  layer just for a probe breaks the "pinned upstream image"
+  convention. Liveness is covered externally by Uptime Kuma
+  monitors against `http://alloy:12345/-/ready` and
+  `http://loki:3100/ready` on the observability network — that's
   also why `services/core/uptime-kuma` joins `observability` in
   addition to `proxy`.
 
