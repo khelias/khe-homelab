@@ -6,7 +6,7 @@ services:
   # This stack owns the `observability` network; deploy this before
   # grafana, otel-collector, or alertmanager (DEPLOY_ORDER handles that).
   loki:
-    image: grafana/loki:3.5.0@sha256:4c431d2e6b9b38718694b31c5d56be7c80dc69c513215fde1aeb5b02cd4e2665
+    image: grafana/loki:3.7.1@sha256:1694e9237e2b3d7cd4ad959bae1f21e12b6184d886d7412bd1b939fb0dd4e75c
     container_name: loki
     restart: unless-stopped
     user: "10001:10001"
@@ -19,12 +19,13 @@ services:
       - /srv/data/loki:/loki
     networks:
       - observability
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q -O- http://localhost:3100/ready | grep -q 'ready'"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
+    # No container-internal healthcheck: grafana/loki >= 3.7 is fully
+    # distroless (no shell, no wget/curl), and adding a thin Dockerfile
+    # layer just for a probe breaks the "pinned upstream image"
+    # convention — same call as services/observability/alloy. Liveness
+    # comes from restart: unless-stopped + the external Uptime Kuma
+    # monitor against http://loki:3100/ready on the observability
+    # network. See docs/operational-notes.md > Healthchecks.
     deploy:
       resources:
         limits:

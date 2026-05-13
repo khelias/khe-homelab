@@ -6,7 +6,14 @@ auth_enabled: false
 server:
   http_listen_port: 3100
   grpc_listen_port: 9095
-  log_level: info
+  # warn drops the ~95% info-level routine chatter (push.go per-batch
+  # receipts, metrics.go per-query, ruler eval, compactor cycle,
+  # index/table maintenance) that otherwise makes container=loki the
+  # single noisiest log stream by an order of magnitude. Operational
+  # signal (slow queries, dropped batches, retention errors) is at
+  # warn or above and still surfaces. Bump back to info temporarily
+  # for query-attribution debugging.
+  log_level: warn
 
 common:
   instance_addr: 127.0.0.1
