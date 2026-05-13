@@ -38,7 +38,11 @@ limits_config:
   allow_structured_metadata: true
   volume_enabled: true
   reject_old_samples: true
-  reject_old_samples_max_age: 168h
+  # Match retention_period so Alloy's initial Docker log tail (reads each
+  # container's history from file start) is not rejected when containers
+  # have been running longer than 7d. Anything inside the 30d retention
+  # window is acceptable to ingest.
+  reject_old_samples_max_age: 720h
 
   # OTLP attribute → Loki stream label mapping. Defaults promote only
   # service.name / service.namespace. Docker container logs come via
