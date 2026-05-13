@@ -23,10 +23,24 @@ groups:
     rules:
       # Anything that crashes hard tends to emit "panic", "fatal", or
       # "OOMKilled" near the end. Cast a wide net here, narrow later.
+      #
+      # container_name!="loki" avoids a self-reference loop: Loki logs
+      # every executed query (ruler eval, querier, frontend, engine) at
+      # info level *including the query string itself*, which contains
+      # this regex literally. Alloy ships Loki's own logs back into
+      # Loki, the regex matches its own echo, the alert fires for
+      # container=loki indefinitely, and ad-hoc Explore queries against
+      # the rule's metric perpetuate the loop. Loki's actual liveness
+      # is covered by the Uptime Kuma probe against http://loki:3100
+      # /ready, which is the right tool for "service is up" anyway.
       - alert: ContainerHardCrash
         expr: |
           sum by (container_name) (
-            count_over_time({cluster="homelab"} |~ "(?i)panic|fatal error|oom[- ]?killed" [5m])
+            count_over_time(
+              {cluster="homelab", container_name!="loki"}
+                |~ "(?i)panic|fatal error|oom[- ]?killed"
+              [5m]
+            )
           ) > 0
         for: 1m
         labels:
