@@ -14,6 +14,9 @@ logs/
 # AdGuard live config — rewritten by the container at runtime + holds admin creds.
 # Canonical baseline lives in AdGuardHome.template.yaml; copy to AdGuardHome.yaml on first deploy.
 services/core/adguard/config/AdGuardHome.yaml
+# Timestamped delta-patch backups (AdGuardHome.yaml.bak*); left untracked on the
+# VM these blocked deploy.yml's git pull --ff-only on 2026-05-13.
+services/core/adguard/config/AdGuardHome.yaml.bak*
 
 # Alertmanager live config — contains the Telegram bot token.
 # Baseline lives in alertmanager.yml.example; copy on first deploy.
