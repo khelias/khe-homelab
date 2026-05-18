@@ -11,9 +11,9 @@
   "platformAutomerge": true,
   "packageRules": [
     {
-      "description": "Automerge all Docker patch and minor updates except critical infrastructure",
+      "description": "Automerge all Docker patch, minor, and digest updates except critical infrastructure",
       "matchManagers": ["docker-compose"],
-      "matchUpdateTypes": ["patch", "minor"],
+      "matchUpdateTypes": ["patch", "minor", "digest"],
       "excludePackageNames": [
         "adguard/adguardhome",
         "jc21/nginx-proxy-manager",
