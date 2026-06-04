@@ -1,6 +1,6 @@
 services:
   nextcloud:
-    image: nextcloud:33.0.3-apache@sha256:b67959acacd54ed2d110e111c8b28c0a87a20129f9427bf5f721a1dc6121decb
+    image: nextcloud:33.0.5-apache@sha256:4c8bf9140e07ad0293e32500de47a97647677cd4cace358db3ecdc225dff9856
     container_name: nextcloud
     restart: unless-stopped
     environment:
@@ -46,7 +46,7 @@ services:
           cpus: '2.00'
 
   nextcloud-cron:
-    image: nextcloud:33.0.3-apache@sha256:b67959acacd54ed2d110e111c8b28c0a87a20129f9427bf5f721a1dc6121decb
+    image: nextcloud:33.0.5-apache@sha256:4c8bf9140e07ad0293e32500de47a97647677cd4cace358db3ecdc225dff9856
     container_name: nextcloud-cron
     restart: unless-stopped
     entrypoint: /cron.sh
