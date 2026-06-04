@@ -14,10 +14,14 @@ Direction and priorities for the homelab — what it should become, beyond curre
 - **Healthcheck cleanup** — standardise `start_period`, replace trivial checks
   (Nextcloud cron `stat`, Ollama `list`) with real probes.
 
-## Medium-term (when offsite + app phase starts)
+## Medium-term (when app phase starts)
 
-- **Offsite backup** — rclone → Backblaze B2 or Wasabi. Today backups live only on
-  the ZFS pool; if the pool fails, we lose backups too (3-2-1 rule violation).
+- **Offsite backup verification** — offsite is live (`restic` → Cloudflare R2, daily,
+  client-side AES-256, `--keep-daily 7 --keep-weekly 4 --keep-monthly 12`; see
+  [infrastructure/offsite-backup.md](infrastructure/offsite-backup.md)), so 3-2-1 is
+  satisfied. Daily `restic check` covers metadata only; schedule a monthly
+  `restic check --read-data-subset` once the repo is large enough to make full-data
+  verification meaningful.
 - **Bootstrap script for full rebuild** — one entry point that takes a fresh
   Proxmox host to a fully working homelab. The 10-step setup is scripted already
   but has no orchestrator handling the reboot points.
