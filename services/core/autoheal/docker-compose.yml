@@ -45,7 +45,7 @@ services:
     # (`if [ -e "$DOCKER_SOCK" ]`), which breaks the tcp:// socket-proxy
     # pattern. Digest-only pin avoids this (no tag → digest is authoritative;
     # with :latest+digest some clients silently re-resolve the tag).
-    image: willfarrell/autoheal@sha256:f94b66c4140193dd1dd10bf9de8e0097aec20473141c99e99d6942b9c192309f
+    image: willfarrell/autoheal@sha256:8af49be76abc3292455abd4e53347e561db60d6490e00edf045a09c0e8f0fb86
     container_name: autoheal
     restart: unless-stopped
     depends_on:
