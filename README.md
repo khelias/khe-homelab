@@ -24,7 +24,7 @@ graph TB
         Media["<b>Media</b><br/>Immich · Jellyfin<br/>Audiobookshelf"]
         Prod["<b>Productivity</b><br/>Nextcloud · Paperless-ngx"]
         AI["<b>AI</b><br/>Ollama · n8n · OpenClaw"]
-        Apps["<b>Apps</b><br/>Landing Page · games hub"]
+        Apps["<b>Apps</b><br/>Landing Page · games hub<br/>pages"]
         Obs["<b>Observability</b><br/>Loki · Grafana<br/>Alloy · Alertmanager"]
     end
 
@@ -35,8 +35,8 @@ graph TB
 > NPM, AdGuard, and Cloudflare Tunnel also run on the same Docker VM (shown above in the ingress tier, not listed again inside Core).
 
 Two independent paths to the same containers:
-- **External** — Cloudflare Tunnel goes directly to each container (12 public hostnames). CF Access OTP gates `dash`, `n8n`, `openclaw`. Subject to Cloudflare's 100MB upload limit.
-- **LAN / Tailscale** — AdGuard rewrites 9 hostnames (`khe.ee`, `dash`, `cloud`, `vault`, `docs`, `photos`, `jellyfin`, `books`, `status`) to `192.168.0.11`, so devices hit NPM with the wildcard cert and no upload limit. `n8n`, `openclaw`, `games` have no LAN shortcut — always via CF.
+- **External** — Cloudflare Tunnel goes directly to each container (14 public hostnames). CF Access OTP gates `dash`, `n8n`, `openclaw`, `trips`, `draft`. Subject to Cloudflare's 100MB upload limit.
+- **LAN / Tailscale** — AdGuard rewrites 9 hostnames (`khe.ee`, `dash`, `cloud`, `vault`, `docs`, `photos`, `jellyfin`, `books`, `status`) to `192.168.0.11`, so devices hit NPM with the wildcard cert and no upload limit. `n8n`, `openclaw`, `games`, `pages`, `draft` have no LAN shortcut — always via CF.
 
 Proxmox VE (192.168.0.10) is the hypervisor; the Docker VM (192.168.0.11) is the only guest. Fast storage (NVMe) holds the VM root + DB volumes; bulk storage (ZFS mirror, NFS-mounted at `/srv`) holds photos, media, documents.
 
@@ -70,6 +70,7 @@ Jellyfin and Immich machine-learning both use `/dev/dri` for Quick Sync accelera
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/uptime-kuma.svg" width="22" /> | **Uptime Kuma** | `status.khe.ee` | Service monitoring and alerts |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/claude-ai.svg" width="22" /> | **OpenClaw** | `openclaw.khe.ee` | AI devops agent with sandboxed Docker access (CF Access protected) |
 | 🎮 | **games hub** | `games.khe.ee` | Launcher + khe-study (`/study/`), auto-deployed from GitHub |
+| 📝 | **pages** | `pages.khe.ee` | Quick-publish HTML pages; edited at `draft.khe.ee` (CF Access protected) |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/ollama.svg" width="22" /> | Ollama | LAN only | Local AI models (qwen2.5:7b, CPU-only) |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/adguard-home.svg" width="22" /> | AdGuard Home | LAN + Tailscale | DNS ad-blocking + split-horizon DNS (filters mobile data too, via Tailscale) |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/dockge.svg" width="22" /> | Dockge | LAN only | Docker Compose management UI |
@@ -199,7 +200,7 @@ services/
 ├── media/           Immich, Jellyfin, Audiobookshelf
 ├── productivity/    Nextcloud, Paperless-ngx
 ├── ai/              Ollama, n8n, OpenClaw (+ workspace/ for agent config)
-└── apps/            Landing Page, games hub (launcher + khe-study)
+└── apps/            Landing Page, games hub (launcher + khe-study), pages (quick-publish)
 
 infrastructure/      Proxmox, network, Cloudflare, and Tailscale documentation
 scripts/             Setup, deploy, backup, and hardening scripts

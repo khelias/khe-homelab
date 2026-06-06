@@ -1,0 +1,57 @@
+services:
+  # Private editor: paste/create an HTML file from a phone, save it. Behind CF
+  # Access. Runs as UID 1000 and only sees /srv (the published tree); the DB
+  # lives in a separate /database mount so it never shows up in the file UI.
+  draft:
+    image: filebrowser/filebrowser:v2.63.12@sha256:fc8c3a46c16bbdf97362b20c50164e97de9c1dd5f63230d28a4cb15248b53ec3
+    container_name: draft
+    restart: unless-stopped
+    user: "1000:1000"
+    environment:
+      - FB_DATABASE=/database/filebrowser.db
+      - FB_ROOT=/srv
+      - FB_ADDRESS=0.0.0.0
+      - FB_PORT=8080
+      - FB_LOG=stdout
+      - TZ=Europe/Tallinn
+    volumes:
+      - /srv/data/pages/app:/srv
+      - /srv/data/pages/db:/database
+    networks:
+      - proxy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8080/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+
+  # Public reader: serves what `draft` writes, read-only. No Access.
+  pages:
+    image: nginx:1.31-alpine@sha256:8b1e78743a03dbb2c95171cc58639fef29abc8816598e27fb910ed2e621e589a
+    container_name: pages
+    restart: unless-stopped
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - /srv/data/pages/app:/usr/share/nginx/html:ro
+    networks:
+      - proxy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:80/robots.txt"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.25'
+
+networks:
+  proxy:
+    external: true
