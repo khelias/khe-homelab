@@ -48,6 +48,7 @@ comparable, the one that scores better on these wins.
 | Document OCR          | Paperless-ngx         | High       | 2026-05-05    |
 | LLM serving           | Ollama                | High       | 2026-05-05    |
 | Workflow automation   | n8n                   | Medium     | 2026-05-05    |
+| Ad-hoc page publishing| FileBrowser (+ nginx) | Medium     | 2026-06-06    |
 | Uptime monitoring     | Uptime Kuma           | High       | 2026-05-05    |
 | Compose UI            | Dockge                | High       | 2026-05-05    |
 | Dashboard             | Homepage              | High       | 2026-05-05    |
@@ -418,6 +419,94 @@ emerging fully-open contender to watch.
 
 **When we'd revisit:** licensing change that constrains personal use, or
 Activepieces reaches integration parity (currently behind by a wide margin).
+
+---
+
+## Ad-hoc page publishing — FileBrowser
+
+**Status: chosen 2026-06-06, not yet deployed.** Recorded here ahead of
+build per the "decide before code" step; the compose/nginx stack and the
+README / operational-notes / cloudflare.md updates land in the build commit.
+
+The need: an idea strikes on the phone, an AI generates a self-contained
+HTML page, and you want it live at a shareable public URL in under a
+minute — without a git commit, a CI run, or fighting the `khe-sites` build
+(whose strict `npm run check` rejects standalone inline-style HTML). The
+authoring surface must stay private (only the owner publishes); the
+published page must be public (anyone with the link can open it).
+
+### Alternatives considered
+
+| Tool             | Notable strengths                                                                 | Why not for us                                                                 |
+|------------------|-----------------------------------------------------------------------------------|---------------------------------------------------------------------------------|
+| **FileBrowser**  | Built-in Ace editor — create a file, paste, save, all from a phone browser; non-root UID, scope-confinable | (selected)                                                                      |
+| dufs             | Single Rust binary, lean, upload + WebDAV                                          | Upload-centric UI, no create-and-edit-text affordance — phone paste is awkward |
+| Pastefy          | Purpose-built paste-sharing, nice UX                                               | Own DB + auth (duplicates CF Access); serves via its own UI, no clean filesystem output for a public nginx |
+| WebDAV + nginx   | Minimal, nginx already in the fleet                                                | No phone-friendly create/edit UI — you'd hand-build the authoring surface       |
+| Bespoke container| Exactly the wanted features                                                       | Build + maintain custom code for what FileBrowser already does                  |
+
+### Why FileBrowser
+
+- **The editor is the deal-breaker.** The core action is "create one HTML
+  file from a phone and paste into it", not "drag a file from the
+  filesystem". FileBrowser's New File + Ace editor does exactly that with
+  no desktop or app dependency; dufs and WebDAV don't.
+- **"Render as a page, not source" is not the tool's job.** It is solved by
+  the existing writer→reader split: FileBrowser writes a file, a separate
+  read-only nginx serves it with a real `text/html` response. This reuses
+  the proven `n8n` (writer) → `landing` (`:ro` `/reports` reader) pattern —
+  zero new architectural concepts.
+- **Safe to run.** UID 1000, write scope confined to `/srv/data/pages/app`
+  (its analog of `N8N_RESTRICT_FILE_ACCESS_TO`), still security-patched in
+  2026 (v2.63.x, "maintenance mode" = stable, low surprise).
+- **Doesn't duplicate Nextcloud.** `cloud.khe.ee` is a heavy app-login sync
+  stack, not a fast paste-to-public-page tool. Different job.
+
+### How it's wired
+
+- Two containers in `services/apps/pages/`, both on the `proxy` network:
+  - `draft` (FileBrowser, **private behind CF Access**, internal port 8080)
+    writes to `/srv/data/pages/app`.
+  - `pages` (nginx `:ro`, **public, no Access**) serves that tree.
+- Hosts: `draft.khe.ee` (Access: Email=owner AND Country=EE) and
+  `pages.khe.ee` (fully public). The two-host split is forced — CF Access
+  gates an entire hostname, so public-GET and private-write cannot share one.
+- `/srv/data/pages` is its own tree, separate from the `khe-sites`-managed
+  roots (`/srv/data/sites/khe`, `/srv/data/games/launcher`), so site deploys
+  never touch it. First deploy needs
+  `mkdir -p /srv/data/pages/app && chown 1000:1000` (a root-owned bind mount
+  blocks the non-root FileBrowser, same as the Loki chown step).
+- Clean URLs: nginx `try_files $uri $uri.html $uri/ =404` — a flat
+  `leht1.html` serves at `pages.khe.ee/leht1`.
+- noindex in two layers: `X-Robots-Tag: noindex` header (authoritative for
+  search engines) plus a `robots.txt` Disallow. House security headers
+  (HSTS, Permissions-Policy, `frame-ancestors 'none'`, `nosniff`) match
+  `games`/`adventure`.
+- **Backup-worthy.** `/srv/data/pages` is the one app tree not reproducible
+  from any git repo (content is user-authored), so it goes in `backup.sh`
+  BIND_MOUNTS — unlike `sites`/`games`/`trips`, which are rebuilt from source.
+
+### Known costs / open decisions
+
+- **Arbitrary public HTML/JS under `*.khe.ee`.** Owner-authored only, and
+  `pages.khe.ee` is same-site-but-not-same-origin to `vault`/`cloud`/etc.;
+  CF Access cookies are host-scoped. Acceptable while only the owner
+  publishes. If untrusted third-party content ever enters scope, the durable
+  fix is moving `pages` to a non-`khe.ee` registrable domain.
+- **No auto-expiry.** Pages accumulate and stay public until manually deleted
+  via the FileBrowser list view. A TTL cron (delete older than N days) plus
+  unguessable slugs is the upgrade path if this bites; not built initially.
+- **FileBrowser generates a random admin password on first run** (printed
+  once to `docker logs draft`) and has its own login. Grab it, log in, change
+  the password, and disable signup, even behind Access.
+
+### When we'd revisit
+
+- We want true paste-and-go with auto-expiring links at volume → a
+  purpose-built pastebin, or the TTL-cron upgrade above.
+- FileBrowser goes unmaintained or drops the in-browser editor.
+- We need multi-user publishing with per-user spaces (FileBrowser supports
+  users, but the access model would need rethinking).
 
 ---
 

@@ -188,6 +188,42 @@ returns 403 for `/study/` and `/adventure/`.
 - Homepage dashboard moved to `dash.khe.ee` (CF Access protected).
 - `HOMEPAGE_ALLOWED_HOSTS=dash.khe.ee` in homepage `.env`.
 
+## Pages (FileBrowser editor + nginx)
+
+Quick-publish surface: paste an AI-generated HTML page from a phone, get a
+public shareable link. Two containers in `services/apps/pages/` sharing
+`/srv/data/pages/app` (writer/reader split, same shape as n8n -> landing
+`/reports`).
+
+- `draft` (FileBrowser `v2.63.12`, runs as UID 1000, internal port 8080) is
+  the **private** editor. `draft.khe.ee` -> `draft:8080` via CF Tunnel, CF
+  Access protected (shared `Email + Country=EE` policy). It only mounts the
+  published tree at `/srv` (`FB_ROOT`); the DB lives in a separate
+  `/srv/data/pages/db:/database` mount (`FB_DATABASE=/database/filebrowser.db`)
+  so it never shows up in the file UI.
+- `pages` (nginx `1.31-alpine`, mirrors landing) is the **public** reader.
+  `pages.khe.ee` -> `pages:80` via CF Tunnel (public, no Access, no AdGuard
+  rewrite). Mounts the same dir `:ro`.
+- **First deploy is permission-sensitive.** Create and chown the tree BEFORE
+  the first `docker compose up`, or Docker auto-creates it root-owned and the
+  non-root FileBrowser cannot write its DB (same trap as Loki):
+  `sudo mkdir -p /srv/data/pages/app /srv/data/pages/db && sudo chown -R 1000:1000 /srv/data/pages`
+- **First login:** FileBrowser prints a one-time random admin password to
+  `docker logs draft`. Grab it, log in (behind Access), change the password,
+  and disable signup.
+- **Clean URLs:** nginx `try_files $uri $uri.html $uri/ =404` — a flat
+  `leht1.html` is shared as `pages.khe.ee/leht1`. The public root `/` 404s
+  until an `index.html` exists; intentional (no directory listing).
+- **noindex:** `X-Robots-Tag: noindex` header (authoritative) plus an
+  always-200 `/robots.txt` Disallow. The `pages` healthcheck targets
+  `/robots.txt`, so it stays healthy even with zero published pages.
+- **No auto-expiry:** pages stay public until deleted in the FileBrowser UI.
+  `/srv/data/pages` is the one app tree not reproducible from git, so it is in
+  `backup.sh` BIND_MOUNTS.
+- Headers match the `games`/`adventure` house set minus the strict app CSP
+  (it would break user-authored inline JS); only `frame-ancestors 'none'`
+  plus the origin-wide HSTS/nosniff/referrer/permissions headers are kept.
+
 ## Observability (Loki + Grafana + Alloy + Alertmanager)
 
 - **Stack layout.** Four sub-stacks under `services/observability/`,

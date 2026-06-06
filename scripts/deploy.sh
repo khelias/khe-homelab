@@ -23,6 +23,7 @@ DEPLOY_ORDER=(
   "ai/openclaw"
   "apps/landing"
   "apps/games"
+  "apps/pages"
   "observability/loki"
   "observability/alertmanager"
   "observability/grafana"

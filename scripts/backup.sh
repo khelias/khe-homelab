@@ -177,6 +177,7 @@ BIND_MOUNTS=(
   "/srv/data/vaultwarden:vaultwarden-data"
   "/srv/data/paperless:paperless-files"
   "/srv/data/nextcloud:nextcloud-files"
+  "/srv/data/pages:pages-files"
   "/home/khe/homelab/services/core/adguard/config:adguard-config"
   "/home/khe/homelab/services/core/homepage/config:homepage-config"
   "/home/khe/.ssh:ssh-khe"

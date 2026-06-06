@@ -24,6 +24,8 @@ Tunnel routes directly to Docker containers. LAN traffic goes via NPM (split-hor
 | games.khe.ee        | study-game:80 (→ games)     | — (CF only)                 | no AdGuard rewrite; alias in games compose until route updated to games:80 |
 | openclaw.khe.ee     | openclaw:18789              | — (CF Access)               | CF Access OTP on all networks |
 | trips.khe.ee        | trips:80                    | — (CF Access)               | CF Access OTP on all networks; no AdGuard rewrite |
+| draft.khe.ee        | draft:8080                  | — (CF Access)               | FileBrowser editor; CF Access OTP on all networks; no AdGuard rewrite |
+| pages.khe.ee        | pages:80                    | — (CF only)                 | public; serves published pages read-only; no AdGuard rewrite |
 
 Not exposed via tunnel (LAN only): AdGuard (:8080), Dockge (:5001), NPM admin (:81), Proxmox (:8006)
 
@@ -38,8 +40,9 @@ Identity: One-time PIN via email (no OAuth setup needed).
 | n8n          | n8n.khe.ee  | Email allowlist + Require Country=EE |
 | OpenClaw     | openclaw.khe.ee | Email allowlist + Require Country=EE |
 | KHE Trips    | trips.khe.ee | Email allowlist + Require Country=EE |
+| KHE Pages    | draft.khe.ee | Email allowlist + Require Country=EE |
 
-All four apps share a single reusable policy (edit once → applies to all).
+All five apps share a single reusable policy (edit once → applies to all).
 Policy combines `Include: Email = owner` AND `Require: Countries = Estonia`.
 Owner traveling abroad connects via Tailscale → egresses through VM's EE IP → passes both checks.
 If Tailscale is down while abroad, access is blocked — intentional two-factor (identity + location).
@@ -47,7 +50,7 @@ If Tailscale is down while abroad, access is blocked — intentional two-factor 
 ## Custom Login Page
 
 Zero Trust → Reusable components → Custom pages → Access login page.
-Applies to all Access-protected apps (dash, n8n, openclaw, trips).
+Applies to all Access-protected apps (dash, n8n, openclaw, trips, draft).
 
 | Field | Value |
 |-------|-------|
