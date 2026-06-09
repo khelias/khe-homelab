@@ -37,7 +37,7 @@ services:
     container_name: pages
     restart: unless-stopped
     volumes:
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
       - /srv/data/pages/app:/usr/share/nginx/html:ro
     networks:
       - proxy
