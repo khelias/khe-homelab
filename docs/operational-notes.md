@@ -201,9 +201,19 @@ public shareable link. Two containers in `services/apps/pages/` sharing
   published tree at `/srv` (`FB_ROOT`); the DB lives in a separate
   `/srv/data/pages/db:/database` mount (`FB_DATABASE=/database/filebrowser.db`)
   so it never shows up in the file UI.
-- `pages` (nginx `1.31-alpine`, mirrors landing) is the **public** reader.
-  `pages.khe.ee` -> `pages:80` via CF Tunnel (public, no Access, no AdGuard
-  rewrite). Mounts the same dir `:ro`.
+- `pages` (nginx `1.31-alpine`) is the **public** reader. `pages.khe.ee` ->
+  `pages:80` via CF Tunnel (public, no Access, no AdGuard rewrite). Mounts the
+  same dir `:ro`. Unlike landing/trips it mounts a full **main** `nginx.conf`
+  (at `/etc/nginx/nginx.conf`, not `conf.d/`) so the worker `user` can be set.
+- **Why nginx workers run as `root`:** FileBrowser hardcodes newly created
+  files to mode `0640` (owner+group read, no other-read) regardless of umask,
+  so the stock `nginx` worker (uid 101) gets **403 Forbidden** on every page.
+  Workers run as root to read them. Safe here: read-only static server, mounts
+  only the public page tree + its own config, no proxy/exec/secrets. (Do NOT
+  copy this to landing/trips - they serve git-deployed, world-readable files.)
+- **Extension-less files render:** `default_type text/html` means a page saved
+  in FileBrowser as just `unify` (no `.html`) still serves as HTML instead of
+  downloading. `.html` names work too (mapped via mime.types).
 - **First deploy is permission-sensitive.** Create and chown the tree BEFORE
   the first `docker compose up`, or Docker auto-creates it root-owned and the
   non-root FileBrowser cannot write its DB (same trap as Loki):
