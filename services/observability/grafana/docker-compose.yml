@@ -3,7 +3,7 @@ services:
   # add to Cloudflare Tunnel with CF Access OTP before exposing externally.
   # Loki datasource is auto-provisioned from config/provisioning/.
   grafana:
-    image: grafana/grafana:13.0.2@sha256:b8f6abae513b839b2f3487343fa5e44d9c9d7871271fdd17689c4c452cb8098e
+    image: grafana/grafana:13.1.0@sha256:6ea068891652aa6a65ca9065c26b89de939653803c836426970305c11fd00534
     container_name: grafana
     restart: unless-stopped
     ports:
