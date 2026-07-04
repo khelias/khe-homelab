@@ -5,7 +5,7 @@ services:
   # bot Uptime Kuma uses — copy values from Uptime Kuma → Settings →
   # Notifications).
   alertmanager:
-    image: prom/alertmanager:v0.33.0@sha256:2e39a6678c8895b1fc5e304e0cd9b45dc30713c51882c70bf4e0e266763c8b82
+    image: prom/alertmanager:v0.33.1@sha256:a89f8d4520954079275441eecdb71444328bd90633dd4eddfc33b9ed657f349b
     container_name: alertmanager
     restart: unless-stopped
     command:
