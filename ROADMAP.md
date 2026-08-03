@@ -13,6 +13,28 @@ Direction and priorities for the homelab — what it should become, beyond curre
   the endpoint allowlist can be tightened further if Dockge permits it.
 - **Healthcheck cleanup** — standardise `start_period`, replace trivial checks
   (Nextcloud cron `stat`, Ollama `list`) with real probes.
+- **Immich: unused feature surface** — audited 2026-08-03, Tier 1 (multilingual
+  CLIP, fullsize renders, 1080p transcode) landed. Still open, roughly in order:
+  - **Config secrets have nowhere to live.** `immich.config.json` is committed
+    to a public repo and `IMMICH_CONFIG_FILE` locks the admin UI, so SMTP and
+    OAuth cannot be enabled at all until the file is rendered at deploy time
+    from a committed template plus `.env`. Blocks the two items below.
+  - **SMTP** — no album invites, welcome mails or password resets for family
+    accounts today.
+  - **External library** — `library.scan` / `library.watch` unset and nothing
+    from `/srv` is mounted `:ro`, so any pre-Immich archive is invisible.
+    Touches compose mounts and the backup assumption, decide together.
+  - **Per-user storage quota** — unset, so one account can fill the ZFS mirror.
+  - **`duplicateDetection.maxDistance: 0.01`** is near bit-identical only;
+    0.02-0.03 would surface real burst duplicates.
+  - **`job` concurrency** unset — defaults are conservative against the 2-CPU
+    cap, worth raising temporarily for bulk re-index runs.
+  - **Metrics** — `IMMICH_TELEMETRY_INCLUDE` would expose job-queue and ML
+    latency on `:8081`, but Alloy only ships logs to Loki; no Prometheus in the
+    stack yet, so this is gated on adding one.
+  - **Upload backup assumption** — `backup.sh` skips Immich uploads because
+    they are mirrored to iCloud + Google Photos. That stops being true the
+    moment a family account without such a mirror starts backing up.
 
 ## Medium-term (when app phase starts)
 

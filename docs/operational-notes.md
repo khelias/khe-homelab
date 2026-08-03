@@ -190,9 +190,21 @@ returns 403 for `/study/` and `/adventure/`.
   back ~90s later and every in-flight upload returned 502 via NPM.
   Note `docker inspect .State.OOMKilled` reads `false` in this case -
   `dmesg -T | grep "killed process"` is the authoritative signal.
-- Transcode profile is deliberately heavy (`preset: slow`, `tonemap: hable`,
-  `threads: 0` in `immich.config.json`). Lower the preset before lowering
-  the memory ceiling.
+- Transcode profile is `preset: medium`, `targetResolution: 1080`,
+  `tonemap: hable`, `threads: 0` in `immich.config.json`. It was
+  `preset: slow` / `720` until 2026-08-03; 720p was visibly soft on the TV
+  and `slow` does not pay for itself inside a 2-CPU limit. Existing videos
+  keep their old 720p transcode until Video Conversion is re-run from the
+  Job Status page - originals are untouched either way.
+- `image.fullsize` and `image.extractEmbedded` are on. Without them the
+  largest viewable render of a HEIC or RAW original is the 1440px preview,
+  because browsers cannot decode the original. Cost is one extra JPEG per
+  non-web-native asset.
+- **Everything absent from `immich.config.json` runs on its default and
+  cannot be changed in the UI.** With `IMMICH_CONFIG_FILE` set, the whole
+  admin settings page is read-only. Secrets (SMTP password, OAuth client
+  secret) therefore have nowhere to live yet - the file is committed to a
+  public repo.
 - **Uploads over 100MB fail from outside the LAN** with 413, not 502:
   Cloudflare's free plan caps request body at 100MB and the Immich app
   does not chunk. Measured 2026-08-03: a 120MB POST got 413 from the CF
@@ -203,8 +215,27 @@ returns 403 for `/study/` and `/adventure/`.
 ## Immich machine-learning
 
 - OpenVINO image (CPU inference, no GPU model needed at this size).
-- Resource limits: 4G RAM, 4 CPUs.
+- Resource limits: 6G RAM, 4 CPUs.
 - `start_period: 180s` (model load on first start).
+- **Smart Search runs `nllb-clip-base-siglip__v1`, not the default
+  `ViT-B-32__openai`.** Reason: Estonian queries. Immich has no Estonian
+  benchmark, but Finnish is the closest proxy in its own table and there
+  the `nllb` family scores ~79% recall against ~40% for the SigLIP2 models
+  and far less for the old default. `nllb` models translate the query using
+  the **user's UI language**, so each account must have Estonian selected
+  in Immich for this to work (`et` maps to `est_Latn` in Immich's
+  FLORES-200 table).
+- Switching the CLIP model invalidates every existing embedding. After a
+  model change, run Smart Search -> "All" from the Job Status page (jobs
+  stay usable even though settings are read-only). Expect hours on CPU for
+  a large library; the model is worth nothing until that finishes.
+- Model TTL is the default 300s, so the first search after an idle period
+  reloads a ~4.7G model and takes 10-20s. Levers if that becomes annoying:
+  `MACHINE_LEARNING_MODEL_TTL=0` (keeps it resident, permanently spends the
+  RAM) or `MACHINE_LEARNING_OPENVINO_PRECISION=FP16` (halves memory, small
+  accuracy risk).
+- `nllb-clip-large-siglip__mrl` is the upgrade path (~+5pp recall) but is
+  5x slower per query on CPU. Not worth it without a discrete GPU.
 
 ## Landing page
 
