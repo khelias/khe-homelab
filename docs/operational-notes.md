@@ -44,7 +44,8 @@ file in every session is wasteful; the entries are independent.
 - **9 proxy hosts**: `khe.ee`, `dash`, `cloud`, `vault`, `docs`, `photos`,
   `jellyfin`, `books`, `status`.
 - **Upload-heavy hosts** (photos, cloud, docs, jellyfin, books) have
-  unlimited body size + 600s timeouts.
+  unlimited body size + 600s timeouts. Applies to LAN clients only; the CF
+  tunnel does not route through NPM (see Cloudflare Tunnel section).
 - **All hosts**: WebSocket, HTTP/2, HSTS, SSL forced, block exploits.
 - **Admin UI**: `http://192.168.0.11:81`, creds in VM `.env`.
 - **CF API token for DNS-01** is stored inside NPM's database
@@ -53,8 +54,12 @@ file in every session is wasteful; the entries are independent.
 
 ## Cloudflare Tunnel + Access
 
-- Tunnel routes directly to Docker containers (except `photos.khe.ee`
-  which goes via NPM for unlimited uploads).
+- Tunnel routes directly to Docker containers, `photos.khe.ee` included.
+  Verified 2026-08-03: a request through the CF edge carries neither NPM's
+  `x-served-by` nor its HSTS header, only Immich's own `x-powered-by:
+  Express`. **NPM's per-host tuning (unlimited body, 600s timeout) therefore
+  applies to LAN traffic only** - split-horizon DNS sends LAN clients to NPM,
+  external clients bypass it entirely.
 - Access policies (email OTP) protect: `dash.khe.ee`, `n8n.khe.ee`,
   `openclaw.khe.ee`, `trips.khe.ee`.
 - `khe.ee` is fully public (landing page).
@@ -190,7 +195,10 @@ returns 403 for `/study/` and `/adventure/`.
   the memory ceiling.
 - **Uploads over 100MB fail from outside the LAN** with 413, not 502:
   Cloudflare's free plan caps request body at 100MB and the Immich app
-  does not chunk. Large videos have to go via LAN or Tailscale.
+  does not chunk. Measured 2026-08-03: a 120MB POST got 413 from the CF
+  edge after ~1.7MB, the same POST via NPM on the LAN reached Immich.
+  Routing the tunnel through NPM would not help - the cap is at the CF
+  edge, before the origin. Large videos have to go via LAN or Tailscale.
 
 ## Immich machine-learning
 
