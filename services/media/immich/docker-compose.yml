@@ -56,7 +56,11 @@ services:
     deploy:
       resources:
         limits:
-          memory: 4G
+          # nllb-clip-base-siglip peaks at ~4.7G RSS (Immich's own benchmark
+          # table), so the old 4G ceiling would OOM the model load. Only the
+          # multilingual CLIP models need this much; the English-only
+          # ViT-B-* family fits in 3G.
+          memory: 6G
           cpus: '4'
     healthcheck:
       # OpenVINO image ships without curl; use python3 (already present for the service).
