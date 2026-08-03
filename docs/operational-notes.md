@@ -176,6 +176,22 @@ returns 403 for `/study/` and `/adventure/`.
   `OLLAMA_FLASH_ATTENTION=1`.
 - Resource limits: 10G RAM, 6 CPUs (leaves 2 vCPUs for other services).
 
+## Immich
+
+- **`immich-server` needs 6G RAM.** Since v3 the job workers (thumbnails,
+  ffmpeg transcode) run inside `immich-server`, not in the ML container.
+  With a 2G limit the cgroup OOM-killed ffmpeg + the node process during
+  video ingest (observed 2026-08-03); `restart: unless-stopped` brought it
+  back ~90s later and every in-flight upload returned 502 via NPM.
+  Note `docker inspect .State.OOMKilled` reads `false` in this case -
+  `dmesg -T | grep "killed process"` is the authoritative signal.
+- Transcode profile is deliberately heavy (`preset: slow`, `tonemap: hable`,
+  `threads: 0` in `immich.config.json`). Lower the preset before lowering
+  the memory ceiling.
+- **Uploads over 100MB fail from outside the LAN** with 413, not 502:
+  Cloudflare's free plan caps request body at 100MB and the Immich app
+  does not chunk. Large videos have to go via LAN or Tailscale.
+
 ## Immich machine-learning
 
 - OpenVINO image (CPU inference, no GPU model needed at this size).
