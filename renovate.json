@@ -32,7 +32,7 @@
       "automerge": true
     },
     {
-      "description": "Group critical infrastructure minor/major updates for manual review",
+      "description": "Group all critical infrastructure updates for manual review. Must cover every update type reachable here, otherwise patch/digest bumps match no rule at all and pile up as ungrouped one-off PRs.",
       "matchManagers": ["docker-compose"],
       "matchPackageNames": [
         "adguard/adguardhome",
@@ -49,7 +49,7 @@
         "redis",
         "tecnativa/docker-socket-proxy"
       ],
-      "matchUpdateTypes": ["minor", "major"],
+      "matchUpdateTypes": ["patch", "minor", "major", "digest"],
       "groupName": "critical infrastructure",
       "groupSlug": "critical-updates"
     },
