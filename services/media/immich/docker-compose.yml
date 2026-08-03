@@ -29,7 +29,12 @@ services:
     deploy:
       resources:
         limits:
-          memory: 2G   # photo ingest + thumbnails; ML offloaded to separate container
+          # ffmpeg transcode runs IN this container (v3 merged the job workers
+          # into immich-server), not in immich-machine-learning. 2G caused a
+          # cgroup OOM on 2026-08-03: ffmpeg 617M anon-rss + node 610M hit the
+          # ceiling, kernel killed both, container restarted, in-flight uploads
+          # got 502 from NPM.
+          memory: 6G
           cpus: '2.00'
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:2283/api/server/ping || exit 1"]
