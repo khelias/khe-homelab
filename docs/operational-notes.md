@@ -211,6 +211,12 @@ returns 403 for `/study/` and `/adventure/`.
   both meant every 4K clip was watched as a downscale. `preset: medium`,
   `crf: 23` and `tonemap: hable` only apply to the files that still do get
   transcoded.
+- **`acceptedContainers` must list `mp4` explicitly.** Immich's default list
+  (`mov`, `ogg`, `webm`) does not cover it, and an unaccepted container
+  forces a re-encode regardless of codec - so under `required` every phone
+  `.mp4` was still being transcoded (observed 2026-08-05: 9 h264 mp4
+  transcodes in 3 minutes immediately after the policy switch). mp4 is the
+  container Immich itself writes output into, so accepting it costs nothing.
 - **`required` leaves existing transcodes in place.** They keep being
   served until Video Conversion is re-run from the Job Status page, which
   re-evaluates each asset and drops the files the policy no longer wants.

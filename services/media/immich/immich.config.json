@@ -50,7 +50,7 @@
     "targetVideoCodec": "h264",
     "acceptedVideoCodecs": ["h264", "hevc"],
     "acceptedAudioCodecs": ["aac", "mp3", "opus"],
-    "acceptedContainers": ["mov", "ogg", "webm"],
+    "acceptedContainers": ["mp4", "mov", "ogg", "webm"],
     "crf": 23,
     "preset": "medium",
     "targetResolution": "original",
