@@ -190,12 +190,36 @@ returns 403 for `/study/` and `/adventure/`.
   back ~90s later and every in-flight upload returned 502 via NPM.
   Note `docker inspect .State.OOMKilled` reads `false` in this case -
   `dmesg -T | grep "killed process"` is the authoritative signal.
-- Transcode profile is `preset: medium`, `targetResolution: 1080`,
-  `tonemap: hable`, `threads: 0` in `immich.config.json`. It was
-  `preset: slow` / `720` until 2026-08-03; 720p was visibly soft on the TV
-  and `slow` does not pay for itself inside a 2-CPU limit. Existing videos
-  keep their old 720p transcode until Video Conversion is re-run from the
-  Job Status page - originals are untouched either way.
+- **`immich.config.json` edits need `docker compose up -d --force-recreate`.**
+  It is a single-file bind mount, Docker binds such a mount by inode, and
+  `git pull` / `git checkout` replace the file via rename. A running
+  container keeps serving the old inode, so a plain `up -d` reports
+  "Running" while the container still holds the previous config. Hit
+  2026-08-05: the compose memory limits had applied but preset,
+  targetResolution and the CLIP model had not. Verify inside the container
+  (`docker exec immich-server grep preset /immich.config.json`), never
+  against the file on the host.
+- **Video playback serves the transcode, never the original.**
+  `/api/assets/:id/video/playback` returns the `encoded-video/` file
+  whenever one exists, so every client (phone, TV, browser) watches the
+  re-encode. Photos differ: the app fetches the original when you zoom in.
+  This is why the transcode profile is a quality decision, not just a
+  storage one.
+- Transcode policy is `required` + `targetResolution: original` since
+  2026-08-05: only files in an unaccepted codec get re-encoded, and those
+  keep their resolution. `optimal` / `720` and later `optimal` / `1080`
+  both meant every 4K clip was watched as a downscale. `preset: medium`,
+  `crf: 23` and `tonemap: hable` only apply to the files that still do get
+  transcoded.
+- **`required` leaves existing transcodes in place.** They keep being
+  served until Video Conversion is re-run from the Job Status page, which
+  re-evaluates each asset and drops the files the policy no longer wants.
+  Originals under `upload/library/` are untouched throughout.
+- Browser HEVC support is the risk `required` carries: `hevc` is in
+  `acceptedVideoCodecs`, so iPhone 4K clips are now served as-is. The
+  mobile apps and Safari handle that, Chrome and Firefox may not. If web
+  playback breaks, drop `hevc` from the accepted list - it will then be
+  re-encoded to h264 at original resolution.
 - `image.fullsize` and `image.extractEmbedded` are on. Without them the
   largest viewable render of a HEIC or RAW original is the 1440px preview,
   because browsers cannot decode the original. Cost is one extra JPEG per
