@@ -6,7 +6,7 @@ services:
   # This stack owns the `observability` network; deploy this before
   # grafana, otel-collector, or alertmanager (DEPLOY_ORDER handles that).
   loki:
-    image: grafana/loki:3.7.4@sha256:d80be589cf74b6d92747a1b155bec6f07bdd65e261f797fe93a78fb4e833032e
+    image: grafana/loki:3.7.6@sha256:83c76da7858a8f4f88117ac521864ac33896fdae7a352a1df4068556e7513f64
     container_name: loki
     restart: unless-stopped
     user: "10001:10001"
