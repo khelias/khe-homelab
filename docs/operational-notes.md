@@ -63,6 +63,24 @@ file in every session is wasteful; the entries are independent.
 - Access policies (email OTP) protect: `dash.khe.ee`, `n8n.khe.ee`,
   `openclaw.khe.ee`, `trips.khe.ee`.
 - `khe.ee` is fully public (landing page).
+- **Healthcheck must be `cloudflared tunnel ready`, not `cloudflared version`.**
+  The old check only proved the binary could execute, so it stayed green through
+  the 2026-08-22 outage where every hostname served CF error 1033: the process had
+  not crashed, so `restart: unless-stopped` saw nothing, and it never went
+  unhealthy, so autoheal saw nothing either. `tunnel ready` queries the `/ready`
+  endpoint, which reflects real edge registration, and requires `--metrics` on the
+  run command to have something to query. The image is distroless (no shell, curl
+  or wget), so the check has to invoke the `cloudflared` binary itself.
+- **A tunnel outage is invisible to Uptime Kuma.** Kuma runs on this VM and reaches
+  services over the LAN through NPM, which tunnel traffic never touches, so internal
+  monitors stay green while the public side is entirely down. Detecting it needs an
+  external monitor, or the edge probe in `ops-status.yml`, which forces the
+  Cloudflare address via `curl --resolve` and sends a browser User-Agent to avoid
+  WAF custom rule 3.
+- **CF error 1033 on every hostname** means the tunnel is not registered with the
+  edge at all, not that one service is broken. Check outbound connectivity from the
+  VM first: on 2026-08-22 the cause was a router DHCP misconfiguration, so the VM
+  had no path out while every container kept running normally.
 - See [`infrastructure/cloudflare.md`](../infrastructure/cloudflare.md).
 
 ## Nextcloud
