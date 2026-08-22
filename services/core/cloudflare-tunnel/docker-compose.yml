@@ -10,16 +10,6 @@ services:
     environment:
       - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
       - TZ=Europe/Tallinn
-    labels:
-      # Stage 1 of a deliberate two-step rollout. `cloudflared tunnel ready` is
-      # verified to exit 1 when the metrics endpoint is unreachable, but the case
-      # that matters most - server up, edge registration lost - cannot be
-      # reproduced without a live tunnel token, so it is still unproven. If it
-      # wrongly reported unhealthy, autoheal would restart the tunnel every 30s
-      # and hold every public hostname down. Until ops-status confirms this
-      # container reports healthy against the live tunnel, the check reports only.
-      # Remove this label to arm autoheal.
-      - autoheal=False
     healthcheck:
       # `cloudflared version` only proved the binary could execute. It stayed green
       # through a full outage on 2026-08-22, when every hostname served CF error
