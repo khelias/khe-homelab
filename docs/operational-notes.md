@@ -71,6 +71,10 @@ file in every session is wasteful; the entries are independent.
   endpoint, which reflects real edge registration, and requires `--metrics` on the
   run command to have something to query. The image is distroless (no shell, curl
   or wget), so the check has to invoke the `cloudflared` binary itself.
+  Since the check now reflects edge state, autoheal acts on it: a tunnel that
+  loses its edge registration is restarted automatically within roughly two
+  minutes. So an unexplained tunnel restart in the logs is autoheal doing its
+  job, not a crash.
 - **A tunnel outage is invisible to Uptime Kuma.** Kuma runs on this VM and reaches
   services over the LAN through NPM, which tunnel traffic never touches, so internal
   monitors stay green while the public side is entirely down. Detecting it needs an

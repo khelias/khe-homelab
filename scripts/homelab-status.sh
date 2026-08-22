@@ -4,8 +4,9 @@
 #
 # Output discipline: this repo is PUBLIC, so Actions run logs are world-readable.
 # Emit only aggregated facts already documented in the repo (container names,
-# ports, the VM's RFC1918 addresses). Never emit raw container logs, `docker
-# inspect` output, environment variables, or per-visitor data.
+# ports, the VM's RFC1918 addresses). Never emit raw container logs, full
+# `docker inspect` output, environment variables, or per-visitor data. A
+# single `--format`ed field such as health status is fine; a whole object is not.
 #
 # No `set -e`: a diagnostic must report every section even when an earlier
 # check fails. Failures are counted and surfaced in the summary instead.
@@ -112,6 +113,24 @@ else
 
   unhealthy="$(docker ps --filter health=unhealthy --format '{{.Names}}' 2>/dev/null | tr '\n' ' ')"
   [ -n "$unhealthy" ] && fail "unhealthy: ${unhealthy}" || ok "no unhealthy containers"
+
+  # "not unhealthy" covers both healthy and still-starting, which is too coarse
+  # to verify a healthcheck change: a container in start_period looks identical
+  # to a passing one. Report the distribution so a rollout can be confirmed
+  # rather than inferred from elapsed time.
+  n_healthy=0; n_starting=0; n_nocheck=0; starting_names=""
+  while read -r cname; do
+    [ -z "$cname" ] && continue
+    hstate="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$cname" 2>/dev/null)"
+    case "$hstate" in
+      healthy)  n_healthy=$((n_healthy + 1)) ;;
+      starting) n_starting=$((n_starting + 1)); starting_names="${starting_names}${cname} " ;;
+      none)     n_nocheck=$((n_nocheck + 1)) ;;
+    esac
+  done < <(docker ps --format '{{.Names}}' 2>/dev/null)
+  printf '  INFO  health: %d healthy, %d starting, %d without a healthcheck\n' \
+    "$n_healthy" "$n_starting" "$n_nocheck"
+  [ -n "$starting_names" ] && printf '  INFO  starting: %s\n' "$starting_names"
 
   restarting="$(docker ps --filter status=restarting --format '{{.Names}}' 2>/dev/null | tr '\n' ' ')"
   [ -n "$restarting" ] && fail "restarting: ${restarting}" || ok "no restart loops"
