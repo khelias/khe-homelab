@@ -3,16 +3,37 @@ services:
     image: cloudflare/cloudflared:2026.8.2@sha256:0aa26e284f05e6c77ae375b8c9c11d9eb6a448fb7bcd8d40f31cb6176189eb38
     container_name: cloudflare-tunnel
     restart: unless-stopped
-    command: tunnel run
+    # --metrics binds the diagnostics server the healthcheck below queries. Bound
+    # to loopback, not 0.0.0.0: the check runs inside this container's netns, so
+    # nothing on the proxy network needs to reach it.
+    command: tunnel --metrics 127.0.0.1:20241 run
     environment:
       - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
       - TZ=Europe/Tallinn
+    labels:
+      # Stage 1 of a deliberate two-step rollout. `cloudflared tunnel ready` is
+      # verified to exit 1 when the metrics endpoint is unreachable, but the case
+      # that matters most - server up, edge registration lost - cannot be
+      # reproduced without a live tunnel token, so it is still unproven. If it
+      # wrongly reported unhealthy, autoheal would restart the tunnel every 30s
+      # and hold every public hostname down. Until ops-status confirms this
+      # container reports healthy against the live tunnel, the check reports only.
+      # Remove this label to arm autoheal.
+      - autoheal=False
     healthcheck:
-      test: ["CMD", "cloudflared", "version"]
-      interval: 60s
+      # `cloudflared version` only proved the binary could execute. It stayed green
+      # through a full outage on 2026-08-22, when every hostname served CF error
+      # 1033 because the tunnel was not registered with the edge: no crash, so
+      # `restart: unless-stopped` saw nothing, and never unhealthy, so autoheal saw
+      # nothing either. `tunnel ready` queries /ready, which reflects real edge
+      # registration. The image is distroless, so this must use the cloudflared
+      # binary itself; there is no shell, curl or wget to probe with.
+      test: ["CMD", "cloudflared", "tunnel", "--metrics", "127.0.0.1:20241", "ready"]
+      interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      # Connecting to the edge takes longer than starting the process.
+      start_period: 30s
     networks:
       - proxy
     deploy:
