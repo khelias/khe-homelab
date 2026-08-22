@@ -1,6 +1,6 @@
 services:
   nextcloud:
-    image: nextcloud:33.0.6-apache@sha256:d234808c4e63aad6889922228d64612a28682183dccaeac251db4db0be368aab
+    image: nextcloud:33.0.8-apache@sha256:c81c841aef5d757147313a0e6465cb871eb279affcd732792698fb5d0a15dcdc
     container_name: nextcloud
     restart: unless-stopped
     environment:
@@ -46,7 +46,7 @@ services:
           cpus: '2.00'
 
   nextcloud-cron:
-    image: nextcloud:33.0.6-apache@sha256:d234808c4e63aad6889922228d64612a28682183dccaeac251db4db0be368aab
+    image: nextcloud:33.0.8-apache@sha256:c81c841aef5d757147313a0e6465cb871eb279affcd732792698fb5d0a15dcdc
     container_name: nextcloud-cron
     restart: unless-stopped
     entrypoint: /cron.sh
@@ -74,7 +74,7 @@ services:
           cpus: '0.50'
 
   nextcloud-db:
-    image: postgres:18-alpine@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15
+    image: postgres:18-alpine@sha256:d3e1620b530c944afa6e887d22eb899824da68e19c52024bf98f5220c88a65b2
     container_name: nextcloud-db
     restart: unless-stopped
     command:
@@ -116,7 +116,7 @@ services:
           cpus: '2.00'
 
   nextcloud-redis:
-    image: redis:8.8-alpine@sha256:9d317178eceac8454a2284a9e6df2466b93c745529947f0cd42a0fa9609d7005
+    image: redis:8.10-alpine@sha256:becdda6c7f4b3fb42e42fd7f120bbf5c54c4caaaf16f26da24e4563d2c1f0576
     container_name: nextcloud-redis
     restart: unless-stopped
     command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --save "" --appendonly no
