@@ -9,61 +9,43 @@
   "schedule": ["every weekend"],
   "pinDigests": true,
   "platformAutomerge": true,
+  "prConcurrentLimit": 5,
   "packageRules": [
     {
-      "description": "Automerge all Docker patch, minor, and digest updates except critical infrastructure",
-      "matchManagers": ["docker-compose"],
+      "description": "Automerge Docker patch, minor, and digest updates. Critical infrastructure opts back out in a later rule.",
+      "matchManagers": ["docker-compose", "dockerfile"],
       "matchUpdateTypes": ["patch", "minor", "digest"],
-      "excludePackageNames": [
-        "adguard/adguardhome",
-        "jc21/nginx-proxy-manager",
-        "cloudflare/cloudflared",
-        "vaultwarden/server",
-        "nextcloud",
-        "ghcr.io/paperless-ngx/paperless-ngx",
-        "ghcr.io/immich-app/immich-server",
-        "ghcr.io/immich-app/immich-machine-learning",
-        "ghcr.io/immich-app/postgres",
-        "postgres",
-        "docker.io/valkey/valkey",
-        "redis",
-        "tecnativa/docker-socket-proxy"
-      ],
       "automerge": true
     },
     {
-      "description": "Group all critical infrastructure updates for manual review. Must cover every update type reachable here, otherwise patch/digest bumps match no rule at all and pile up as ungrouped one-off PRs.",
-      "matchManagers": ["docker-compose"],
-      "matchPackageNames": [
-        "adguard/adguardhome",
-        "jc21/nginx-proxy-manager",
-        "cloudflare/cloudflared",
-        "vaultwarden/server",
-        "nextcloud",
-        "ghcr.io/paperless-ngx/paperless-ngx",
-        "ghcr.io/immich-app/immich-server",
-        "ghcr.io/immich-app/immich-machine-learning",
-        "ghcr.io/immich-app/postgres",
-        "postgres",
-        "docker.io/valkey/valkey",
-        "redis",
-        "tecnativa/docker-socket-proxy"
-      ],
-      "matchUpdateTypes": ["patch", "minor", "major", "digest"],
-      "groupName": "critical infrastructure",
-      "groupSlug": "critical-updates"
-    },
-    {
       "description": "Major updates need manual review",
-      "matchManagers": ["docker-compose"],
+      "matchManagers": ["docker-compose", "dockerfile"],
       "matchUpdateTypes": ["major"],
       "labels": ["dependencies", "breaking"]
     },
     {
-      "description": "Group adventure-proxy updates (Dockerfile + npm) into one PR",
-      "matchFileNames": ["services/apps/games/adventure-proxy/**"],
-      "groupName": "adventure-proxy",
-      "groupSlug": "adventure-proxy"
+      "description": "Critical infrastructure: never automerge, collect every update type into one PR. Placed after the automerge rule so it overrides it, which keeps the package list in exactly one place.",
+      "matchManagers": ["docker-compose", "dockerfile"],
+      "matchUpdateTypes": ["patch", "minor", "major", "digest"],
+      "matchPackageNames": [
+        "adguard/adguardhome",
+        "cloudflare/cloudflared",
+        "docker.io/valkey/valkey",
+        "ghcr.io/immich-app/immich-machine-learning",
+        "ghcr.io/immich-app/immich-server",
+        "ghcr.io/immich-app/postgres",
+        "ghcr.io/n8n-io/n8n",
+        "ghcr.io/paperless-ngx/paperless-ngx",
+        "jc21/nginx-proxy-manager",
+        "nextcloud",
+        "postgres",
+        "redis",
+        "tecnativa/docker-socket-proxy",
+        "vaultwarden/server"
+      ],
+      "automerge": false,
+      "groupName": "critical infrastructure",
+      "groupSlug": "critical-updates"
     }
   ]
 }
