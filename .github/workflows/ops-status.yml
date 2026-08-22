@@ -1,0 +1,27 @@
+name: Homelab Status
+
+# Read-only diagnostics. This is the agent-facing window into the VM, since ssh
+# is unavailable. Deliberately has no inputs: a workflow that accepts arbitrary
+# commands would just be ssh wearing a different hat.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: homelab-status
+  cancel-in-progress: true
+
+jobs:
+  status:
+    name: Read-only health snapshot
+    runs-on: [self-hosted, linux, homelab]
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Collect status
+        run: ./scripts/homelab-status.sh
