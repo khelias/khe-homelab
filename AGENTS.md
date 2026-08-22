@@ -10,6 +10,8 @@ Don't duplicate that content here. AGENTS.md only holds rules and pointers.
 
 - [README.md](README.md) - architecture diagram, services table, security
   model, resilience layers, automation, network, setup, day-to-day ops
+- [docs/runbook.md](docs/runbook.md) - what to do when something is broken,
+  written to be followed without internal knowledge
 - [docs/operational-notes.md](docs/operational-notes.md) - per-service
   dev-facing quirks (AdGuard config keys, NPM upload limits, OpenClaw
   device pairing, games hub mount layout, etc.)
