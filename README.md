@@ -192,6 +192,14 @@ All external traffic goes through Cloudflare Tunnel — zero ports open on the r
 ./scripts/backup.sh          # Backup databases + configs
 ```
 
+Health snapshot without touching the VM, via the self-hosted runner:
+
+```bash
+gh workflow run ops-status.yml --repo khelias/khe-homelab
+```
+
+When something is broken, follow [docs/runbook.md](docs/runbook.md).
+
 ## Project Structure
 
 ```
