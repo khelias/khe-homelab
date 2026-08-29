@@ -182,6 +182,51 @@ Whole-house figures are from the DSO meter, 12-29 August 2026, 367 kWh total.
   interim fix.
 - Sauna: ~15 kWh per session, four sessions in twelve days.
 
+## Billed baseline
+
+Real invoices for this meter (EIC `38ZEE-00732642-B`, 20 A, package Vork 4)
+under the **previous occupancy**, which ran lower room setpoints than we do
+and had no sauna, homelab or family load. Treat these as a floor, not a
+forecast.
+
+| Month | kWh | Energy | Network | Total | EUR/kWh |
+|---|---|---|---|---|---|
+| Jul 2025 | 340.7 | 19.64 | 39.62 | **59.26** | 0.174 |
+| Jan 2026 | 1608.8 | 328.10 | 115.53 | **443.63** | 0.276 |
+| Feb 2026 | 1394.8 | 285.11 | 102.67 | **387.78** | 0.278 |
+| Mar 2026 | 782.8 | 76.94 | 68.68 | **145.62** | 0.186 |
+
+Meter readings on the invoices fill the gaps: 41 517.5 on 2025-07-31 and
+46 316.8 on 2026-01-31, so Aug-Dec 2025 was 3 190 kWh, averaging 638
+kWh/month. Full year lands near **8 600 kWh and about 2 000 EUR**.
+
+January costs roughly three times March for two reasons that multiply, not
+add: twice the volume, and an exchange price that was 22.1 vs 8.8 c/kWh in
+the day tariff. Volume and price peak in the same month.
+
+### Network tariff, for reconstructing any missing invoice
+
+```
+transmission day    0.0369 EUR/kWh
+transmission night  0.0210 EUR/kWh
+monthly fee         19.53 EUR (20 A, from 2026-01; 18.97 in 2025)
+renewable levy      0.0084 EUR/kWh
+supply security     0.00758 EUR/kWh   (new from 2026-01)
+excise              0.0021 EUR/kWh
+VAT                 24 % (22 % before 2026)
+```
+
+Reproduces the February 2026 network invoice to the cent.
+
+### Summer heating was already being paid for
+
+July 2025 was 340.7 kWh, or 11.0 kWh/day. The house measured 11.2 kWh/day in
+August 2026 while **standing empty**. Same number. The previous occupancy was
+paying the same standing load, including the same pointless summer space
+heating documented above. At roughly 4.5 kWh/day over the warm half of the
+year that is 400-600 kWh, or 80-140 EUR annually, recovered by a single
+`standby` on unit 1.
+
 ## Open items
 
 - Installer: configure space heating electricity metering.
