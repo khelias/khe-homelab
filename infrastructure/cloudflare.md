@@ -24,7 +24,7 @@ Tunnel routes directly to Docker containers. LAN traffic goes via NPM (split-hor
 | games.khe.ee        | study-game:80 (→ games)     | — (CF only)                 | no AdGuard rewrite; alias in games compose until route updated to games:80 |
 | openclaw.khe.ee     | openclaw:18789              | — (CF Access)               | CF Access OTP on all networks |
 | trips.khe.ee        | trips:80                    | — (CF Access)               | CF Access OTP on all networks; no AdGuard rewrite |
-| draft.khe.ee        | draft:8080                  | — (CF Access)               | FileBrowser editor; CF Access OTP on all networks; no AdGuard rewrite |
+| draft.khe.ee        | draft:8080                  | — (CF Access)               | FileBrowser editor; CF Access OTP on all networks; **sole auth layer** (no app password, see service-choices.md); no AdGuard rewrite |
 | pages.khe.ee        | pages:80                    | — (CF only)                 | public; serves published pages read-only; no AdGuard rewrite |
 
 Not exposed via tunnel (LAN only): AdGuard (:8080), Dockge (:5001), NPM admin (:81), Proxmox (:8006)
@@ -46,6 +46,10 @@ All five apps share a single reusable policy (edit once → applies to all).
 Policy combines `Include: Email = owner` AND `Require: Countries = Estonia`.
 Owner traveling abroad connects via Tailscale → egresses through VM's EE IP → passes both checks.
 If Tailscale is down while abroad, access is blocked — intentional two-factor (identity + location).
+
+`draft.khe.ee` has no application-level login behind Access (FileBrowser
+proxy-auth), so removing or loosening its Access application exposes the
+editor outright.
 
 ## Custom Login Page
 
