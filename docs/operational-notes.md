@@ -325,9 +325,20 @@ public shareable link. Two containers in `services/apps/pages/` sharing
   the first `docker compose up`, or Docker auto-creates it root-owned and the
   non-root FileBrowser cannot write its DB (same trap as Loki):
   `sudo mkdir -p /srv/data/pages/app /srv/data/pages/db && sudo chown -R 1000:1000 /srv/data/pages`
-- **First login:** FileBrowser prints a one-time random admin password to
-  `docker logs draft`. Grab it, log in (behind Access), change the password,
-  and disable signup.
+- **Login: no FileBrowser password.** Since 2026-08-29 the editor runs with
+  `auth.method=proxy` and `auth.header=Cf-Access-Authenticated-User-Email`. It
+  trusts the header cloudflared injects for Access-protected hostnames and logs
+  in the user whose username equals that email (user ID 1). CF Access is now the
+  only auth layer, so the `draft.khe.ee` Access application must never be
+  removed. This replaced the one-time random admin password FileBrowser printed
+  to `docker logs draft` on first run.
+- **Changing that setting requires stopping the container.** The bbolt DB takes
+  an exclusive lock, so `docker exec draft filebrowser config ...` hangs against
+  a running server. Stop `draft`, copy `/srv/data/pages/db/filebrowser.db`
+  aside, then run the config command in a throwaway container mounting the same
+  `/database`. The setting lives in the DB, not in git or compose, so it is not
+  reproducible from the repo; it rides along in the `/srv/data/pages` backup.
+  Rollback to password login is `config set --auth.method=json`.
 - **Clean URLs:** nginx `try_files $uri $uri.html $uri/ =404` — a flat
   `leht1.html` is shared as `pages.khe.ee/leht1`. The public root `/` 404s
   until an `index.html` exists; intentional (no directory listing).
