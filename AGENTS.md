@@ -18,6 +18,10 @@ Don't duplicate that content here. AGENTS.md only holds rules and pointers.
 - [docs/service-choices.md](docs/service-choices.md) - why we run the
   software we do (AdGuard vs Pi-hole, Immich vs Photoprism, etc.) and
   what would force a re-evaluation
+- [docs/house-hvac.md](docs/house-hvac.md) - heat pump, ventilation and
+  underfloor heating: local protocols, register/path maps, and which of
+  their readings are known-bad. Integration spec for a future Home
+  Assistant deployment
 - [SECURITY.md](SECURITY.md) - security model
 - [ROADMAP.md](ROADMAP.md) - planned changes
 - [infrastructure/cloudflare.md](infrastructure/cloudflare.md) - CF Tunnel + Access
@@ -51,7 +55,8 @@ services/
   observability/   Loki, Grafana, Alloy, Alertmanager (one stack)
 infrastructure/    Proxmox, network, Cloudflare, Tailscale docs
 scripts/           setup, deploy.sh, backup.sh, hardening
-docs/              operational-notes.md (service quirks not in README)
+docs/              operational-notes.md (service quirks not in README),
+                   house-hvac.md (HVAC protocols, for future Home Assistant)
 ```
 
 ## Conventions (HARD)
