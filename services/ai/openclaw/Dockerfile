@@ -1,4 +1,4 @@
-FROM ghcr.io/openclaw/openclaw:2026.7.1@sha256:6a31d44b2944e7adcd2b582bf6fb463111264ebca97a0201795b799135bd102c
+FROM ghcr.io/openclaw/openclaw:2026.9.1@sha256:6afe42854c87471188b9c4f8dce6bbc14005a48d8e1592846548b32508754f84
 
 # Install docker-ce-cli (official Docker apt repo) so exec-based skills can run
 # docker commands. Mirrors the OPENCLAW_INSTALL_DOCKER_CLI=1 build arg from the
