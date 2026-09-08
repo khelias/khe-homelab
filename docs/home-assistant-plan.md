@@ -50,7 +50,7 @@ agent, so this is a manual step):
   The whole proxy subnet is an acceptable fallback if the exact address is
   inconvenient.
 
-## Phase 1 - HA container up (files written 2026-09-08, not deployed)
+## Phase 1 - HA container up (done 2026-09-08)
 
 `services/home/homeassistant/` now holds `docker-compose.yml` and
 `config/configuration.yaml`. Pinned to `2026.9.1` by digest, current stable at
@@ -73,18 +73,26 @@ Deploy, then remaining manual steps:
   is not re-run on deploy.
 - Onboarding wizard at `http://192.168.0.11:8123`.
 
-## Phase 2 - access and observability
+## Phase 2 - access and observability (repo side done 2026-09-08)
 
-- NPM proxy host `home.khe.ee` -> `homeassistant:8123`, **WebSocket support
-  enabled**. Without it the frontend loads and then hangs.
-- AdGuard rewrite `home.khe.ee` -> 192.168.0.11 (delta-patch the template, see
-  convention 6).
-- Uptime Kuma HTTP monitor plus the Telegram notifier every other service uses.
-- Homepage tile.
-- Confirm Alloy is picking the container logs up; it collects per-container, so
-  this should need no change, but verify rather than assume.
+Committed here:
 
-Companion app on the phones goes over Tailscale. Do not open the tunnel.
+- Homepage tile in a new `Kodu` group. No widget yet - the `homeassistant`
+  widget needs a long-lived access token in the Homepage `.env`, which is a
+  separate step and a credential this repo must never hold.
+- `home.khe.ee` rewrite in `AdGuardHome.template.yaml`.
+
+Manual, because these live in UIs whose credentials sit in VM `.env` files:
+
+- **NPM proxy host** `home.khe.ee` -> `homeassistant:8123`, wildcard SSL, and
+  **Websockets Support on**. Without it the frontend loads then hangs blank.
+- **AdGuard live rewrite** via the UI (Filters -> DNS rewrites), not by editing
+  `AdGuardHome.yaml`. Wholesale replacement wipes admin creds and sessions.
+- **Uptime Kuma monitor** against `http://homeassistant:8123/manifest.json`
+  (Kuma is on the `proxy` network, so the container name resolves), same
+  Telegram notifier as every other service.
+
+Deliberately not on the Cloudflare Tunnel.
 
 ## Phase 3 - Komfovent, read-only
 
