@@ -42,6 +42,7 @@ See `../cloudflare.md` for the authoritative routing table.
 | Dockge              | 192.168.0.11:5001        |
 | Nginx Proxy Manager | 192.168.0.11:81 (admin)  |
 | Proxmox             | 192.168.0.10:8006        |
+| Home Assistant      | 192.168.0.11:8123 (`home.khe.ee`) |
 
 ## Remote Access (Tailscale VPN)
 

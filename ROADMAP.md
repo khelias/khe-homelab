@@ -81,7 +81,7 @@ Rough order of impact:
 
 - **Quick wins** — Dozzle (Docker log viewer), ntfy (push notifications),
   IT-Tools (dev utilities)
-- **Weekend projects** — Home Assistant, Forgejo (self-hosted Git), CrowdSec (IPS),
+- **Weekend projects** — Forgejo (self-hosted Git), CrowdSec (IPS),
   KitchenOwl (groceries + recipes)
 - **When time allows** — Actual Budget, Stirling PDF, Karakeep (bookmarks + AI),
   FreshRSS, Changedetection.io, Docmost (wiki)

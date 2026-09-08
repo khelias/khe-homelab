@@ -38,6 +38,7 @@ ALLOWED_PORTS=(
   11434 # Ollama
   13378 # Audiobookshelf
   18789 # OpenClaw
+  8123  # Home Assistant
 )
 
 for port in "${ALLOWED_PORTS[@]}"; do
