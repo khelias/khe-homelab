@@ -18,7 +18,7 @@ graph TB
     CF -->|12 domains direct<br/>CF Access OTP on<br/>dash, n8n, openclaw| DVM
     NPM --> DVM
 
-    subgraph DVM[Docker VM · 192.168.0.11 — 18 services · 31 containers]
+    subgraph DVM[Docker VM · 192.168.0.11 — 19 services · 32 containers]
         direction LR
         Core["<b>Core</b><br/>Homepage · Vaultwarden<br/>Dockge · Uptime Kuma"]
         Media["<b>Media</b><br/>Immich · Jellyfin<br/>Audiobookshelf"]
@@ -26,6 +26,7 @@ graph TB
         AI["<b>AI</b><br/>Ollama · n8n · OpenClaw"]
         Apps["<b>Apps</b><br/>Landing Page · games hub<br/>pages"]
         Obs["<b>Observability</b><br/>Loki · Grafana<br/>Alloy · Alertmanager"]
+        Home["<b>Home</b><br/>Home Assistant"]
     end
 
     DVM --> HDD[(ZFS Mirror · 2× 12TB<br/>NFS /srv)]
@@ -72,6 +73,7 @@ Jellyfin and Immich machine-learning both use `/dev/dri` for Quick Sync accelera
 | 🎮 | **games hub** | `games.khe.ee` | Launcher + khe-study (`/study/`), auto-deployed from GitHub |
 | 📝 | **pages** | `pages.khe.ee` | Quick-publish HTML pages; edited at `draft.khe.ee` (CF Access protected) |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/ollama.svg" width="22" /> | Ollama | LAN only | Local AI models (qwen2.5:7b, CPU-only) |
+| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/home-assistant.svg" width="22" /> | Home Assistant | `home.khe.ee` (LAN + Tailscale) | House automation: Komfovent ventilation, Daikin heat pump. Deliberately not on the tunnel |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/adguard-home.svg" width="22" /> | AdGuard Home | LAN + Tailscale | DNS ad-blocking + split-horizon DNS (filters mobile data too, via Tailscale) |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/dockge.svg" width="22" /> | Dockge | LAN only | Docker Compose management UI |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/nginx-proxy-manager.svg" width="22" /> | Nginx Proxy Manager | LAN only | Reverse proxy + wildcard SSL for LAN traffic |
@@ -208,6 +210,7 @@ services/
 ├── media/           Immich, Jellyfin, Audiobookshelf
 ├── productivity/    Nextcloud, Paperless-ngx
 ├── ai/              Ollama, n8n, OpenClaw (+ workspace/ for agent config)
+├── home/            Home Assistant
 └── apps/            Landing Page, games hub (launcher + khe-study), pages (quick-publish)
 
 infrastructure/      Proxmox, network, Cloudflare, and Tailscale documentation

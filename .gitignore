@@ -25,6 +25,12 @@ services/observability/alertmanager/config/alertmanager.yml
 # Homepage auto-creates this sample file; we don't use Kubernetes.
 services/core/homepage/config/kubernetes.yaml
 
+# Home Assistant rewrites its whole config directory at runtime, and .storage
+# holds the user database, long-lived tokens and integration credentials.
+# Only hand-written YAML is tracked; everything else HA generates stays local.
+services/home/homeassistant/config/*
+!services/home/homeassistant/config/configuration.yaml
+
 # Private notes — current security gaps, threat model, anything that would tip off
 # an attacker while still unfixed. Public ROADMAP.md covers direction only.
 .private/
