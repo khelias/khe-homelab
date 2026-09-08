@@ -426,6 +426,68 @@ public shareable link. Two containers in `services/apps/pages/` sharing
   simplicity. If alert volume gets noisy, split into a second bot
   + chat to keep uptime pings and log alerts on different channels.
 
+## Home Assistant
+
+Runs as HA **Container**, not HAOS, so there is no Supervisor and no add-ons.
+Add-on equivalents (Mosquitto, Zigbee2MQTT, ESPHome) run as ordinary
+containers in the same group. See
+[home-assistant-plan.md](home-assistant-plan.md) for the phased rollout.
+
+**`trusted_proxies` is mandatory.** Behind NPM, HA rejects every login with a
+"request from a reverse proxy" error unless `configuration.yaml` sets
+`use_x_forwarded_for: true` plus a `trusted_proxies` range covering the proxy
+network. Committed as `172.16.0.0/12`.
+
+**NPM needs WebSocket support enabled** on the `home.khe.ee` proxy host. Without
+it the frontend loads and then hangs on a blank page, which looks like a HA
+fault and is not one.
+
+**Port 8123 needs a UFW rule.** Added to `ALLOWED_PORTS` in
+`harden-docker-vm.sh`, but that script is not re-run on deploy, so on an
+existing VM the rule has to be added by hand:
+`sudo ufw allow from 192.168.0.0/24 to any port 8123`.
+
+**Config directory is mostly gitignored.** HA rewrites the directory at runtime
+and `.storage` holds the user database, long-lived tokens and integration
+credentials. Only `configuration.yaml` is tracked; the ignore rule is a
+blanket `config/*` plus a whitelist, so a new hand-written YAML file
+(`modbus.yaml` and friends) must be added to `.gitignore` explicitly or it
+silently stays untracked.
+
+**Not on the Cloudflare Tunnel, deliberately.** CF Access breaks the HA
+companion app login and webhooks, and this host will eventually control the
+ventilation and heat pump. Remote access is Tailscale.
+
+**Backup is not wired up yet.** `tar_via_alpine()` in `backup.sh` takes no
+exclude argument, and tarring a live SQLite recorder DB produces an archive
+that may not restore. Adding HA to `BIND_MOUNTS` needs that helper extended
+first.
+
+### Komfovent Modbus
+
+Native `modbus:` YAML platform against 192.168.0.155:502, not a HACS
+integration, because the register map is measured and a custom component is a
+dependency Renovate cannot track.
+
+- **Read aligned uint32 pairs.** A single-register read of one half of a pair
+  returns Modbus exception 3, which makes a live register look absent.
+- **The controller drops fast consecutive connections.** Probing
+  register-by-register in a loop fails; read blocks over one connection.
+- Flow control register 11 = 3 (OFF), so the "flow" fields are fan
+  **percentages** and registers 905-908 (m3/h) are meaningless.
+- Reg 904 reads 0x8000, the sensor-absent marker, not a temperature.
+
+### Daikin Altherma
+
+WebSocket oneM2M on `ws://192.168.0.248/mca`. The stock `daikin` integration
+does not speak this unit; the path is the `daikin_altherma` custom integration,
+which is the first dependency outside Renovate's reach.
+
+**The space-heating electricity channel on this unit is broken** and must not
+feed any dashboard or automation. Proven against meter data: 5.42 kWh billed
+against 0 written, while the DHW channel on the same device agrees with the
+meter. Produced-heat figures are usable.
+
 ## Healthchecks
 
 - **games**: uses `127.0.0.1` (NOT `localhost`). Busybox wget DNS issue in

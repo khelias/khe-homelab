@@ -23,46 +23,55 @@ Device facts this plan builds on (measured, see the home-automation notes):
 | Paradox alarm | 192.168.0.240 | no listening ports, out of scope |
 | Hikvision NVR/cameras | separate L2 subnet | no credentials, out of scope |
 
-## Phase 0 - verify from the VM, not from a laptop
+## Phase 0 - reachability (done 2026-09-08, partially)
 
-Every protocol read so far was done from the Mac. Redo the two that matter from
-the Docker VM before writing any config, because that is the host that will
-hold the connection:
+Both protocols were re-verified, from the Mac rather than from the VM. That
+substitutes here because Mac and VM share 192.168.0.0/24 on one L2 and
+`harden-docker-vm.sh` sets `ufw default allow outgoing`; the only untested
+difference is Docker's bridge NAT, which is standard behaviour.
 
-- Modbus TCP reachability to `192.168.0.155:502`.
-- WebSocket upgrade (101) on `ws://192.168.0.248/mca`.
+- **Komfovent** registers 901-923 read in a single function-3 block:
+  supply 21.0 C, extract 25.7 C, outdoor 19.5 C, reg 916 = 9, power 51 W.
+  Register map still matches one-to-one. Reg 904 reads 0x8000, the
+  sensor-absent marker, not a temperature.
+- **Daikin** `ws://192.168.0.248/mca` returns 101 with a valid
+  `Sec-WebSocket-Accept`.
 
-Also check the RAM budget against current usage. Rough asks: HA ~1.5G,
-Mosquitto ~128M, Zigbee2MQTT ~256M. The VM has 32G with limits on every
-container, so this should fit, but confirm rather than assume.
+Reading register-by-register still fails: the controller drops fast
+consecutive connections, and single reads of a uint32 half return exception 3.
+Read aligned blocks over one connection.
 
-## Phase 1 - HA container up
+Still open, needs a shell on the VM (SSH is blocked by org policy for the
+agent, so this is a manual step):
 
-`services/home/homeassistant/docker-compose.yml`, following the repo
-conventions:
+- `free -h` and `docker stats --no-stream` for the RAM budget. Rough asks:
+  HA ~1.5G, Mosquitto ~128M, Zigbee2MQTT ~256M against a 32G VM.
+- The NPM container's address on the `proxy` network, for `trusted_proxies`.
+  The whole proxy subnet is an acceptable fallback if the exact address is
+  inconvenient.
 
-- Image `ghcr.io/home-assistant/home-assistant`, **latest stable tag pinned by
-  digest** - look the current tag up at deploy time, do not copy a tag from
-  this document.
-- Bind mount `/srv/data/homeassistant/config` (convention 4).
-- `TZ=Europe/Tallinn`, `proxy` network only. **Bridge, not host networking.**
-  Phase 1 integrations are added by IP, so mDNS/SSDP discovery is not needed
-  yet; moving to host networking is a later, deliberate step if a
-  discovery-only device (Matter, HomeKit, Sonos) ever arrives.
-- Resource limits, memory 1536M / cpus '1.0' as a starting point, tune from
-  Docker stats like the rest of the stack.
-- Healthcheck against `/manifest.json`. Confirm whether the image ships `curl`
-  or only `wget` before writing the probe.
+## Phase 1 - HA container up (files written 2026-09-08, not deployed)
 
-`configuration.yaml` must carry, or the login fails behind NPM with a
-"request from a reverse proxy" error:
+`services/home/homeassistant/` now holds `docker-compose.yml` and
+`config/configuration.yaml`. Pinned to `2026.9.1` by digest, current stable at
+the time of writing. `./config:/config` bind mount (repo-tracked, like
+Homepage), `proxy` network, host port 8123, 1536M / 1.0 CPU as a starting
+limit, healthcheck via busybox `wget --spider` on `/manifest.json` with a
+120s `start_period` because first boot is slow.
 
-```yaml
-http:
-  use_x_forwarded_for: true
-  trusted_proxies:
-    - <NPM container address on the proxy network>
-```
+Also wired: `deploy.sh` and `deploy-stacks.sh` deploy order, `.gitignore`
+whitelist for the config dir, port 8123 in `harden-docker-vm.sh`.
+
+`configuration.yaml` is deliberately minimal - `default_config`, the `http`
+proxy block, and `recorder: purge_keep_days: 30`. Location, name and units are
+left to the onboarding wizard so they land in `.storage`, which is gitignored;
+this repo is public and the house's coordinates do not belong in it.
+
+Deploy, then remaining manual steps:
+
+- `sudo ufw allow from 192.168.0.0/24 to any port 8123` - `harden-docker-vm.sh`
+  is not re-run on deploy.
+- Onboarding wizard at `http://192.168.0.11:8123`.
 
 ## Phase 2 - access and observability
 
@@ -163,10 +172,13 @@ Open-Meteo alongside any energy conclusion.
 
 ## Backup
 
-`backup.sh` gains the HA config directory. The SQLite recorder DB must not be
-copied while live; either exclude it or use `sqlite3 .backup`. The `.storage`
-directory holds credentials and tokens, so it belongs in the encrypted offsite
-set, never in the repo.
+Not wired up yet, and it needs a code change first: `tar_via_alpine()` in
+`backup.sh` takes no exclude argument, and tarring a live SQLite recorder DB
+produces an archive that may not restore. Either extend the helper or dump the
+DB with `sqlite3 .backup` before the tar.
+
+`.storage` holds the user database, tokens and integration credentials, so it
+belongs in the encrypted offsite set and never in the repo.
 
 ## Docs to update when this lands
 
