@@ -81,6 +81,14 @@
         server: my-docker
         container: openclaw
 
+- Kodu:
+    - Home Assistant:
+        icon: home-assistant
+        href: https://home.khe.ee
+        description: Kodu automaatika
+        server: my-docker
+        container: homeassistant
+
 - Infra:
     - Proxmox:
         icon: proxmox

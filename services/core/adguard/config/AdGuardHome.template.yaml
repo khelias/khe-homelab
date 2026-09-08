@@ -84,6 +84,8 @@ filtering:
       answer: 192.168.0.11
     - domain: status.khe.ee
       answer: 192.168.0.11
+    - domain: home.khe.ee
+      answer: 192.168.0.11
   # AdGuard's built-in Safe Browsing — hits Google/Mozilla reputation DB for
   # malware + phishing domains. Complements the Hagezi TIF blocklist below
   # (reputation lookup catches zero-day phish, TIF catches known-bad domains).
