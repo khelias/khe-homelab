@@ -94,6 +94,46 @@ Manual, because these live in UIs whose credentials sit in VM `.env` files:
 
 Deliberately not on the Cloudflare Tunnel.
 
+## Where the earlier plan went
+
+A 2026-08-30 session ("Home Assistant khe-homelabi seadistus") already worked
+through this and reached different conclusions worth carrying over. Its phase
+numbers do not match this document's; these are the substantive points.
+
+**Hue was meant to be the first integration**, on the reasoning that the fastest
+way to understand what HA is, is to add hardware whose behaviour you already
+know, rather than debugging Modbus at the same time. **Checked 2026-09-08: no
+Hue Bridge on the network** - scanned 192.168.0/24, 192.168.1/24 and
+192.168.50/24 for both `/description.xml` and `/api/config`, nothing answered.
+So the lamps are Bluetooth-only, bound to a phone, and HA cannot see them. A
+Bridge (~60 EUR) would make Hue the single easiest integration in the house:
+it is itself the Zigbee coordinator, speaks locally over LAN with no cloud, and
+brings lamps, motion sensors, buttons and scenes in automatically. It would
+also remove most of the reason for the USB coordinator in the Zigbee phase.
+
+**Cameras were a whole phase and are missing from this document.** The shape
+agreed then: the NVR stays the recorder, HA gets events and live view. Video
+via RTSP straight from the cameras (sub stream `/Streaming/Channels/102`, not
+main - five 4 MP main streams would melt the dashboard), events via ISAPI.
+go2rtc is built into HA since 2024.11 and self-configures under
+`default_config`, so WebRTC needs no extra container. Core `hikvision`
+integration first (read events); `hikvision_next` from HACS only if automations
+need to toggle detection. Frigate is a separate decision, gated on knowing how
+many of the motion alerts are junk, and on the iGPU already being shared by
+Jellyfin and Immich.
+
+Blockers recorded then, still unverified: the NVR sits on DHCP (.129 at the
+time) and needs a static address or the integration breaks on lease change; and
+HA may need an admin-level NVR account, since some devices authenticate no
+other way. Access credentials for the cameras are their own open question.
+
+**The honest framing from that session, still true:** HA is the most restless
+service in this fleet - monthly releases, regular breaking changes - while
+everything else here runs on Renovate and autoheal without asking for
+attention. It pays for itself at the spot-price heating phase. If that is not
+going to happen, the summer-standby problem is already solved by a calendar
+reminder, and this stack is a hobby rather than infrastructure.
+
 ## Phase 3 - Komfovent, read-only
 
 Native `modbus:` YAML platform, not a HACS integration. The register map is
