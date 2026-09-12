@@ -158,6 +158,22 @@ binary sensors per channel from one NVR connection. Point it at the NVR, not
 at the five cameras, so the NVR remains the single source of streams and
 events. Live view goes through the built-in go2rtc, sub streams only.
 
+Installed 2026-09-12 evening against the NVR (DS-7608NI-K2, channels 1-5).
+Notification host had to be corrected by hand from the prefilled container
+address `172.18.0.19:8123` to `http://192.168.0.11:8123`, or the NVR could
+never push events. Result: devices for the NVR and all five cameras, event
+sensors present, but **only camera 1 got a camera entity**. Known upstream
+bug, not local: HA 2026.9 turned the deprecated `via_device` parameter into a
+RuntimeError, `hikvision_next` v1.1.1 still uses it (issues #365, #366, #368,
+#372; fix in PR #369, user-confirmed on 2026.9.1, maintainer silent so far).
+Decision: wait for the release rather than run a fork's branch; check HACS
+for the update in a week. Fallback if it drags: `generic` camera entries on
+the NVR's RTSP sub streams for channels 2-5.
+
+Still to do here: DHCP reservation for the NVR at `.129`; verify an event
+actually reaches HA (walk past a camera, watch the motion sensor); identify
+`.153`.
+
 **The honest framing from that session, still true:** HA is the most restless
 service in this fleet - monthly releases, regular breaking changes - while
 everything else here runs on Renovate and autoheal without asking for
