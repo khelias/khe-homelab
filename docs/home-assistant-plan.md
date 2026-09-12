@@ -213,7 +213,7 @@ a one-line subtitle heading saying what to look at). Six tabs plus one
 subview, decided with the owner after trying three tabs first:
 
 - **Kodu**: view badges ("Kaido on Kodus" per person from a `PEOPLE` list,
-  night tariff and four fault sensors shown only when on); Ilm (built-in
+  and four fault sensors shown only when on); Ilm (built-in
   weather-forecast hourly + daily); Elekter (previous / this / next hour
   total price as one three-column glance card from
   `sensor.elektri_hind_{eelmine,see,jargmine}_tund`,
@@ -221,8 +221,11 @@ subview, decided with the owner after trying three tabs first:
   available" as a heading badge); Küte; Soe vesi (boiler state + target,
   tank temperature from the water_heater attribute,
   `sensor.boileri_vee_temperatuur` in `packages/daikin.yaml` for history);
-  Ventilatsioon (supply/extract temperature, humidity, filter as bar-gauge
-  feature); Süsteem (updates, NVR disk, phone battery
+  Kiirnupud (Komfovent quick modes Köök / Kamin / Intensiivne / Tavaline as
+  button cards on `select.komfovent_operation_mode`, re-enabled 2026-09-12
+  ahead of the observation-week end because temporary modes do not touch the
+  heater KPI; current mode as a heading badge); Ventilatsioon (supply/extract
+  temperature, humidity, filter as bar-gauge feature); Süsteem (updates, NVR disk, phone battery
   only when they need attention, otherwise one "all fine" line). Headings
   navigate to the matching tab or subview.
 - **Energia**: house level only. Daily min/mean/max total price as
