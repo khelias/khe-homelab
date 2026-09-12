@@ -1,8 +1,8 @@
 # Home Assistant rollout plan
 
 Status: HA reachable at `home.khe.ee` from LAN and Tailscale, backup wired
-(2026-09-12). Phase 3 switched to HACS the same day; hass-komfovent installed and
-reading (2026-09-12 evening).
+(2026-09-12). Phases 3 and 4 both live via HACS since 2026-09-12 evening (Komfovent and
+Daikin reading); observation week before any write.
 
 Decisions taken up front:
 
@@ -218,11 +218,35 @@ entities on day one. The current settings are deliberate: extract temperature
 control plus matched Normal fans took the electric afterheater to zero. Do not
 let an automation, or a stray tap in the app, revert that.
 
-## Phase 4 - Daikin, read-only
+## Phase 4 - Daikin, read-only (installed 2026-09-12)
 
 The stock `daikin` integration does not speak this unit. The path is the
-`daikin_altherma` custom integration over `ws://192.168.0.248/mca`, via HACS,
-which phase 3 now installs anyway.
+`daikin_altherma` custom integration (tadasdanielius) over
+`ws://192.168.0.248/mca`, via HACS. Chosen over `daikin_onecta` because it is
+local: no Daikin account, no cloud, no daily request quota (Onecta users hit
+"daily rate limit reached" at 60 s polling). Known weaknesses, accepted:
+integration last touched 2024, `pyaltherma` 0.0.21 from 2023, issue #120
+reports "No module named pyaltherma" on HA 2026.3.3 with no maintainer
+answer, and the two 2026 forks are identical to upstream. On this install it
+loaded cleanly on 2026.9.2. If it breaks under a later HA, plan B is Onecta
+with polling off and a scheduled refresh every few hours.
+
+What it created, unit EHVX08S18DA9W7, firmware ID9652/IDE7C4, area
+Tehnoruum:
+
+- **Space Heating**: Climate Control switch (was **off** = the manual standby
+  from 2026-08-29, now visible), Operation Mode select (`heating`),
+  Temperature Control number (2, the weather-curve shift), sensors indoor
+  20.0 C, leaving water 31.0 C, outdoor 17.0 C, Unit State OK. Heating
+  energy sensors read 0 - true in standby and also the broken channel, so
+  they prove nothing either way.
+- **Hot Water Tank**: water_heater on, target 55 C, current 30 C, month
+  heating energy 41 kWh (the DHW channel is the trustworthy one).
+- Sensor names carry a `$NULL` prefix (unrendered template in the
+  integration), cosmetic.
+
+Write surface again: Climate Control on/off, mode, curve shift and the tank
+target are single taps. Disable them for the observation week.
 
 Unit indices: `/[0]/MNAE/1/...` is space heating, `/2/...` is the DHW tank,
 `0` is the gateway.
