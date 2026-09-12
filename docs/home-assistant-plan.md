@@ -178,13 +178,17 @@ intent. If HACS reports the install as modified, reinstall from HACS.
 Event sensors (motion, intrusion, line crossing, tampering, video loss, per
 channel) exist in the registry but are **disabled by the integration**: the
 NVR does not have "Notify Surveillance Center" set as linkage action for
-those events, so it would never push them. Enable per channel in the NVR web
-UI (Configuration -> Event -> Motion Detection -> Linkage Method -> Notify
-Surveillance Center), then reload the integration; the sensors enable
-themselves.
+those events, so it would never push them. Fixed 2026-09-12 without the NVR UI: the
+integration's `hikvision_next.isapi_request` action (runs with the
+credentials HA already holds) was used to GET `/Event/triggers/VMD-1..5` and
+PUT them back with a `<notificationMethod>center</notificationMethod>` entry
+added next to `record`. After a reload the five Motion sensors are live and
+already firing; the per-camera motion-detection switches that the reload
+enabled were disabled again. Intrusion (`fielddetection-N`) and Line
+Crossing (`linedetection-N`) triggers still carry only `record`; same
+procedure if those events are ever wanted.
 
-Still to do here: DHCP reservation for the NVR at `.129`; the linkage step
-above; identify `.153`.
+Still to do here: DHCP reservation for the NVR at `.129`; identify `.153`.
 
 ## Dashboard (2026-09-12)
 
@@ -196,7 +200,10 @@ snapshots, system/updates), **Energia** (48 h price, 48 h temperatures, 7 d
 power/heater, daily kWh bars for AHU, heater and DHW), **Kaamerad** (live
 main streams; slow until sub streams are enabled). It lives in `.storage`,
 so it is backed up but not in git; the generating script is a session
-artefact, re-creatable from this description. Registry cleanup done at the
+artefact, re-creatable from this description. The Kodu camera section also
+shows the five motion sensors. Note from the research pass: the Daikin
+energy sensors hold the last per-period bucket, not a cumulative meter, so
+they are shown as plain history, never as statistics bars. Registry cleanup done at the
 same time: native-modbus orphans removed, `_2` suffixes dropped, `$NULL`
 Daikin sensors renamed to `sensor.boiler_energy_*` / `heating_energy_*`.
 
