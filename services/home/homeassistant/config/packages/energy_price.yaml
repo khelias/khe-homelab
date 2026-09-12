@@ -1,0 +1,47 @@
+# Real electricity price per kWh, incl. VAT, on top of the raw Nord Pool spot.
+# Tariff constants come from the Alexela + Elektrilevi joint invoice for
+# August 2026 (Elektrilevi package Võrk 4, 20 A). Update here when the
+# invoice changes; monthly fixed fees (grid 20.64, supplier 1.05 EUR/month
+# excl. VAT) are deliberately left out - they do not move with consumption.
+#
+# Day tariff: Mon-Fri 07:00-22:00 Estonian time, excluding public holidays.
+# Night: everything else. Public holidays come from the core `workday`
+# integration (binary_sensor.workday_sensor_ee, country EE, added via the UI 2026-09-12).
+template:
+  - binary_sensor:
+      - name: "Võrgu öötariif"
+        unique_id: grid_night_tariff
+        icon: mdi:weather-night
+        state: >
+          {% set h = now().hour %}
+          {{ h < 7 or h >= 22 or is_state('binary_sensor.workday_sensor_ee', 'off') }}
+
+  - sensor:
+      - name: "Elektri hind kokku"
+        unique_id: electricity_price_total
+        unit_of_measurement: "EUR/kWh"
+        state_class: measurement
+        icon: mdi:cash-multiple
+        availability: "{{ has_value('sensor.nord_pool_ee_praegune_hind') }}"
+        state: >
+          {% set spot = states('sensor.nord_pool_ee_praegune_hind') | float %}
+          {% set grid = 0.021 if is_state('binary_sensor.vorgu_ootariif', 'on') else 0.0369 %}
+          {# renewable 0.0084 + security of supply 0.00758 + excise 0.0021 + supplier balancing 0.00373 #}
+          {% set fees = 0.0084 + 0.00758 + 0.0021 + 0.00373 %}
+          {{ ((spot + grid + fees) * 1.24) | round(5) }}
+        attributes:
+          spot_excl_vat: "{{ states('sensor.nord_pool_ee_praegune_hind') | float(0) }}"
+          grid_tariff: "{{ 'öö' if is_state('binary_sensor.vorgu_ootariif', 'on') else 'päev' }}"
+
+      - name: "Elektri hind kokku, järgmine"
+        unique_id: electricity_price_total_next
+        unit_of_measurement: "EUR/kWh"
+        icon: mdi:cash-clock
+        availability: "{{ has_value('sensor.nord_pool_ee_jargmine_hind') }}"
+        state: >
+          {% set spot = states('sensor.nord_pool_ee_jargmine_hind') | float %}
+          {% set t = now() + timedelta(minutes=15) %}
+          {% set night = t.hour < 7 or t.hour >= 22 or is_state('binary_sensor.workday_sensor_ee', 'off') %}
+          {% set grid = 0.021 if night else 0.0369 %}
+          {% set fees = 0.0084 + 0.00758 + 0.0021 + 0.00373 %}
+          {{ ((spot + grid + fees) * 1.24) | round(5) }}

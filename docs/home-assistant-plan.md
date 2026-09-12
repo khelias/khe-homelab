@@ -366,8 +366,18 @@ Two control paths, in order of effort:
 Prerequisite either way: a Nord Pool price source in HA, and enough recorder
 history to check afterwards whether it worked. The price source landed
 2026-09-12: HA's built-in `nordpool` integration, area EE, EUR, via the UI.
-Raw spot price, no VAT or grid fee; the automation layer adds those as a
-rule. First day's spread was 0.02 to 0.23 EUR/kWh, which is the whole case
+Raw spot price, no VAT or grid fee. The "real price" layer landed the same
+evening as a repo-tracked package, `config/packages/energy_price.yaml`
+(`homeassistant: packages:` enabled in configuration.yaml): grid transfer
+day 0.0369 / night 0.021, renewable 0.0084, security of supply 0.00758,
+excise 0.0021, supplier balancing 0.00373 EUR/kWh, all excl. VAT, times 1.24.
+Constants come from the August 2026 Alexela + Elektrilevi invoice (Võrk 4,
+20 A); monthly fixed fees are excluded on purpose. Night tariff = 22-07,
+weekends and Estonian public holidays via the core `workday` integration
+(`binary_sensor.workday_sensor_ee`). Sensors: `sensor.elektri_hind_kokku`
+and `sensor.elektri_hind_kokku_jargmine`, `binary_sensor.vorgu_ootariif`.
+Open: whether the Alexela spot package carries a per-kWh margin on top of
+the exchange price (the invoice shows only a weighted average). First day's spread was 0.02 to 0.23 EUR/kWh, which is the whole case
 for this phase in one line.
 
 Building blocks exist, decide after the observation week which price stack
