@@ -276,8 +276,10 @@ action's `confirmation` option. The heater KPI baseline is therefore
 1298.79 kWh as of 2026-09-12 and any change after that is attributable to
 manual use, not to the observation period.
 
-It lives in `.storage`, so it is backed up but not in git; the generating
-script is a session artefact, re-creatable from this description. Note from
+It lives in `.storage`, so it is backed up nightly; the source of truth is
+`scripts/ha-dashboard.py`, which saves the whole Overview over the WebSocket
+API (family members for the presence badges come from an untracked
+`~/.config/khe/ha-people.json`, because this repo is public). Note from
 the research pass: the Daikin energy sensors hold the last per-period
 bucket, not a cumulative meter, so they are shown as history or as a daily
 max, never as cumulative statistics bars. hikvision_next re-enables its

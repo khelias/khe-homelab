@@ -197,6 +197,7 @@ All external traffic goes through Cloudflare Tunnel — zero ports open on the r
 ./scripts/deploy.sh down     # Stop everything
 ./scripts/backup.sh          # Backup databases + configs
 ./scripts/import-elektrilevi.py <csv>  # Elektrilevi hourly export -> HA Energy dashboard statistics
+./scripts/ha-dashboard.py            # Regenerate the Home Assistant Overview dashboard
 ```
 
 Health snapshot without touching the VM, via the self-hosted runner:
