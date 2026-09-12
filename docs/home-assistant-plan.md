@@ -224,16 +224,21 @@ leak/alarm sensors exist).
   humidity, filter as bar-gauge feature); Kaamerad (five motion tiles);
   Süsteem (updates, NVR disk, phone battery only when they need attention,
   otherwise one "all fine" line). Each heading navigates to its subview.
-- **Energia** (tab): 48 h price history, button to the HA Energy dashboard
-  (Elektrilevi kWh and cost), Daikin temperatures, DHW kWh per day
-  (statistics max of the daily bucket), ventilation power/recovery/heater,
-  AHU kWh per day, heater counter 30 d as the flat-line KPI, and the raw
-  Nord Pool / 15-min detail tiles at the end.
+- **Energia** (tab): told as a story, every section opens with a one-line
+  subtitle heading saying what to look at. "Mis elekter maksab" (7 d hourly
+  total price, today's spot min/max, night tariff), "Kui palju maja tarbib"
+  (Elektrilevi kWh and EUR per day as statistics bars straight from the
+  external statistics, button to the HA Energy dashboard), "Soe vesi" (DHW
+  kWh per day as max of the daily bucket), "Ventilatsioon" (AHU and heater
+  kWh per day, heater counter 30 d flat-line KPI, power/recovery 7 d).
+- **Tuled**, **Valve** (tabs, placeholders): Tuled is an explained empty
+  section until Hue is connected; Valve carries the motion history and the
+  note that the Paradox panel has no local interface.
 - **Kaamerad** (tab): picture-glance per camera (`camera_view: auto`, motion
   overlaid), NVR disk.
 - **Soojuspump**, **Ventilatsioon**, **Süsteem** (subviews): every secondary
   number with 24 h trend-graph features and a few history graphs; Süsteem is
-  the "Home Assistant" page (phone, updates, NVR).
+  the "Home Assistant" page (raw Nord Pool tiles, phone, updates, NVR).
 
 It lives in `.storage`, so it is backed up but not in git; the generating
 script is a session artefact, re-creatable from this description. Note from
