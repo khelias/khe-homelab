@@ -398,6 +398,14 @@ weekends and Estonian public holidays via the core `workday` integration
 and `sensor.elektri_hind_kokku_jargmine`, `binary_sensor.vorgu_ootariif`.
 The Alexela contract adds 0.470 c/kWh incl. VAT on the spot price; included
 as a post-VAT constant.
+Forecast for the chart, same package: `sensor.elektri_hinna_prognoos` is a
+trigger-based template that calls `nordpool.get_prices_for_date` for today
+and tomorrow (15-min slots, EUR/MWh in the response) and `workday.check_date`
+for both dates, then applies the tariff stack per slot into a compact
+attribute list (epoch start, spot, total; ~8.5 KB for 192 points). It is
+excluded from the recorder. The Overview plots it with apexcharts-card
+(HACS frontend plugin, installed through the HACS WebSocket API, resource
+auto-registered), columns colour-coded at 0.15 / 0.25 EUR/kWh.
 
 Facts settled 2026-09-12 for the phase-6 design: **underfloor heating** (large
 thermal mass, curve shift and multi-hour pauses are safe), DHW tank 180 l
