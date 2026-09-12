@@ -175,9 +175,30 @@ sub stream per channel, sub streams disabled by default). Manifest now says
 1.1.2; the next upstream release via HACS overwrites this copy, which is the
 intent. If HACS reports the install as modified, reinstall from HACS.
 
-Still to do here: DHCP reservation for the NVR at `.129`; verify an event
-actually reaches HA (walk past a camera, watch the motion sensor); identify
-`.153`.
+Event sensors (motion, intrusion, line crossing, tampering, video loss, per
+channel) exist in the registry but are **disabled by the integration**: the
+NVR does not have "Notify Surveillance Center" set as linkage action for
+those events, so it would never push them. Enable per channel in the NVR web
+UI (Configuration -> Event -> Motion Detection -> Linkage Method -> Notify
+Surveillance Center), then reload the integration; the sensors enable
+themselves.
+
+Still to do here: DHCP reservation for the NVR at `.129`; the linkage step
+above; identify `.153`.
+
+## Dashboard (2026-09-12)
+
+A storage-mode dashboard "Kodu" (`/kodu-vaade`, sidebar) was created through
+the WebSocket API and is editable in the UI. Three views, sections layout for
+the phone: **Kodu** (price tiles + 24 h, heating/DHW state as non-tappable
+tiles, ventilation with the heater-kWh KPI and filter gauge, five camera
+snapshots, system/updates), **Energia** (48 h price, 48 h temperatures, 7 d
+power/heater, daily kWh bars for AHU, heater and DHW), **Kaamerad** (live
+main streams; slow until sub streams are enabled). It lives in `.storage`,
+so it is backed up but not in git; the generating script is a session
+artefact, re-creatable from this description. Registry cleanup done at the
+same time: native-modbus orphans removed, `_2` suffixes dropped, `$NULL`
+Daikin sensors renamed to `sensor.boiler_energy_*` / `heating_energy_*`.
 
 **The honest framing from that session, still true:** HA is the most restless
 service in this fleet - monthly releases, regular breaking changes - while
