@@ -464,10 +464,11 @@ existing VM the rule has to be added by hand:
 
 **Config directory is mostly gitignored.** HA rewrites the directory at runtime
 and `.storage` holds the user database, long-lived tokens and integration
-credentials. Only `configuration.yaml` and `modbus.yaml` are tracked; the
-ignore rule is a blanket `config/*` plus a whitelist, so every new hand-written
-YAML file must be added to `.gitignore` explicitly or it silently stays
-untracked.
+credentials. Only `configuration.yaml` is tracked; the ignore rule is a
+blanket `config/*` plus a whitelist, so every new hand-written YAML file must
+be added to `.gitignore` explicitly or it silently stays untracked. HACS and
+its integrations (`custom_components/`) are deliberately untracked and
+reinstalled by hand; they are covered by the config-dir backup.
 
 **Config changes need a restart.** The config dir is a bind mount, so editing
 YAML and running `deploy-stacks.sh` changes nothing in the running container.
@@ -486,10 +487,12 @@ gunzipped DB in as `home-assistant_v2.db`, start the container.
 
 ### Komfovent Modbus
 
-Native `modbus:` YAML platform against 192.168.0.155:502, not a HACS
-integration, because the register map is measured and a custom component is a
-dependency Renovate cannot track.
+Read by the HACS integration `lnagel/hass-komfovent` against 192.168.0.155:502
+(decision and register map in home-assistant-plan.md, phase 3). Whatever
+client talks to the C6, these hold:
 
+- **Exactly one Modbus client at a time.** The native `modbus:` platform and
+  the HACS integration must never poll the unit together.
 - **Read aligned uint32 pairs.** A single-register read of one half of a pair
   returns Modbus exception 3, which makes a live register look absent.
 - **The controller drops fast consecutive connections.** Probing

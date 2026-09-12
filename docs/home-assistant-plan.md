@@ -1,7 +1,7 @@
 # Home Assistant rollout plan
 
-Status: HA container deployed and onboarded; phase 3 (Komfovent read-only)
-and backup wiring committed 2026-09-12, awaiting a HA restart on the VM.
+Status: HA reachable at `home.khe.ee` from LAN and Tailscale, backup wired
+(2026-09-12). Phase 3 switched to HACS the same day; HACS install pending.
 
 Decisions taken up front:
 
@@ -66,7 +66,8 @@ whitelist for the config dir, port 8123 in `harden-docker-vm.sh`.
 `configuration.yaml` is deliberately minimal - `default_config` and
 `recorder: purge_keep_days: 30`. The `http` proxy block was there at first
 and turned out to be dead: HA 2026.8 moved that to the UI (see the trusted
-proxies note in operational-notes). Location, name and units are
+proxies note in operational-notes). A `modbus:` block and a YAML dashboard
+existed for a few hours on 2026-09-12, see phase 3. Location, name and units are
 left to the onboarding wizard so they land in `.storage`, which is gitignored;
 this repo is public and the house's coordinates do not belong in it.
 
@@ -147,50 +148,67 @@ attention. It pays for itself at the spot-price heating phase. If that is not
 going to happen, the summer-standby problem is already solved by a calendar
 reminder, and this stack is a hobby rather than infrastructure.
 
-## Phase 3 - Komfovent, read-only (repo side done 2026-09-12)
+## Phase 3 - Komfovent via HACS (decided 2026-09-12)
 
-`config/modbus.yaml`, pulled in by `modbus: !include modbus.yaml` and
-whitelisted in `.gitignore`. One TCP hub, `message_wait_milliseconds: 100`
-to pace the polls, seven sensors: 901/902/903 as int16 x0.1 C, 916 filter %,
-920 W, 923 %, 930 as uint32 x0.001 kWh with `total_increasing`. The block was
-re-read from the Mac the same day and matched: 17.3 / 24.7 / 15.6 C, filter
-11 %, 52 W, total 3015.2 kWh. Register 923 read 0 at that moment despite a
-19 % temperature-based recovery, so treat that entity as unproven until it
-shows non-zero values.
+**Decision reversed the same day it was implemented.** The native `modbus:`
+route was built and verified (seven sensors, YAML dashboard, entities live in
+HA), then dropped in favour of the HACS integration
+[lnagel/hass-komfovent](https://github.com/lnagel/hass-komfovent). Reasons:
 
-Loading it needs a HA restart; bind-mounted config changes do not recreate
-the container, and `deploy-stacks.sh` only runs `compose up`.
+- Phase 4 needs HACS anyway (`daikin_altherma` has no native alternative), so
+  "avoid the first out-of-Renovate dependency" stopped being a real saving.
+- The integration gives a device model with modes and setpoints ready-made;
+  with native modbus every write would be hand-mapped register by register.
+- Preference stated plainly: maintained integrations over hand-rolled ones for
+  a hobby service. HA moves monthly (the `http:` YAML block dying under us
+  the same day was the live example); a maintained component moves with it.
 
-A repo-tracked dashboard sits next to it: `config/dashboards/komfovent.yaml`,
-registered under `lovelace: dashboards:` in YAML mode and shown in the sidebar
-as "Ventilatsioon". UI-built dashboards would land in `.storage`; this one is
-in git, and edits to the file apply on a browser refresh without a restart.
+Cost accepted: HACS plus two custom components live in `config/` outside
+Renovate and autoheal. Keep that set to exactly HACS, `hass-komfovent`,
+`daikin_altherma` until phase 6 works, and treat HA image bumps as manual
+merges from now on, since a breaking change can arrive through a component CI
+never sees.
 
-Native `modbus:` YAML platform, not a HACS integration. The register map is
-already measured, and a custom component is a dependency Renovate cannot track.
+**One poller at a time.** The C6 drops connections that arrive in quick
+succession. The native `modbus:` config is removed in the same commit as this
+text; deploy that and restart HA *before* adding the HACS integration, never
+run both.
 
-Entities worth having first: supply 901, extract 902, outdoor 903, filter %
-916, power W 920, efficiency % 923, total kWh 930/931 (uint32, scale 0.001).
+Install order, all manual (nothing here is repo-tracked):
 
-Two traps, both already paid for once:
+1. HACS into the container:
+   `docker exec homeassistant bash -c "wget -O - https://get.hacs.xyz | bash -"`,
+   then `docker restart homeassistant`.
+2. Settings -> Devices & services -> Add integration -> HACS (GitHub device
+   auth).
+3. HACS -> search "Komfovent" -> download -> restart HA.
+4. Add integration -> Komfovent -> `192.168.0.155`. Poll interval 30 s is fine.
 
+What carries over from the native attempt, still true whichever client reads
+the registers:
+
+- Measured map: supply 901, extract 902, outdoor 903 (int16 x0.1 C), filter %
+  916, power W 920, efficiency % 923, total kWh 930/931 (uint32 x0.001).
+  Live 2026-09-12: 17.3 / 24.7 / 15.6 C, filter 11 %, 52 W, 3015.2 kWh.
+  Register 923 read 0 despite a ~19 % temperature-based recovery; check what
+  the integration shows for it before trusting an efficiency entity.
 - **Read uint32 pairs aligned.** A single-register read of one half returns
   Modbus exception 3, which makes a real register look absent.
 - Flow control register 11 = 3 (OFF), so the "flow" fields are fan
   **percentages** and registers 905-908 (m3/h) are meaningless. Do not create
-  airflow sensors from them.
+  airflow sensors from them; if the integration exposes them, ignore them.
+- Reg 904 reads 0x8000, the sensor-absent marker, not a temperature.
 
-Read-only for at least a week. Write access (mode, setpoints) comes after the
-readings have proven stable, and the current settings are deliberate: extract
-temperature control plus 60/60 % Normal fans, which took the electric
-afterheater to zero. Do not let an automation revert that.
+Read-only for at least a week, even though the integration hands over write
+entities on day one. The current settings are deliberate: extract temperature
+control plus matched Normal fans took the electric afterheater to zero. Do not
+let an automation, or a stray tap in the app, revert that.
 
 ## Phase 4 - Daikin, read-only
 
 The stock `daikin` integration does not speak this unit. The path is the
-`daikin_altherma` custom integration over `ws://192.168.0.248/mca`, which means
-installing HACS into the config volume. That is the first dependency outside
-Renovate's reach, hence it comes after Komfovent rather than with it.
+`daikin_altherma` custom integration over `ws://192.168.0.248/mca`, via HACS,
+which phase 3 now installs anyway.
 
 Unit indices: `/[0]/MNAE/1/...` is space heating, `/2/...` is the DHW tank,
 `0` is the gateway.
