@@ -1,0 +1,13 @@
+# Daikin Altherma helpers on top of the HACS daikin_altherma integration.
+# The tank temperature is only an attribute of the water_heater entity, so
+# a plain sensor is derived from it to get history and a trend graph.
+template:
+  - sensor:
+      - name: "Boileri vee temperatuur"
+        unique_id: dhw_tank_temperature
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+        icon: mdi:thermometer-water
+        availability: "{{ state_attr('water_heater.hot_water_tank_domestic_hot_water_tank', 'current_temperature') is not none }}"
+        state: "{{ state_attr('water_heater.hot_water_tank_domestic_hot_water_tank', 'current_temperature') }}"
