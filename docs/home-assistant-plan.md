@@ -242,7 +242,16 @@ the registers:
   utility room), a free indoor sensor for phase 6.
 - Write surface is wide: `climate` setpoint, Power, ECO/AUTO mode, AQ
   electric heater and the ECO blocking switches are all one tap in the app.
-  Disable them for the observation week rather than relying on discipline.
+  **Disabled 2026-09-12 evening**, all 65 writable entities across Komfovent,
+  Daikin and the NVR, via the WebSocket entity-registry API with a long-lived
+  token kept outside the repo (`~/.config/khe/ha-token` on the Mac). 117
+  read-only entities remain. Re-enable is the same script with `--enable`.
+- Seen while disabling: the electric afterheater is **enabled in every
+  Komfovent mode** (`*_electric_heater` switches all on). Heater Power is 0 W
+  only because extract 25 C sits above the 20 C setpoint; once extract drops
+  below the setpoint in autumn the heater will run again and the heater-kWh
+  KPI will move. Decide after the observation week whether to disable the
+  heater in Normal mode (risk: cold supply air) or accept some heater use.
 - **Read uint32 pairs aligned.** A single-register read of one half returns
   Modbus exception 3, which makes a real register look absent.
 - Flow control register 11 = 3 (OFF), so the "flow" fields are fan
