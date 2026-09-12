@@ -23,7 +23,7 @@ Device facts this plan builds on (measured, see the home-automation notes):
 | Komfovent C6 | 192.168.0.155:502 | Modbus TCP, open, no controller-side enabling needed |
 | Daikin Altherma 3 R | ws://192.168.0.248/mca | WebSocket, oneM2M JSON |
 | Paradox alarm | 192.168.0.240 | no listening ports, out of scope |
-| Hikvision NVR/cameras | separate L2 subnet | no credentials, out of scope |
+| Hikvision NVR + 5 cameras | NVR 192.168.0.129, cameras .2/.41/.42/.44/.45 | ISAPI (Digest 401), RTSP 554, SDK 8000; passwords in hand since 2026-09-12 |
 
 ## Phase 0 - reachability (done 2026-09-08, partially)
 
@@ -137,10 +137,26 @@ need to toggle detection. Frigate is a separate decision, gated on knowing how
 many of the motion alerts are junk, and on the iGPU already being shared by
 Jellyfin and Immich.
 
-Blockers recorded then, still unverified: the NVR sits on DHCP (.129 at the
-time) and needs a static address or the integration breaks on lease change; and
-HA may need an admin-level NVR account, since some devices authenticate no
-other way. Access credentials for the cameras are their own open question.
+Re-checked 2026-09-12 with a port sweep from the LAN: the whole Hikvision set
+is on 192.168.0.0/24 now, not on the orphaned .1 subnet, so the Docker VM
+reaches it directly and no routing or alias work is needed. NVR at `.129`
+(ISAPI answers Digest 401, RTSP 554, SDK 8000), five cameras at `.2`, `.41`,
+`.42`, `.44`, `.45` with RTSP and SDK open and HTTP closed, one unidentified
+`.153` with 8000 open. Hik-Connect is off, so nothing here has an internet
+path, which is how it should stay. The user has the passwords.
+
+Remaining blockers, both small: the NVR is inside the DHCP pool without a
+reservation (router -> Manual Assignment, same page as the DNS fix), and the
+integration may want an admin-level NVR account.
+
+Integration choice: `hikvision_next` from the HACS default store rather than
+the core `hikvision` platform. The core one is YAML-only and would put the
+NVR password in a `secrets.yaml` on the VM; `hikvision_next` has a config
+flow (host, port, user, password, RTSP port), keeps credentials in
+`.storage`, and creates camera entities for main and sub streams plus event
+binary sensors per channel from one NVR connection. Point it at the NVR, not
+at the five cameras, so the NVR remains the single source of streams and
+events. Live view goes through the built-in go2rtc, sub streams only.
 
 **The honest framing from that session, still true:** HA is the most restless
 service in this fleet - monthly releases, regular breaking changes - while
