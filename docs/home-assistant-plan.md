@@ -210,8 +210,7 @@ sections dashboards (report in the session scratchpad; principles: order by
 context, 3-5 numbers per system at a glance, faults visible only when active,
 one graph per section, detail in subviews so nothing is lost). Three tabs and
 three subviews; the tab bar stays short on purpose, a tab is added only when
-something is used daily (lights once Hue lands; Kaamerad becomes Valve once
-leak/alarm sensors exist).
+something is used daily.
 
 - **Kodu** (tab): view badges (person, night tariff and four fault sensors,
   each shown only when on); Ilm (built-in weather-forecast hourly + daily);
@@ -231,11 +230,11 @@ leak/alarm sensors exist).
   external statistics, button to the HA Energy dashboard), "Soe vesi" (DHW
   kWh per day as max of the daily bucket), "Ventilatsioon" (AHU and heater
   kWh per day, heater counter 30 d flat-line KPI, power/recovery 7 d).
-- **Tuled**, **Valve** (tabs, placeholders): Tuled is an explained empty
-  section until Hue is connected; Valve carries the motion history and the
-  note that the Paradox panel has no local interface.
-- **Kaamerad** (tab): picture-glance per camera (`camera_view: auto`, motion
-  overlaid), NVR disk.
+- **Valve** (tab, was Kaamerad): picture-glance per camera (`camera_view:
+  auto`, motion overlaid), motion history 24 h, NVR disk, and the note that
+  the Paradox panel has no local interface; leak/alarm sensors land here.
+- **Tuled** (tab, placeholder): an explained empty section until Hue is
+  connected.
 - **Soojuspump**, **Ventilatsioon**, **Süsteem** (subviews): every secondary
   number with 24 h trend-graph features and a few history graphs; Süsteem is
   the "Home Assistant" page (raw Nord Pool tiles, phone, updates, NVR).
