@@ -116,6 +116,39 @@ template:
             {% endfor %}
             {{ ns.out }}
 
+  # Hourly view of the same stack for the dashboard row "previous / this /
+  # next hour", read from the forecast attribute so all three agree with the
+  # chart and with what the hourly meter is billed at.
+  - sensor:
+      - name: "Elektri hind, eelmine tund"
+        unique_id: electricity_price_hour_prev
+        unit_of_measurement: "EUR/kWh"
+        icon: mdi:cash-minus
+        availability: "{{ state_attr('sensor.elektri_hinna_prognoos', 'prices') is not none }}"
+        state: >
+          {% set h = ((as_timestamp(now()) // 3600) * 3600 - 3600) | int %}
+          {% set m = state_attr('sensor.elektri_hinna_prognoos', 'prices') | selectattr('s', 'eq', h) | list %}
+          {{ m[0].t if m else none }}
+      - name: "Elektri hind, see tund"
+        unique_id: electricity_price_hour_now
+        unit_of_measurement: "EUR/kWh"
+        state_class: measurement
+        icon: mdi:cash-multiple
+        availability: "{{ state_attr('sensor.elektri_hinna_prognoos', 'prices') is not none }}"
+        state: >
+          {% set h = ((as_timestamp(now()) // 3600) * 3600) | int %}
+          {% set m = state_attr('sensor.elektri_hinna_prognoos', 'prices') | selectattr('s', 'eq', h) | list %}
+          {{ m[0].t if m else none }}
+      - name: "Elektri hind, järgmine tund"
+        unique_id: electricity_price_hour_next
+        unit_of_measurement: "EUR/kWh"
+        icon: mdi:cash-plus
+        availability: "{{ state_attr('sensor.elektri_hinna_prognoos', 'prices') is not none }}"
+        state: >
+          {% set h = ((as_timestamp(now()) // 3600) * 3600 + 3600) | int %}
+          {% set m = state_attr('sensor.elektri_hinna_prognoos', 'prices') | selectattr('s', 'eq', h) | list %}
+          {{ m[0].t if m else none }}
+
 recorder:
   exclude:
     entities:
