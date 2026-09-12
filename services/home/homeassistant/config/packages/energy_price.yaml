@@ -1,8 +1,11 @@
 # Real electricity price per kWh, incl. VAT, on top of the raw Nord Pool spot.
 # Tariff constants come from the Alexela + Elektrilevi joint invoice for
 # August 2026 (Elektrilevi package Võrk 4, 20 A). Update here when the
-# invoice changes; monthly fixed fees (grid 20.64, supplier 1.05 EUR/month
-# excl. VAT) are deliberately left out - they do not move with consumption.
+# invoice changes; monthly fixed fees (grid 20.64 EUR excl. VAT, supplier
+# 2.02 EUR incl. VAT) are deliberately left out - they do not move with
+# consumption. The Alexela contract (from 2026-08-12) adds a margin of
+# 0.470 c/kWh incl. VAT on top of the 15-minute spot price; it is quoted
+# incl. VAT, so it is added after the VAT multiplication.
 #
 # Day tariff: Mon-Fri 07:00-22:00 Estonian time, excluding public holidays.
 # Night: everything else. Public holidays come from the core `workday`
@@ -28,7 +31,7 @@ template:
           {% set grid = 0.021 if is_state('binary_sensor.vorgu_ootariif', 'on') else 0.0369 %}
           {# renewable 0.0084 + security of supply 0.00758 + excise 0.0021 + supplier balancing 0.00373 #}
           {% set fees = 0.0084 + 0.00758 + 0.0021 + 0.00373 %}
-          {{ ((spot + grid + fees) * 1.24) | round(5) }}
+          {{ ((spot + grid + fees) * 1.24 + 0.0047) | round(5) }}
         attributes:
           spot_excl_vat: "{{ states('sensor.nord_pool_ee_praegune_hind') | float(0) }}"
           grid_tariff: "{{ 'öö' if is_state('binary_sensor.vorgu_ootariif', 'on') else 'päev' }}"
@@ -44,4 +47,4 @@ template:
           {% set night = t.hour < 7 or t.hour >= 22 or is_state('binary_sensor.workday_sensor_ee', 'off') %}
           {% set grid = 0.021 if night else 0.0369 %}
           {% set fees = 0.0084 + 0.00758 + 0.0021 + 0.00373 %}
-          {{ ((spot + grid + fees) * 1.24) | round(5) }}
+          {{ ((spot + grid + fees) * 1.24 + 0.0047) | round(5) }}

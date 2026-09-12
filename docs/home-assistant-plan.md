@@ -376,8 +376,15 @@ Constants come from the August 2026 Alexela + Elektrilevi invoice (Võrk 4,
 weekends and Estonian public holidays via the core `workday` integration
 (`binary_sensor.workday_sensor_ee`). Sensors: `sensor.elektri_hind_kokku`
 and `sensor.elektri_hind_kokku_jargmine`, `binary_sensor.vorgu_ootariif`.
-Open: whether the Alexela spot package carries a per-kWh margin on top of
-the exchange price (the invoice shows only a weighted average). First day's spread was 0.02 to 0.23 EUR/kWh, which is the whole case
+The Alexela contract adds 0.470 c/kWh incl. VAT on the spot price; included
+as a post-VAT constant.
+
+Facts settled 2026-09-12 for the phase-6 design: **underfloor heating** (large
+thermal mass, curve shift and multi-hour pauses are safe), DHW tank 180 l
+(model code S18), Smart Grid input wiring unknown and not needed for the
+software route. Constraint: **no new hardware for now** - no Shelly meters,
+no Zigbee - so savings are judged from the Komfovent/Daikin counters,
+degree-day normalisation and the monthly invoice, not a house meter. First day's spread was 0.02 to 0.23 EUR/kWh, which is the whole case
 for this phase in one line.
 
 Building blocks exist, decide after the observation week which price stack
