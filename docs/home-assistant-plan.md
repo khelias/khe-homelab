@@ -228,8 +228,10 @@ subview, decided with the owner after trying three tabs first:
 - **Energia**: house level only. Daily min/mean/max total price as
   statistics (fills in over time, survives recorder purge), Elektrilevi kWh
   and EUR per day straight from the external statistics, button to the HA
-  Energy dashboard, and three "big consumers" tiles that link to the device
-  tabs. Trimmed from Kodu after review: Daikin/Komfovent outdoor temps
+  Energy dashboard, and a "big consumers this month" row (DHW from Daikin's
+  month bucket, ventilation and afterheater from `utility_meter` monthly
+  cycles in `packages/komfovent.yaml`, calibrated to 0 on 2026-09-12 so
+  September only counts from that day) linking to the device tabs. Trimmed from Kodu after review: Daikin/Komfovent outdoor temps
   (weather card covers it), fan %, DHW kWh today, the Daikin "indoor"
   sensor (a constant 20.0 setpoint, entity disabled), daily weather card
   (more-info has it), and the five motion tiles (NVR motion fires on
