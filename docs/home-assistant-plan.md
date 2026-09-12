@@ -254,6 +254,23 @@ subview, decided with the owner after trying three tabs first:
   (Zigbee, once a coordinator exists).
 - **Tuled** (placeholder): an explained empty section until Hue is connected.
 - **Süsteem** (subview): raw Nord Pool tiles, phone, updates, NVR.
+- **Komfoventi seaded** (subview, generated from the registry): per-mode
+  supply/extract %, setpoint, heater switch and timers for all eight modes,
+  ECO/AQ/control-stage settings, maintenance buttons.
+
+Controls went live on 2026-09-12 evening at the owner's request, one week
+before the planned end of the observation week: all 103 Komfovent / Daikin /
+Hikvision control entities re-enabled (unsupported Hikvision detection
+switches stay off). Placement rule: Kodu carries only daily quick modes;
+each device tab has a "Juhtimine" section on top (Daikin: heating on/off,
+**curve offset `number.space_heating_temperature_control` -10..+10 K, the
+phase-6 lever**, operation mode, DHW target; Komfovent: mode, timers, power,
+afterheater enable, auto/ECO, scheduler); the long tail sits in the
+settings subview. Every expensive or disruptive toggle (heating, AHU power,
+any afterheater switch, maintenance buttons) asks for confirmation via the
+action's `confirmation` option. The heater KPI baseline is therefore
+1298.79 kWh as of 2026-09-12 and any change after that is attributable to
+manual use, not to the observation period.
 
 It lives in `.storage`, so it is backed up but not in git; the generating
 script is a session artefact, re-creatable from this description. Note from
