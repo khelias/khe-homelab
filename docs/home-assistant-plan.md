@@ -195,7 +195,11 @@ Still to do here: DHCP reservation for the NVR at `.129`; identify `.153`.
 The curated dashboard **is the default Overview** (`/lovelace`), saved in
 storage mode through the WebSocket API and editable in the UI. The separate
 "Kodu" dashboard and the stock "Kaart" were deleted the same evening so the
-app opens straight into the curated view. Three views, sections layout for
+app opens straight into the curated view. Trap: HA 2026.9 opens the new
+area-based "Home" panel (`/home`) by default and shows the legacy Overview
+only when `default_panel` is `lovelace`; that is set in frontend system data
+(`frontend/set_system_data`, key `core`) and in the admin user's data, so a
+new user or device lands on the curated view too. Three views, sections layout for
 the phone: **Kodu** (price tiles + 24 h, heating/DHW state as non-tappable
 tiles, ventilation with the heater-kWh KPI and filter gauge, five motion
 tiles, system/updates), **Energia** (48 h price, 48 h temperatures, 7 d
