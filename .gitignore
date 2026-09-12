@@ -31,6 +31,7 @@ services/core/homepage/config/kubernetes.yaml
 services/home/homeassistant/config/*
 !services/home/homeassistant/config/configuration.yaml
 !services/home/homeassistant/config/modbus.yaml
+!services/home/homeassistant/config/dashboards/
 
 # Private notes — current security gaps, threat model, anything that would tip off
 # an attacker while still unfixed. Public ROADMAP.md covers direction only.

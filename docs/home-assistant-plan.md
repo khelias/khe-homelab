@@ -161,6 +161,11 @@ shows non-zero values.
 Loading it needs a HA restart; bind-mounted config changes do not recreate
 the container, and `deploy-stacks.sh` only runs `compose up`.
 
+A repo-tracked dashboard sits next to it: `config/dashboards/komfovent.yaml`,
+registered under `lovelace: dashboards:` in YAML mode and shown in the sidebar
+as "Ventilatsioon". UI-built dashboards would land in `.storage`; this one is
+in git, and edits to the file apply on a browser refresh without a restart.
+
 Native `modbus:` YAML platform, not a HACS integration. The register map is
 already measured, and a custom component is a dependency Renovate cannot track.
 
