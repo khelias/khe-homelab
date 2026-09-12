@@ -98,10 +98,12 @@ Manual, because these live in UIs whose credentials sit in VM `.env` files:
 Checked 2026-09-12 from the LAN: `192.168.0.11:8123` answers and onboarding
 is complete, but AdGuard does not resolve `home.khe.ee` while its siblings
 resolve, and NPM has no host for it (TLS handshake fails where `photos.khe.ee`
-returns 200). So the three manual steps above are still open. The Kuma monitor
-could not be checked from outside. Later the same day the NPM host was created
-via the API and answered 400 from HA, because trusted proxies are UI
-configuration since 2026.8 and the YAML block had never been imported.
+returns 200). Later the same day: NPM host created via the API (answered 400 from HA
+until trusted proxies were set in the UI, see operational-notes), AdGuard
+rewrite added via the API, and `https://home.khe.ee` verified end to end from
+the LAN. Along the way the router turned out to be handing out itself as DNS
+with AdGuard nowhere in the path; DHCP DNS was set back to `192.168.0.11`
+only, as the README describes. Still open: the Kuma monitor.
 
 Deliberately not on the Cloudflare Tunnel.
 
