@@ -203,17 +203,39 @@ migrating `.storage/lovelace`, so a config saved through the API into the
 bare default needs one HA restart before the frontend stops falling back to
 Home. `default_panel` is set in frontend system data (`frontend/set_system_data`,
 key `core`) and in the admin user's data, so a new user or device lands on
-the curated view too. Three views, sections layout for
-the phone: **Kodu** (price tiles + 24 h, heating/DHW state as non-tappable
-tiles, ventilation with the heater-kWh KPI and filter gauge, five motion
-tiles, system/updates), **Energia** (48 h price, 48 h temperatures, 7 d
-power/heater, daily kWh bars for AHU and heater, DHW as plain history),
-**Kaamerad** (live main streams; slow until sub streams are enabled). It
-lives in `.storage`, so it is backed up but not in git; the generating
+the curated view too.
+
+Layout since the evening of 2026-09-12, after a research pass on phone-first
+sections dashboards (report in the session scratchpad; principles: order by
+context, 3-5 numbers per system at a glance, faults visible only when active,
+one graph per section, detail in a subview so nothing is lost). Four views:
+
+- **Kodu**: view badges (person, night tariff and four fault sensors, each
+  visible only when on); Ilm (built-in weather-forecast hourly + daily);
+  Elekter (previous / this / next hour total price from
+  `sensor.elektri_hind_{eelmine,see,jargmine}_tund`, apexcharts today+tomorrow
+  hourly columns with extremas, "tomorrow available" as a heading badge);
+  Küte; Soe vesi; Ventilatsioon (filter as bar-gauge tile feature); Kaamerad
+  (five motion tiles); Süsteem (updates, NVR disk and phone battery only when
+  they need attention, otherwise one "all fine" line). Section headings
+  navigate to the Tehnika subview.
+- **Energia**: 48 h price history, Daikin temperatures, DHW kWh per day
+  (statistics max of the daily bucket), ventilation power/recovery/heater,
+  AHU kWh per day, heater counter 30 d as the flat-line KPI, button to the HA
+  Energy dashboard.
+- **Kaamerad**: picture-glance per camera (`camera_view: auto`, motion sensor
+  overlaid), NVR disk.
+- **Tehnika** (subview): every secondary number - raw Nord Pool tiles,
+  15-min total, Daikin temps with 24 h trend-graph features, all Komfovent
+  diagnostics, phone, updates.
+
+It lives in `.storage`, so it is backed up but not in git; the generating
 script is a session artefact, re-creatable from this description. Note from
 the research pass: the Daikin energy sensors hold the last per-period
-bucket, not a cumulative meter, so they are shown as history, never as
-statistics bars.
+bucket, not a cumulative meter, so they are shown as history or as a daily
+max, never as cumulative statistics bars. hikvision_next re-enables its
+motion-detection switches on every reload/restart; they get disabled again
+by hand during the observation week.
 
 Clutter pass, same day: 253 of 319 registry entities disabled (companion
 app sensors except battery/SSID/connection, sun times, HA backup entities,
