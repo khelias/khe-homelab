@@ -235,7 +235,8 @@ subview, decided with the owner after trying three tabs first:
   (weather card covers it), fan %, DHW kWh today, the Daikin "indoor"
   sensor (a constant 20.0 setpoint, entity disabled), daily weather card
   (more-info has it), and the five motion tiles (NVR motion fires on
-  insects and rain; tune sensitivity and zones on the NVR before any motion
+  insects and rain, 150-240 events per camera per day on 2026-09-12; tune
+  sensitivity and zones on the NVR before any motion history or
   notification is built).
 - **Soojuspump**: temperatures with 24 h trend-graph features, DHW state,
   tank temperature and 48 h graph, DHW kWh per day (`change` of the daily
@@ -244,7 +245,7 @@ subview, decided with the owner after trying three tabs first:
   AHU/heater kWh per day, heater counter as a 90-day statistics line (the
   flat-line KPI), power/recovery/heater 7 d.
 - **Valve** (was Kaamerad): picture-glance per camera (`camera_view: auto`,
-  motion overlaid), motion history 24 h, NVR disk, plus two explained
+  motion overlaid), NVR disk, plus two explained
   placeholder sections: Alarmikeskus (Paradox at .240 opens no ports, so no
   IP150; route is HACS PAI via an IP150 module or serial) and Lekkeandurid
   (Zigbee, once a coordinator exists).
