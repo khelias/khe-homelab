@@ -290,7 +290,20 @@ Two control paths, in order of effort:
    EKRP1AHTA board. Modulating rather than binary.
 
 Prerequisite either way: a Nord Pool price source in HA, and enough recorder
-history to check afterwards whether it worked. Which leads to:
+history to check afterwards whether it worked. The price source landed
+2026-09-12: HA's built-in `nordpool` integration, area EE, EUR, via the UI.
+Raw spot price, no VAT or grid fee; the automation layer adds those as a
+rule. First day's spread was 0.02 to 0.23 EUR/kWh, which is the whole case
+for this phase in one line.
+
+Building blocks exist, decide after the observation week which price stack
+to stand on: the built-in integration plus the community Nord Pool
+blueprints (water heater into cheapest hours, 15-min aware, no HACS), or the
+community `nordpool` custom integration plus `nordpool_diff` (curve-shift
+signal that heats before a price rise) and `nordpool_planner`. Own code is
+the safety envelope (indoor floor, outdoor cut-off, max pause, default on)
+and the mapping to the Daikin entities, as a repo-tracked package. Which
+leads to:
 
 - `recorder` with `purge_keep_days` set and noisy entities excluded, or SQLite
   grows without bound.
