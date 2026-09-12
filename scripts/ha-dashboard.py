@@ -173,14 +173,14 @@ home = {"title": "Kodu", "path": "kodu", "icon": "mdi:home", "type": "sections",
 
 energy = {"title": "Energia", "path": "energia", "icon": "mdi:lightning-bolt", "type": "sections", "max_columns": 2, "sections": [
     section("Mis elekter maksab", [
-        note("Koguhind tunni kaupa koos võrgutasu ja käibemaksuga, viimased 7 päeva. Andur on 12.09 loodud, graafik täitub tund tunni järel."),
+        note("Koguhind tunni kaupa koos võrgutasu ja käibemaksuga, viimased 7 päeva."),
         hist("Koguhind 7 päeva, €/kWh", [("sensor.elektri_hind_see_tund", "Kokku")], 168),
         third(tile("sensor.nord_pool_ee_madalaim_hind", "Börsi madalaim täna", vertical=True, color="green")),
         third(tile("sensor.nord_pool_ee_korgeim_hind", "Börsi kõrgeim täna", vertical=True, color="red")),
         third(tile("binary_sensor.vorgu_ootariif", "Öötariif", vertical=True)),
     ]),
     section("Kui palju maja tarbib", [
-        note("Elektrilevi tunnitarbimine, imporditud CSV-st. Uueneb ainult uue ekspordiga, praegu kuni 31.08. Kuu ja aasta summad on külgriba Energia töölaual."),
+        note("Elektrilevi tunnitarbimine, imporditud CSV-st. Uueneb ainult uue ekspordiga. Kuu ja aasta summad on külgriba Energia töölaual."),
         bars("Tarbimine päevas, kWh", [("elektrilevi:grid_consumption", "kWh")], 31),
         bars("Kulu päevas, € (ilma kuutasudeta)", [("elektrilevi:grid_cost", "€")], 31),
     ]),
@@ -194,7 +194,7 @@ energy = {"title": "Energia", "path": "energia", "icon": "mdi:lightning-bolt", "
 
 cameras = {"title": "Valve", "path": "valve", "icon": "mdi:shield-home", "type": "sections", "max_columns": 2, "sections": [
     section("Kaamerad", [
-        note("Pilt uueneb iga 10 s, klõps avab alamvoo otsepildi, mis käivitub kiiremini kui põhivoog. Täisresolutsiooni põhivood on Süsteemi alamvaates. Ikoon pildi nurgas on NVR-i liikumistuvastus, mis praegu reageerib putukatele ja vihmale (150-240 sündmust kaamera kohta päevas), seega liikumise ajalugu siin ei näidata enne, kui NVR-is on tundlikkus ja tuvastusalad paika pandud."),
+        note("Pilt uueneb iga 10 s, klõps avab alamvoo otsepildi, mis käivitub kiiremini kui põhivoog. Täisresolutsiooni põhivood on Süsteemi alamvaates. Ikoon pildi nurgas on NVR-i liikumistuvastus, mis reageerib ka putukatele ja vihmale, seega liikumise ajalugu siin ei näidata enne, kui NVR-is on tundlikkus ja tuvastusalad paika pandud."),
     ] + [
         {"type": "picture-glance", "camera_image": "camera." + slug + "_alamvoog", "entity": "camera." + slug + "_alamvoog", "title": n, "camera_view": "auto",
          "entities": [{"entity": "binary_sensor." + slug + "_liikumine"}]}
@@ -228,7 +228,7 @@ soojuspump = {"title": "Soojuspump", "path": "soojuspump", "icon": "mdi:heat-pum
         tile("switch.space_heating_climate_control", "Soojuspumba seaded", icon="mdi:tune", hide_state=True, tap_action={"action": "navigate", "navigation_path": "/lovelace/soojuspump-seaded"}, icon_tap_action={"action": "navigate", "navigation_path": "/lovelace/soojuspump-seaded"}, grid_options={"columns": "full", "rows": 1}),
     ]),
     section("Küte", [
-        note("Põrandaküte, ooterežiimis alates 29.08. Kui küte töötab, näitab graafik küttekõverat: mida külmem väljas, seda soojem küttevesi. Ruumitermostaati pumbal pole."),
+        note("Põrandaküte. Kui küte töötab, näitab graafik küttekõverat: mida külmem väljas, seda soojem küttevesi. Ruumitermostaati pumbal pole."),
         tile("sensor.space_heating_leaving_water_temperature", "Küttevee temp", features=[{"type": "trend-graph", "hours_to_show": 24}]),
         tile("sensor.space_heating_outdoor_temperature", "Väljas (pumba andur)", features=[{"type": "trend-graph", "hours_to_show": 24}]),
         when_on("binary_sensor.space_heating_unit_state", "Soojuspumba viga"),
@@ -273,7 +273,7 @@ ventilatsioon = {"title": "Ventilatsioon", "path": "ventilatsioon", "icon": "mdi
         hist("Soojusvaheti ja tagastus 7 päeva", [("sensor.komfovent_heat_exchanger", "Vaheti %"), ("sensor.komfovent_heat_recovery", "Tagastus W")], 168),
     ]),
     section("Ventilaatorid ja filter", [
-        note("Ventilaatorid käivad püsivalt 50 %. Filtri saastatus kasvab aeglaselt; seade annab hoiatuse ise, kui vahetus on käes."),
+        note("Ventilaatorid käivad tavarežiimis püsival kiirusel. Filtri saastatus kasvab aeglaselt; seade annab hoiatuse ise, kui vahetus on käes."),
         tile("sensor.komfovent_supply_fan", "Sissepuhke ventilaator"),
         tile("sensor.komfovent_extract_fan", "Väljatõmbe ventilaator"),
         tile("sensor.komfovent_filter_clogging", "Filter", features=[{"type": "bar-gauge", "min": 0, "max": 100}], features_position="inline"),
