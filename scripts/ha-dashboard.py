@@ -194,13 +194,16 @@ energy = {"title": "Energia", "path": "energia", "icon": "mdi:lightning-bolt", "
 
 cameras = {"title": "Valve", "path": "valve", "icon": "mdi:shield-home", "type": "sections", "max_columns": 2, "sections": [
     section("Kaamerad", [
-        note("Pilt uueneb iga 10 s, klõps avab otsevoo. Ikoon pildi nurgas on NVR-i liikumistuvastus, mis praegu reageerib putukatele ja vihmale (150-240 sündmust kaamera kohta päevas), seega liikumise ajalugu siin ei näidata enne, kui NVR-is on tundlikkus ja tuvastusalad paika pandud."),
+        note("Pilt on alamvoost ja uueneb iga 10 s, klõps avab põhivoo täisresolutsioonis. Ikoon pildi nurgas on NVR-i liikumistuvastus, mis praegu reageerib putukatele ja vihmale (150-240 sündmust kaamera kohta päevas), seega liikumise ajalugu siin ei näidata enne, kui NVR-is on tundlikkus ja tuvastusalad paika pandud."),
     ] + [
-        {"type": "picture-glance", "camera_image": "camera." + slug, "title": n, "camera_view": "auto",
+        {"type": "picture-glance", "camera_image": "camera." + slug + "_alamvoog", "entity": "camera." + slug, "title": n, "camera_view": "auto",
          "entities": [{"entity": "binary_sensor." + slug + "_liikumine"}]}
         for slug, n in CAMS], column_span=2),
     section("Salvesti", [
+        note("Järelvaatamine on NVR-i enda veebiliideses, mis avaneb ainult koduvõrgus või Tailscale'iga ja 2019. aasta püsivara tõttu ilmselt ainult arvutis. HA-sse ta ennast raamida ei lase (X-Frame-Options)."),
         tile("sensor.nvr_ketas", "NVR ketas"),
+        {"type": "button", "name": "Ava NVR-i veebiliides", "icon": "mdi:open-in-new",
+         "tap_action": {"action": "url", "url_path": "http://192.168.0.129/"}},
     ]),
     section("Liikumistuvastus", [
         note("Kaamera kaupa sisse/välja. Tundlikkus ja tuvastusalad on NVR-i enda seadetes."),
