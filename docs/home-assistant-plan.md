@@ -403,6 +403,27 @@ leads to:
   for now; a Prometheus is a separate roadmap item already implied by the
   Immich metrics entry.
 
+### House meter without hardware: Elektrilevi export (2026-09-12)
+
+There is no live house meter and no consumer API into Estfeed, but the
+Elektrilevi self-service exports hourly consumption as CSV on demand.
+`scripts/import-elektrilevi.py <csv>` turns that into two HA external
+statistics, `elektrilevi:grid_consumption` (kWh) and `elektrilevi:grid_cost`
+(EUR incl. VAT), via the recorder `import_statistics` WebSocket call. Cost is
+computed per hour from Elering's public price API (15-min EE prices averaged
+to the hour) with the same constants as the price package; the grid day/night
+tariff comes from the CSV's own Päev/Öö column, so weekends and holidays are
+Elektrilevi's call, not ours. The Energy dashboard is configured with this as
+its single grid source plus the two Komfovent lifetime counters as devices.
+
+Rules: the sums are cumulative from the first row, so **every export must
+start at 2026-08-12** (contract start) and run to the present; re-imports
+overwrite the same hours, which is how corrections land. Monthly fixed fees
+are not in the cost statistic. First import: 12.08-31.08.2026, 434.885 kWh,
+77.25 EUR variable cost; the invoice's kWh matched exactly, the difference to
+the invoice total is the fixed fees. Needs `python3` with `websockets` and
+the HA token in `~/.config/khe/ha-token`; run from the Mac, HA over LAN.
+
 Method rule that this house has enforced three times: **compute the baseline
 over every available period with the same method before attributing a change to
 a cause.** Two points always make a line. Pull outdoor temperature history from
