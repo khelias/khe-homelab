@@ -460,19 +460,25 @@ existing VM the rule has to be added by hand:
 
 **Config directory is mostly gitignored.** HA rewrites the directory at runtime
 and `.storage` holds the user database, long-lived tokens and integration
-credentials. Only `configuration.yaml` is tracked; the ignore rule is a
-blanket `config/*` plus a whitelist, so a new hand-written YAML file
-(`modbus.yaml` and friends) must be added to `.gitignore` explicitly or it
-silently stays untracked.
+credentials. Only `configuration.yaml` and `modbus.yaml` are tracked; the
+ignore rule is a blanket `config/*` plus a whitelist, so every new hand-written
+YAML file must be added to `.gitignore` explicitly or it silently stays
+untracked.
+
+**Config changes need a restart.** The config dir is a bind mount, so editing
+YAML and running `deploy-stacks.sh` changes nothing in the running container.
+Validate, then restart:
+`docker exec homeassistant hass --script check_config -c /config && docker restart homeassistant`.
 
 **Not on the Cloudflare Tunnel, deliberately.** CF Access breaks the HA
 companion app login and webhooks, and this host will eventually control the
 ventilation and heat pump. Remote access is Tailscale.
 
-**Backup is not wired up yet.** `tar_via_alpine()` in `backup.sh` takes no
-exclude argument, and tarring a live SQLite recorder DB produces an archive
-that may not restore. Adding HA to `BIND_MOUNTS` needs that helper extended
-first.
+**Backup.** `backup.sh` copies the recorder DB via Python's `sqlite3` backup
+API inside the container (`homeassistant-recorder.db.gz`) and tars the config
+dir with the live DB, its journals and the log excluded
+(`homeassistant-config.tar.gz`). Restore: untar the config dir, drop the
+gunzipped DB in as `home-assistant_v2.db`, start the container.
 
 ### Komfovent Modbus
 
