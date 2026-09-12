@@ -444,10 +444,14 @@ Add-on equivalents (Mosquitto, Zigbee2MQTT, ESPHome) run as ordinary
 containers in the same group. See
 [home-assistant-plan.md](home-assistant-plan.md) for the phased rollout.
 
-**`trusted_proxies` is mandatory.** Behind NPM, HA rejects every login with a
-"request from a reverse proxy" error unless `configuration.yaml` sets
-`use_x_forwarded_for: true` plus a `trusted_proxies` range covering the proxy
-network. Committed as `172.16.0.0/12`.
+**Trusted proxies live in the UI, not in YAML.** Since HA 2026.8 the `http:`
+block is imported once and then ignored, and on this install the import did
+not take: NPM requests answered `400: Bad Request` with "your HTTP integration
+is not set-up for reverse proxies" in the log while the YAML block was
+present. Set Settings -> System -> Network -> HTTP server: Trust
+X-Forwarded-For on, Trusted proxies `172.18.0.0/16` (the `proxy` network; check
+with `docker network inspect proxy`). Stored in `.storage`, so it survives in
+backups but not in the repo.
 
 **NPM needs WebSocket support enabled** on the `home.khe.ee` proxy host. Without
 it the frontend loads and then hangs on a blank page, which looks like a HA

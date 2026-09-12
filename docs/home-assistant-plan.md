@@ -63,8 +63,10 @@ limit, healthcheck via busybox `wget --spider` on `/manifest.json` with a
 Also wired: `deploy.sh` and `deploy-stacks.sh` deploy order, `.gitignore`
 whitelist for the config dir, port 8123 in `harden-docker-vm.sh`.
 
-`configuration.yaml` is deliberately minimal - `default_config`, the `http`
-proxy block, and `recorder: purge_keep_days: 30`. Location, name and units are
+`configuration.yaml` is deliberately minimal - `default_config` and
+`recorder: purge_keep_days: 30`. The `http` proxy block was there at first
+and turned out to be dead: HA 2026.8 moved that to the UI (see the trusted
+proxies note in operational-notes). Location, name and units are
 left to the onboarding wizard so they land in `.storage`, which is gitignored;
 this repo is public and the house's coordinates do not belong in it.
 
@@ -97,7 +99,9 @@ Checked 2026-09-12 from the LAN: `192.168.0.11:8123` answers and onboarding
 is complete, but AdGuard does not resolve `home.khe.ee` while its siblings
 resolve, and NPM has no host for it (TLS handshake fails where `photos.khe.ee`
 returns 200). So the three manual steps above are still open. The Kuma monitor
-could not be checked from outside.
+could not be checked from outside. Later the same day the NPM host was created
+via the API and answered 400 from HA, because trusted proxies are UI
+configuration since 2026.8 and the YAML block had never been imported.
 
 Deliberately not on the Cloudflare Tunnel.
 
