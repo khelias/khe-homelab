@@ -15,10 +15,10 @@ graph TB
     AG[AdGuard Home<br/>split-horizon DNS] -.->|9 hosts<br/>*.khe.ee → 192.168.0.11| LAN
     LAN --> NPM[Nginx Proxy Manager<br/>wildcard *.khe.ee · LAN-only]
 
-    CF -->|12 domains direct<br/>CF Access OTP on<br/>dash, n8n, openclaw| DVM
+    CF -->|14 public hostnames<br/>CF Access OTP on<br/>dash, n8n, openclaw, trips, draft| DVM
     NPM --> DVM
 
-    subgraph DVM[Docker VM · 192.168.0.11 — 19 services · 32 containers]
+    subgraph DVM[Docker VM · 192.168.0.11 — 25 stacks · 41 containers]
         direction LR
         Core["<b>Core</b><br/>Homepage · Vaultwarden<br/>Dockge · Uptime Kuma"]
         Media["<b>Media</b><br/>Immich · Jellyfin<br/>Audiobookshelf"]
@@ -71,6 +71,7 @@ Jellyfin and Immich machine-learning both use `/dev/dri` for Quick Sync accelera
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/uptime-kuma.svg" width="22" /> | **Uptime Kuma** | `status.khe.ee` | Service monitoring and alerts |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/claude-ai.svg" width="22" /> | **OpenClaw** | `openclaw.khe.ee` | AI devops agent with sandboxed Docker access (CF Access protected) |
 | 🎮 | **games hub** | `games.khe.ee` | Launcher + khe-study (`/study/`), auto-deployed from GitHub |
+| 🗺️ | **trips** | `trips.khe.ee` | Private family trip atlas, CF Access protected, own GitHub runner |
 | 📝 | **pages** | `pages.khe.ee` | Quick-publish HTML pages; edited at `draft.khe.ee` (CF Access protected) |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/ollama.svg" width="22" /> | Ollama | LAN only | Local AI models (qwen2.5:7b, CPU-only) |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/home-assistant.svg" width="22" /> | Home Assistant | `home.khe.ee` (LAN + Tailscale) | House automation: Komfovent ventilation, Daikin heat pump. Deliberately not on the tunnel |
@@ -185,7 +186,7 @@ All external traffic goes through Cloudflare Tunnel — zero ports open on the r
 ./scripts/mount-nfs-in-vm.sh          # 7. Mount NFS shares at /srv
 ./scripts/harden-docker-vm.sh         # 8. UFW firewall, fail2ban, SSH hardening
 ./scripts/setup-tailscale.sh          # 9. Install Tailscale as subnet router
-./scripts/deploy.sh up                # 10. Start all 17 services
+./scripts/deploy.sh up                # 10. Start all 25 stacks
 ```
 
 ## Day-to-day
@@ -217,7 +218,8 @@ services/
 ├── productivity/    Nextcloud, Paperless-ngx
 ├── ai/              Ollama, n8n, OpenClaw (+ workspace/ for agent config)
 ├── home/            Home Assistant
-└── apps/            Landing Page, games hub (launcher + khe-study), pages (quick-publish)
+└── apps/            Landing Page, games hub (launcher + khe-study), pages (quick-publish), trips
+└── observability/   Loki, Grafana, Alloy, Alertmanager
 
 infrastructure/      Proxmox, network, Cloudflare, and Tailscale documentation
 scripts/             Setup, deploy, backup, and hardening scripts

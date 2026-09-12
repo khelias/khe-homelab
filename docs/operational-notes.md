@@ -185,7 +185,7 @@ returns 403 for `/study/` and `/adventure/`.
 
 ## Trips
 
-- `services/apps/trips/` stack (nginx:1.30-alpine, mirrors landing).
+- `services/apps/trips/` stack (nginx alpine, pinned by Renovate, mirrors landing).
 - `trips.khe.ee` -> `trips:80` via CF Tunnel (no AdGuard rewrite, CF only
   for HTTPS).
 - CF Access protected with the shared `Email + Country=EE` policy
@@ -291,7 +291,7 @@ returns 403 for `/study/` and `/adventure/`.
 
 ## Landing page
 
-- Static HTML at `khe.ee` (public), served by `nginx:1.30-alpine`.
+- Static HTML at `khe.ee` (public), served by nginx alpine (pinned by Renovate).
 - Homepage dashboard moved to `dash.khe.ee` (CF Access protected).
 - `HOMEPAGE_ALLOWED_HOSTS=dash.khe.ee` in homepage `.env`.
 
@@ -464,7 +464,8 @@ existing VM the rule has to be added by hand:
 
 **Config directory is mostly gitignored.** HA rewrites the directory at runtime
 and `.storage` holds the user database, long-lived tokens and integration
-credentials. Only `configuration.yaml` is tracked; the ignore rule is a
+credentials. Only `configuration.yaml` and `config/packages/*.yaml` are
+tracked; the ignore rule is a
 blanket `config/*` plus a whitelist, so every new hand-written YAML file must
 be added to `.gitignore` explicitly or it silently stays untracked. HACS and
 its integrations (`custom_components/`) are deliberately untracked and
