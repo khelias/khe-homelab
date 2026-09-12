@@ -208,38 +208,40 @@ the curated view too.
 Layout since the evening of 2026-09-12, after a research pass on phone-first
 sections dashboards (report in the session scratchpad; principles: order by
 context, 3-5 numbers per system at a glance, faults visible only when active,
-one graph per section, detail in subviews so nothing is lost). Three tabs and
-three subviews; the tab bar stays short on purpose, a tab is added only when
-something is used daily.
+one graph per section, nothing lost, every section that needs it opens with
+a one-line subtitle heading saying what to look at). Six tabs plus one
+subview, decided with the owner after trying three tabs first:
 
-- **Kodu** (tab): view badges (person, night tariff and four fault sensors,
-  each shown only when on); Ilm (built-in weather-forecast hourly + daily);
-  Elekter (previous / this / next hour total price from
-  `sensor.elektri_hind_{eelmine,see,jargmine}_tund`, apexcharts today+tomorrow
-  hourly columns with extremas, "tomorrow available" as a heading badge);
-  Küte; Soe vesi (boiler state + target, tank temperature from the
-  water_heater attribute, `sensor.boileri_vee_temperatuur` in
-  `packages/daikin.yaml` for history); Ventilatsioon (four temperatures,
-  humidity, filter as bar-gauge feature); Kaamerad (five motion tiles);
-  Süsteem (updates, NVR disk, phone battery only when they need attention,
-  otherwise one "all fine" line). Each heading navigates to its subview.
-- **Energia** (tab): told as a story, every section opens with a one-line
-  subtitle heading saying what to look at. "Mis elekter maksab" (7 d hourly
-  total price, today's spot min/max, night tariff), "Kui palju maja tarbib"
-  (Elektrilevi kWh and EUR per day as statistics bars straight from the
-  external statistics, button to the HA Energy dashboard), "Soe vesi" (DHW
-  kWh per day as max of the daily bucket), "Ventilatsioon" (AHU and heater
-  kWh per day, heater counter 30 d flat-line KPI, power/recovery 7 d).
-- **Valve** (tab, was Kaamerad): picture-glance per camera (`camera_view:
-  auto`, motion overlaid), motion history 24 h, NVR disk, plus two explained
+- **Kodu**: view badges ("Kaido on Kodus" per person from a `PEOPLE` list,
+  night tariff and four fault sensors shown only when on); Ilm (built-in
+  weather-forecast hourly + daily); Elekter (previous / this / next hour
+  total price from `sensor.elektri_hind_{eelmine,see,jargmine}_tund`,
+  apexcharts today+tomorrow hourly columns with extremas, "tomorrow
+  available" as a heading badge); Küte; Soe vesi (boiler state + target,
+  tank temperature from the water_heater attribute,
+  `sensor.boileri_vee_temperatuur` in `packages/daikin.yaml` for history);
+  Ventilatsioon (four temperatures, humidity, filter as bar-gauge feature);
+  Kaamerad (five motion tiles); Süsteem (updates, NVR disk, phone battery
+  only when they need attention, otherwise one "all fine" line). Headings
+  navigate to the matching tab or subview.
+- **Energia**: house level only. Daily min/mean/max total price as
+  statistics (fills in over time, survives recorder purge), Elektrilevi kWh
+  and EUR per day straight from the external statistics, button to the HA
+  Energy dashboard, and three "big consumers" tiles that link to the device
+  tabs.
+- **Soojuspump**: temperatures with 24 h trend-graph features, DHW state,
+  tank temperature and 48 h graph, DHW kWh per day (`change` of the daily
+  bucket, whole-kWh resolution) and month.
+- **Ventilatsioon**: all Komfovent readings, temperature and filter graphs,
+  AHU/heater kWh per day, heater counter as a 90-day statistics line (the
+  flat-line KPI), power/recovery/heater 7 d.
+- **Valve** (was Kaamerad): picture-glance per camera (`camera_view: auto`,
+  motion overlaid), motion history 24 h, NVR disk, plus two explained
   placeholder sections: Alarmikeskus (Paradox at .240 opens no ports, so no
   IP150; route is HACS PAI via an IP150 module or serial) and Lekkeandurid
   (Zigbee, once a coordinator exists).
-- **Tuled** (tab, placeholder): an explained empty section until Hue is
-  connected.
-- **Soojuspump**, **Ventilatsioon**, **Süsteem** (subviews): every secondary
-  number with 24 h trend-graph features and a few history graphs; Süsteem is
-  the "Home Assistant" page (raw Nord Pool tiles, phone, updates, NVR).
+- **Tuled** (placeholder): an explained empty section until Hue is connected.
+- **Süsteem** (subview): raw Nord Pool tiles, phone, updates, NVR.
 
 It lives in `.storage`, so it is backed up but not in git; the generating
 script is a session artefact, re-creatable from this description. Note from
