@@ -208,26 +208,32 @@ the curated view too.
 Layout since the evening of 2026-09-12, after a research pass on phone-first
 sections dashboards (report in the session scratchpad; principles: order by
 context, 3-5 numbers per system at a glance, faults visible only when active,
-one graph per section, detail in a subview so nothing is lost). Four views:
+one graph per section, detail in subviews so nothing is lost). Three tabs and
+three subviews; the tab bar stays short on purpose, a tab is added only when
+something is used daily (lights once Hue lands; Kaamerad becomes Valve once
+leak/alarm sensors exist).
 
-- **Kodu**: view badges (person, night tariff and four fault sensors, each
-  visible only when on); Ilm (built-in weather-forecast hourly + daily);
+- **Kodu** (tab): view badges (person, night tariff and four fault sensors,
+  each shown only when on); Ilm (built-in weather-forecast hourly + daily);
   Elekter (previous / this / next hour total price from
   `sensor.elektri_hind_{eelmine,see,jargmine}_tund`, apexcharts today+tomorrow
   hourly columns with extremas, "tomorrow available" as a heading badge);
-  Küte; Soe vesi; Ventilatsioon (filter as bar-gauge tile feature); Kaamerad
-  (five motion tiles); Süsteem (updates, NVR disk and phone battery only when
-  they need attention, otherwise one "all fine" line). Section headings
-  navigate to the Tehnika subview.
-- **Energia**: 48 h price history, Daikin temperatures, DHW kWh per day
+  Küte; Soe vesi (boiler state + target, tank temperature from the
+  water_heater attribute, `sensor.boileri_vee_temperatuur` in
+  `packages/daikin.yaml` for history); Ventilatsioon (four temperatures,
+  humidity, filter as bar-gauge feature); Kaamerad (five motion tiles);
+  Süsteem (updates, NVR disk, phone battery only when they need attention,
+  otherwise one "all fine" line). Each heading navigates to its subview.
+- **Energia** (tab): 48 h price history, button to the HA Energy dashboard
+  (Elektrilevi kWh and cost), Daikin temperatures, DHW kWh per day
   (statistics max of the daily bucket), ventilation power/recovery/heater,
-  AHU kWh per day, heater counter 30 d as the flat-line KPI, button to the HA
-  Energy dashboard.
-- **Kaamerad**: picture-glance per camera (`camera_view: auto`, motion sensor
+  AHU kWh per day, heater counter 30 d as the flat-line KPI, and the raw
+  Nord Pool / 15-min detail tiles at the end.
+- **Kaamerad** (tab): picture-glance per camera (`camera_view: auto`, motion
   overlaid), NVR disk.
-- **Tehnika** (subview): every secondary number - raw Nord Pool tiles,
-  15-min total, Daikin temps with 24 h trend-graph features, all Komfovent
-  diagnostics, phone, updates.
+- **Soojuspump**, **Ventilatsioon**, **Süsteem** (subviews): every secondary
+  number with 24 h trend-graph features and a few history graphs; Süsteem is
+  the "Home Assistant" page (phone, updates, NVR).
 
 It lives in `.storage`, so it is backed up but not in git; the generating
 script is a session artefact, re-creatable from this description. Note from
