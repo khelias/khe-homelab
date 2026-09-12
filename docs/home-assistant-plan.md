@@ -192,20 +192,32 @@ Still to do here: DHCP reservation for the NVR at `.129`; identify `.153`.
 
 ## Dashboard (2026-09-12)
 
-A storage-mode dashboard "Kodu" (`/kodu-vaade`, sidebar) was created through
-the WebSocket API and is editable in the UI. Three views, sections layout for
+The curated dashboard **is the default Overview** (`/lovelace`), saved in
+storage mode through the WebSocket API and editable in the UI. The separate
+"Kodu" dashboard and the stock "Kaart" were deleted the same evening so the
+app opens straight into the curated view. Three views, sections layout for
 the phone: **Kodu** (price tiles + 24 h, heating/DHW state as non-tappable
-tiles, ventilation with the heater-kWh KPI and filter gauge, five camera
-snapshots, system/updates), **Energia** (48 h price, 48 h temperatures, 7 d
-power/heater, daily kWh bars for AHU, heater and DHW), **Kaamerad** (live
-main streams; slow until sub streams are enabled). It lives in `.storage`,
-so it is backed up but not in git; the generating script is a session
-artefact, re-creatable from this description. The Kodu camera section also
-shows the five motion sensors. Note from the research pass: the Daikin
-energy sensors hold the last per-period bucket, not a cumulative meter, so
-they are shown as plain history, never as statistics bars. Registry cleanup done at the
-same time: native-modbus orphans removed, `_2` suffixes dropped, `$NULL`
-Daikin sensors renamed to `sensor.boiler_energy_*` / `heating_energy_*`.
+tiles, ventilation with the heater-kWh KPI and filter gauge, five motion
+tiles, system/updates), **Energia** (48 h price, 48 h temperatures, 7 d
+power/heater, daily kWh bars for AHU and heater, DHW as plain history),
+**Kaamerad** (live main streams; slow until sub streams are enabled). It
+lives in `.storage`, so it is backed up but not in git; the generating
+script is a session artefact, re-creatable from this description. Note from
+the research pass: the Daikin energy sensors hold the last per-period
+bucket, not a cumulative meter, so they are shown as history, never as
+statistics bars.
+
+Clutter pass, same day: 253 of 319 registry entities disabled (companion
+app sensors except battery/SSID/connection, sun times, HA backup entities,
+Komfovent holidays/firmware/SPI, Daikin cooling and broken-meter heating
+buckets, Nord Pool diagnostics, NVR snapshot images and alarm-server
+diagnostics, every writable entity for the observation week). Camera
+entities renamed to `camera.lasteaed|oue|naabrid|tee|ouemaja` with matching
+`binary_sensor.*_liikumine`; NVR disk is `sensor.nvr_ketas`. Sidebar hides
+map, to-do, calendar, media and logbook for the admin user (per-user
+frontend data, not config). Registry cleanup earlier that day: native-modbus
+orphans removed, `_2` suffixes dropped, `$NULL` Daikin sensors renamed to
+`sensor.boiler_energy_*` / `heating_energy_*`.
 
 **The honest framing from that session, still true:** HA is the most restless
 service in this fleet - monthly releases, regular breaking changes - while
