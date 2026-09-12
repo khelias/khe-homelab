@@ -587,10 +587,14 @@ meter. Produced-heat figures are usable.
 - Installed on VM host (not Docker), subnet router for `192.168.0.0/24`.
 - IP forwarding: `/etc/sysctl.d/99-tailscale.conf`.
 - Flags: `--advertise-routes=192.168.0.0/24 --accept-dns=false`.
-- Admin DNS: Global nameserver = VM's Tailscale IP
-  (`tailscale ip -4` on VM) + "Override DNS servers" ON.
-- Tailscale clients (Mac, iPhone) resolve via AdGuard on LAN, mobile data,
-  and foreign WiFi alike. No separate DoH endpoint needed.
-- If AdGuard is down, Tailscale clients lose DNS until reconnect.
-  Acceptable trade-off; failure is loud.
+- Admin DNS (since 2026-09-12): **split DNS** `khe.ee` -> VM's Tailscale IP
+  (`tailscale ip -4` on VM), "Override DNS servers" OFF, no global nameserver.
+  Before that it was a global AdGuard nameserver with override on, which made
+  Tailscale fight FortiClient/UniFi for the laptop's resolver. Split DNS
+  touches only `khe.ee` queries, so work VPNs keep their own DNS untouched.
+- Clients need "Use Tailscale DNS" enabled for the split route to apply
+  (macOS: `Tailscale set --accept-dns=true`; mobile defaults to on). The VM
+  itself stays `--accept-dns=false`.
+- Trade-off accepted: AdGuard filters the LAN, not mobile data. If AdGuard is
+  down, remote clients lose `khe.ee` names only; the rest of DNS keeps working.
 - See [`infrastructure/tailscale.md`](../infrastructure/tailscale.md).
