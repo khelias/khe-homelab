@@ -401,8 +401,10 @@ as a post-VAT constant.
 Forecast for the chart, same package: `sensor.elektri_hinna_prognoos` is a
 trigger-based template that calls `nordpool.get_prices_for_date` for today
 and tomorrow (15-min slots, EUR/MWh in the response) and `workday.check_date`
-for both dates, then applies the tariff stack per slot into a compact
-attribute list (epoch start, spot, total; ~8.5 KB for 192 points). It is
+for both dates, averages the four slots of each hour (the house has an hourly
+meter, so the hourly mean is what is billed) and applies the tariff stack per
+hour into a compact attribute list (epoch start, spot, total; ~2 KB for 48
+points). It is
 excluded from the recorder. The Overview plots it with apexcharts-card
 (HACS frontend plugin, installed through the HACS WebSocket API, resource
 auto-registered), columns colour-coded at 0.15 / 0.25 EUR/kWh.

@@ -49,10 +49,11 @@ template:
           {% set fees = 0.0084 + 0.00758 + 0.0021 + 0.00373 %}
           {{ ((spot + grid + fees) * 1.24 + 0.0047) | round(5) }}
 
-  # Forecast for the chart: today's and tomorrow's 15-minute prices with the
-  # same tariff stack applied per slot. Refreshed hourly, when tomorrow's
+  # Forecast for the chart: today's and tomorrow's prices, averaged per hour
+  # (the house has an hourly meter, so the hourly mean is what gets billed),
+  # with the same tariff stack applied per hour. Refreshed hourly, when tomorrow's
   # prices arrive (~14:00 EET) and at startup. Attribute keys are short and
-  # the start is an epoch second to stay well under the 16 KB attribute cap;
+  # the start is an epoch second, 48 points stay far under the 16 KB attribute cap;
   # the entity is excluded from the recorder below because it changes every
   # refresh and its history has no value.
   - triggers:
@@ -105,11 +106,13 @@ template:
             {% set wdt = wd_today['binary_sensor.workday_sensor_ee'].workday %}
             {% set wdm = wd_tomorrow['binary_sensor.workday_sensor_ee'].workday %}
             {% set fees = 0.0084 + 0.00758 + 0.0021 + 0.00373 %}
-            {% for p in today.EE + tmr %}
-              {% set t = as_local(as_datetime(p.start)) %}
+            {# hourly meter: billing uses the plain average of the four 15-min prices, so average per hour #}
+            {% for slots in (today.EE + tmr) | batch(4) %}
+              {% set spot = (slots | map(attribute='price') | sum) / (slots | count) / 1000 %}
+              {% set t = as_local(as_datetime(slots[0].start)) %}
               {% set wd = wdt if t.date() == now().date() else wdm %}
               {% set grid = 0.021 if (t.hour < 7 or t.hour >= 22 or not wd) else 0.0369 %}
-              {% set ns.out = ns.out + [{'s': as_timestamp(p.start) | int, 'p': (p.price / 1000) | round(4), 't': ((p.price / 1000 + grid + fees) * 1.24 + 0.0047) | round(4)}] %}
+              {% set ns.out = ns.out + [{'s': as_timestamp(slots[0].start) | int, 'p': spot | round(4), 't': ((spot + grid + fees) * 1.24 + 0.0047) | round(4)}] %}
             {% endfor %}
             {{ ns.out }}
 
