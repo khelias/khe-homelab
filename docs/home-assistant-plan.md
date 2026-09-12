@@ -1,7 +1,8 @@
 # Home Assistant rollout plan
 
 Status: HA reachable at `home.khe.ee` from LAN and Tailscale, backup wired
-(2026-09-12). Phase 3 switched to HACS the same day; HACS install pending.
+(2026-09-12). Phase 3 switched to HACS the same day; hass-komfovent installed and
+reading (2026-09-12 evening).
 
 Decisions taken up front:
 
@@ -190,8 +191,11 @@ the registers:
 - Measured map: supply 901, extract 902, outdoor 903 (int16 x0.1 C), filter %
   916, power W 920, efficiency % 923, total kWh 930/931 (uint32 x0.001).
   Live 2026-09-12: 17.3 / 24.7 / 15.6 C, filter 11 %, 52 W, 3015.2 kWh.
-  Register 923 read 0 despite a ~19 % temperature-based recovery; check what
-  the integration shows for it before trusting an efficiency entity.
+  Register 923 read 0 and the integration confirmed why: heat exchanger 0 %,
+  heat recovery 0 W, i.e. the unit is in bypass (outdoor 17 C, extract 25 C,
+  summer free-cooling), so zero efficiency is the true state, not a bad
+  register. Electric heater 0 % / 0 W confirms the deliberate settings hold.
+  Fans are 50/50 %, not the 60/60 % the 2026-08-30 notes remembered.
 - **Read uint32 pairs aligned.** A single-register read of one half returns
   Modbus exception 3, which makes a real register look absent.
 - Flow control register 11 = 3 (OFF), so the "flow" fields are fan
