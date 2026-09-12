@@ -196,6 +196,16 @@ the registers:
   summer free-cooling), so zero efficiency is the true state, not a bad
   register. Electric heater 0 % / 0 W confirms the deliberate settings hold.
   Fans are 50/50 %, not the 60/60 % the 2026-08-30 notes remembered.
+- Lifetime counters the integration exposes, 2026-09-12: AHU 3015.2 kWh,
+  electric heater 1298.8 kWh (43 % of everything the unit ever drew),
+  recovered heat 30 040 kWh. **Heater energy is the KPI for the read-only
+  week**: with the current settings it must not move. Note the value, check
+  it in a week and again on the first cold days.
+- The wall panel reports room temperature and humidity (23.3 C / 50 % in the
+  utility room), a free indoor sensor for phase 6.
+- Write surface is wide: `climate` setpoint, Power, ECO/AUTO mode, AQ
+  electric heater and the ECO blocking switches are all one tap in the app.
+  Disable them for the observation week rather than relying on discipline.
 - **Read uint32 pairs aligned.** A single-register read of one half returns
   Modbus exception 3, which makes a real register look absent.
 - Flow control register 11 = 3 (OFF), so the "flow" fields are fan
