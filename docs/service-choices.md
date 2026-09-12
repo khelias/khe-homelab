@@ -456,9 +456,13 @@ published page must be public (anyone with the link can open it).
   read-only nginx serves it with a real `text/html` response. This reuses
   the proven `n8n` (writer) → `landing` (`:ro` `/reports` reader) pattern —
   zero new architectural concepts.
-- **Safe to run.** UID 1000, write scope confined to `/srv/data/pages/app`
-  (its analog of `N8N_RESTRICT_FILE_ACCESS_TO`), still security-patched in
-  2026 (v2.63.x, "maintenance mode" = stable, low surprise).
+- **Safe to run, but upstream is ending.** UID 1000, write scope confined to
+  `/srv/data/pages/app` (its analog of `N8N_RESTRICT_FILE_ACCESS_TO`). The
+  original bet was that v2.63.x "maintenance mode" meant continued security
+  patches. That expired: the startup banner in `docker logs draft` announces
+  archival on **2026-09-01**, after which there are no releases and no security
+  fixes, with known unfixed issues left in the project's security advisories.
+  See "When we'd revisit" below.
 - **Doesn't duplicate Nextcloud.** `cloud.khe.ee` is a heavy app-login sync
   stack, not a fast paste-to-public-page tool. Different job.
 
@@ -496,15 +500,22 @@ published page must be public (anyone with the link can open it).
 - **No auto-expiry.** Pages accumulate and stay public until manually deleted
   via the FileBrowser list view. A TTL cron (delete older than N days) plus
   unguessable slugs is the upgrade path if this bites; not built initially.
-- **FileBrowser generates a random admin password on first run** (printed
-  once to `docker logs draft`) and has its own login. Grab it, log in, change
-  the password, and disable signup, even behind Access.
+- **CF Access is the only auth layer** since 2026-08-29. FileBrowser runs with
+  `auth.method=proxy` on `Cf-Access-Authenticated-User-Email`, so the second
+  password is gone. External traffic is unaffected (Access still gates the
+  hostname), but any container on the shared `proxy` network can reach
+  `draft:8080` directly and forge that header, where the password previously
+  raised the bar. Accepted while every neighbour on that network is owner-run;
+  the durable fix is putting `draft` on a dedicated network shared only with
+  `cloudflare-tunnel`.
 
 ### When we'd revisit
 
 - We want true paste-and-go with auto-expiring links at volume → a
   purpose-built pastebin, or the TTL-cron upgrade above.
-- FileBrowser goes unmaintained or drops the in-browser editor.
+- FileBrowser goes unmaintained or drops the in-browser editor. **Fired
+  2026-08-29:** upstream archives the project on 2026-09-01. Replacement not
+  chosen yet; the service keeps working, it just stops receiving fixes.
 - We need multi-user publishing with per-user spaces (FileBrowser supports
   users, but the access model would need rethinking).
 

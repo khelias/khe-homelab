@@ -18,6 +18,7 @@ DEPLOY_ORDER=(
   "media/audiobookshelf"
   "productivity/nextcloud"
   "productivity/paperless-ngx"
+  "home/homeassistant"
   "ai/ollama"
   "ai/n8n"
   "ai/openclaw"

@@ -10,8 +10,19 @@ Skills define _how_ tools work. This file is for _your_ specifics — the stuff 
 
 ## SSH
 
-- Docker VM: `khe@192.168.0.11`
-- Proxmox host: `root@192.168.0.10`
+**You do not have SSH access. Neither host is reachable from this container.**
+
+- Docker VM (`khe@192.168.0.11`) and Proxmox host (`root@192.168.0.10`) both
+  accept key auth only, and this container has no key: `docker-compose.yml`
+  mounts no key and no `~/.ssh`, and the `openclaw_config` volume contains no
+  `.ssh` directory. Verified 2026-09-08. The `ssh` client binary does exist
+  (`/usr/bin/ssh`), so a command may hang or fail on auth rather than say
+  "not found" — that is still no access.
+- There is also no write path via Docker: the socket proxy is read-only
+  (`POST: 0`), with container restart/stop/start as the only exception
+  (`ALLOW_RESTARTS: 1`). No pulls, no `docker compose up`, no API writes.
+- Anything needing host access or a Docker write: write out the exact command
+  and ask Kaido to run it.
 
 ## Networks
 

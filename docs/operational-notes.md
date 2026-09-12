@@ -325,9 +325,20 @@ public shareable link. Two containers in `services/apps/pages/` sharing
   the first `docker compose up`, or Docker auto-creates it root-owned and the
   non-root FileBrowser cannot write its DB (same trap as Loki):
   `sudo mkdir -p /srv/data/pages/app /srv/data/pages/db && sudo chown -R 1000:1000 /srv/data/pages`
-- **First login:** FileBrowser prints a one-time random admin password to
-  `docker logs draft`. Grab it, log in (behind Access), change the password,
-  and disable signup.
+- **Login: no FileBrowser password.** Since 2026-08-29 the editor runs with
+  `auth.method=proxy` and `auth.header=Cf-Access-Authenticated-User-Email`. It
+  trusts the header cloudflared injects for Access-protected hostnames and logs
+  in the user whose username equals that email (user ID 1). CF Access is now the
+  only auth layer, so the `draft.khe.ee` Access application must never be
+  removed. This replaced the one-time random admin password FileBrowser printed
+  to `docker logs draft` on first run.
+- **Changing that setting requires stopping the container.** The bbolt DB takes
+  an exclusive lock, so `docker exec draft filebrowser config ...` hangs against
+  a running server. Stop `draft`, copy `/srv/data/pages/db/filebrowser.db`
+  aside, then run the config command in a throwaway container mounting the same
+  `/database`. The setting lives in the DB, not in git or compose, so it is not
+  reproducible from the repo; it rides along in the `/srv/data/pages` backup.
+  Rollback to password login is `config set --auth.method=json`.
 - **Clean URLs:** nginx `try_files $uri $uri.html $uri/ =404` — a flat
   `leht1.html` is shared as `pages.khe.ee/leht1`. The public root `/` 404s
   until an `index.html` exists; intentional (no directory listing).
@@ -425,6 +436,78 @@ public shareable link. Two containers in `services/apps/pages/` sharing
 - **Telegram channel.** Reuses the existing Uptime Kuma bot for
   simplicity. If alert volume gets noisy, split into a second bot
   + chat to keep uptime pings and log alerts on different channels.
+
+## Home Assistant
+
+Runs as HA **Container**, not HAOS, so there is no Supervisor and no add-ons.
+Add-on equivalents (Mosquitto, Zigbee2MQTT, ESPHome) run as ordinary
+containers in the same group. See
+[home-assistant-plan.md](home-assistant-plan.md) for the phased rollout.
+
+**Trusted proxies live in the UI, not in YAML.** Since HA 2026.8 the `http:`
+block is imported once and then ignored, and on this install the import did
+not take: NPM requests answered `400: Bad Request` with "your HTTP integration
+is not set-up for reverse proxies" in the log while the YAML block was
+present. Set Settings -> System -> Network -> HTTP server: Trust
+X-Forwarded-For on, Trusted proxies `172.18.0.0/16` (the `proxy` network; check
+with `docker network inspect proxy`). Stored in `.storage`, so it survives in
+backups but not in the repo.
+
+**NPM needs WebSocket support enabled** on the `home.khe.ee` proxy host. Without
+it the frontend loads and then hangs on a blank page, which looks like a HA
+fault and is not one.
+
+**Port 8123 needs a UFW rule.** Added to `ALLOWED_PORTS` in
+`harden-docker-vm.sh`, but that script is not re-run on deploy, so on an
+existing VM the rule has to be added by hand:
+`sudo ufw allow from 192.168.0.0/24 to any port 8123`.
+
+**Config directory is mostly gitignored.** HA rewrites the directory at runtime
+and `.storage` holds the user database, long-lived tokens and integration
+credentials. Only `configuration.yaml` and `modbus.yaml` are tracked; the
+ignore rule is a blanket `config/*` plus a whitelist, so every new hand-written
+YAML file must be added to `.gitignore` explicitly or it silently stays
+untracked.
+
+**Config changes need a restart.** The config dir is a bind mount, so editing
+YAML and running `deploy-stacks.sh` changes nothing in the running container.
+Validate, then restart:
+`docker exec homeassistant hass --script check_config -c /config && docker restart homeassistant`.
+
+**Not on the Cloudflare Tunnel, deliberately.** CF Access breaks the HA
+companion app login and webhooks, and this host will eventually control the
+ventilation and heat pump. Remote access is Tailscale.
+
+**Backup.** `backup.sh` copies the recorder DB via Python's `sqlite3` backup
+API inside the container (`homeassistant-recorder.db.gz`) and tars the config
+dir with the live DB, its journals and the log excluded
+(`homeassistant-config.tar.gz`). Restore: untar the config dir, drop the
+gunzipped DB in as `home-assistant_v2.db`, start the container.
+
+### Komfovent Modbus
+
+Native `modbus:` YAML platform against 192.168.0.155:502, not a HACS
+integration, because the register map is measured and a custom component is a
+dependency Renovate cannot track.
+
+- **Read aligned uint32 pairs.** A single-register read of one half of a pair
+  returns Modbus exception 3, which makes a live register look absent.
+- **The controller drops fast consecutive connections.** Probing
+  register-by-register in a loop fails; read blocks over one connection.
+- Flow control register 11 = 3 (OFF), so the "flow" fields are fan
+  **percentages** and registers 905-908 (m3/h) are meaningless.
+- Reg 904 reads 0x8000, the sensor-absent marker, not a temperature.
+
+### Daikin Altherma
+
+WebSocket oneM2M on `ws://192.168.0.248/mca`. The stock `daikin` integration
+does not speak this unit; the path is the `daikin_altherma` custom integration,
+which is the first dependency outside Renovate's reach.
+
+**The space-heating electricity channel on this unit is broken** and must not
+feed any dashboard or automation. Proven against meter data: 5.42 kWh billed
+against 0 written, while the DHW channel on the same device agrees with the
+meter. Produced-heat figures are usable.
 
 ## Healthchecks
 

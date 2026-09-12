@@ -1,0 +1,6 @@
+default_config:
+
+recorder:
+  purge_keep_days: 30
+
+modbus: !include modbus.yaml
