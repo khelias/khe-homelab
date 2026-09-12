@@ -30,6 +30,7 @@ services/core/homepage/config/kubernetes.yaml
 # Only hand-written YAML is tracked; everything else HA generates stays local.
 services/home/homeassistant/config/*
 !services/home/homeassistant/config/configuration.yaml
+!services/home/homeassistant/config/modbus.yaml
 
 # Private notes — current security gaps, threat model, anything that would tip off
 # an attacker while still unfixed. Public ROADMAP.md covers direction only.
