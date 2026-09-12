@@ -1,6 +1,6 @@
 services:
   immich-server:
-    image: ghcr.io/immich-app/immich-server:v3.1.0@sha256:b434cb9287eea1471c9974845914d4dd328c9c2d652e446ed4930f99944f0ceb
+    image: ghcr.io/immich-app/immich-server:v3.2.0@sha256:ae13784ffcfcce8f4178113eb6661602a1fd1912f3d539880b8ac0dd95fc8ac2
     container_name: immich-server
     restart: unless-stopped
     volumes:
@@ -44,7 +44,7 @@ services:
       start_period: 60s
 
   immich-machine-learning:
-    image: ghcr.io/immich-app/immich-machine-learning:v3.1.0-openvino@sha256:4b6ef958e7749fc548377bb23ee219c09c74da8decee080d76dc6a388c39b013
+    image: ghcr.io/immich-app/immich-machine-learning:v3.2.0-openvino@sha256:6387b84ab42da139191c3db686faead6555ab8cac6466d1d20be955735961b98
     container_name: immich-machine-learning
     restart: unless-stopped
     devices:
@@ -73,7 +73,7 @@ services:
       start_period: 180s  # ML model loading takes time on first start
 
   immich-valkey:
-    image: docker.io/valkey/valkey:9-alpine@sha256:de31910896150d5e754a07d57d227cfdde4e258ddd0d1aa4607f2d2f95843715
+    image: docker.io/valkey/valkey:9-alpine@sha256:a0dbf4c1d5708782907c10e2c72deff317518518b5288a58416981d9db95d30b
     container_name: immich-valkey
     restart: unless-stopped
     healthcheck:

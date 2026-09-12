@@ -61,7 +61,28 @@ http://192.168.0.11:81      # NPM admin
 ## Flags
 
 - `--advertise-routes=192.168.0.0/24`: expose entire LAN to Tailscale network
-- `--accept-dns=false`: keep using AdGuard as DNS, don't override with Tailscale DNS
+- `--accept-dns=false`: keep using AdGuard as DNS, don't override with Tailscale DNS.
+  **This applies to the VM only.** The VM is the subnet router and the host
+  AdGuard runs on; if it accepted the tailnet resolver it would point at itself
+  through the tunnel.
+
+## Client DNS
+
+Clients are the opposite case. The tailnet (admin console -> DNS) carries a
+**split-DNS route `khe.ee` -> docker-vm's Tailscale address** (AdGuard), with
+"Override local DNS" off and no global nameserver. A client with "Use Tailscale
+DNS" **enabled** therefore resolves `*.khe.ee` LAN names to `192.168.0.11`
+from anywhere and reaches them over the subnet route, while every other query
+follows the local network or an active work VPN (FortiClient, UniFi) - the
+reason for split rather than override, decided 2026-09-12. With it disabled the client keeps the local network's DNS: at
+home that is still AdGuard via DHCP, but on mobile data or a foreign Wi-Fi the
+LAN names simply do not resolve while the IPs stay reachable - which looks like
+"Tailscale is connected but nothing works" (seen 2026-09-12 on the Mac).
+
+- iOS/Android: Tailscale DNS is on by default.
+- macOS: `Tailscale set --accept-dns=true`
+  (binary at `/Applications/Tailscale.app/Contents/MacOS/Tailscale`);
+  `Tailscale dns status` shows what the coordination server pushes.
 
 ## Account
 

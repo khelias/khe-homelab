@@ -1,13 +1,7 @@
 default_config:
 
-http:
-  use_x_forwarded_for: true
-  trusted_proxies:
-    # Docker bridge range covering the proxy network (nginx Proxy Manager).
-    # Without this HA rejects every proxied login as coming from a reverse proxy.
-    - 172.16.0.0/12
+homeassistant:
+  packages: !include_dir_named packages
 
 recorder:
   purge_keep_days: 30
-
-modbus: !include modbus.yaml

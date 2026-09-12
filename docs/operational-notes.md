@@ -444,10 +444,14 @@ Add-on equivalents (Mosquitto, Zigbee2MQTT, ESPHome) run as ordinary
 containers in the same group. See
 [home-assistant-plan.md](home-assistant-plan.md) for the phased rollout.
 
-**`trusted_proxies` is mandatory.** Behind NPM, HA rejects every login with a
-"request from a reverse proxy" error unless `configuration.yaml` sets
-`use_x_forwarded_for: true` plus a `trusted_proxies` range covering the proxy
-network. Committed as `172.16.0.0/12`.
+**Trusted proxies live in the UI, not in YAML.** Since HA 2026.8 the `http:`
+block is imported once and then ignored, and on this install the import did
+not take: NPM requests answered `400: Bad Request` with "your HTTP integration
+is not set-up for reverse proxies" in the log while the YAML block was
+present. Set Settings -> System -> Network -> HTTP server: Trust
+X-Forwarded-For on, Trusted proxies `172.18.0.0/16` (the `proxy` network; check
+with `docker network inspect proxy`). Stored in `.storage`, so it survives in
+backups but not in the repo.
 
 **NPM needs WebSocket support enabled** on the `home.khe.ee` proxy host. Without
 it the frontend loads and then hangs on a blank page, which looks like a HA
@@ -460,10 +464,11 @@ existing VM the rule has to be added by hand:
 
 **Config directory is mostly gitignored.** HA rewrites the directory at runtime
 and `.storage` holds the user database, long-lived tokens and integration
-credentials. Only `configuration.yaml` and `modbus.yaml` are tracked; the
-ignore rule is a blanket `config/*` plus a whitelist, so every new hand-written
-YAML file must be added to `.gitignore` explicitly or it silently stays
-untracked.
+credentials. Only `configuration.yaml` is tracked; the ignore rule is a
+blanket `config/*` plus a whitelist, so every new hand-written YAML file must
+be added to `.gitignore` explicitly or it silently stays untracked. HACS and
+its integrations (`custom_components/`) are deliberately untracked and
+reinstalled by hand; they are covered by the config-dir backup.
 
 **Config changes need a restart.** The config dir is a bind mount, so editing
 YAML and running `deploy-stacks.sh` changes nothing in the running container.
@@ -482,10 +487,12 @@ gunzipped DB in as `home-assistant_v2.db`, start the container.
 
 ### Komfovent Modbus
 
-Native `modbus:` YAML platform against 192.168.0.155:502, not a HACS
-integration, because the register map is measured and a custom component is a
-dependency Renovate cannot track.
+Read by the HACS integration `lnagel/hass-komfovent` against 192.168.0.155:502
+(decision and register map in home-assistant-plan.md, phase 3). Whatever
+client talks to the C6, these hold:
 
+- **Exactly one Modbus client at a time.** The native `modbus:` platform and
+  the HACS integration must never poll the unit together.
 - **Read aligned uint32 pairs.** A single-register read of one half of a pair
   returns Modbus exception 3, which makes a live register look absent.
 - **The controller drops fast consecutive connections.** Probing
@@ -580,10 +587,14 @@ meter. Produced-heat figures are usable.
 - Installed on VM host (not Docker), subnet router for `192.168.0.0/24`.
 - IP forwarding: `/etc/sysctl.d/99-tailscale.conf`.
 - Flags: `--advertise-routes=192.168.0.0/24 --accept-dns=false`.
-- Admin DNS: Global nameserver = VM's Tailscale IP
-  (`tailscale ip -4` on VM) + "Override DNS servers" ON.
-- Tailscale clients (Mac, iPhone) resolve via AdGuard on LAN, mobile data,
-  and foreign WiFi alike. No separate DoH endpoint needed.
-- If AdGuard is down, Tailscale clients lose DNS until reconnect.
-  Acceptable trade-off; failure is loud.
+- Admin DNS (since 2026-09-12): **split DNS** `khe.ee` -> VM's Tailscale IP
+  (`tailscale ip -4` on VM), "Override DNS servers" OFF, no global nameserver.
+  Before that it was a global AdGuard nameserver with override on, which made
+  Tailscale fight FortiClient/UniFi for the laptop's resolver. Split DNS
+  touches only `khe.ee` queries, so work VPNs keep their own DNS untouched.
+- Clients need "Use Tailscale DNS" enabled for the split route to apply
+  (macOS: `Tailscale set --accept-dns=true`; mobile defaults to on). The VM
+  itself stays `--accept-dns=false`.
+- Trade-off accepted: AdGuard filters the LAN, not mobile data. If AdGuard is
+  down, remote clients lose `khe.ee` names only; the rest of DNS keeps working.
 - See [`infrastructure/tailscale.md`](../infrastructure/tailscale.md).
