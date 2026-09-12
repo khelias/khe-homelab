@@ -74,7 +74,7 @@ Jellyfin and Immich machine-learning both use `/dev/dri` for Quick Sync accelera
 | 📝 | **pages** | `pages.khe.ee` | Quick-publish HTML pages; edited at `draft.khe.ee` (CF Access protected) |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/ollama.svg" width="22" /> | Ollama | LAN only | Local AI models (qwen2.5:7b, CPU-only) |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/home-assistant.svg" width="22" /> | Home Assistant | `home.khe.ee` (LAN + Tailscale) | House automation: Komfovent ventilation, Daikin heat pump. Deliberately not on the tunnel |
-| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/adguard-home.svg" width="22" /> | AdGuard Home | LAN + Tailscale | DNS ad-blocking + split-horizon DNS (filters mobile data too, via Tailscale) |
+| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/adguard-home.svg" width="22" /> | AdGuard Home | LAN + Tailscale | DNS ad-blocking on the LAN + split-horizon DNS; over Tailscale it answers only the `khe.ee` zone |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/dockge.svg" width="22" /> | Dockge | LAN only | Docker Compose management UI |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/nginx-proxy-manager.svg" width="22" /> | Nginx Proxy Manager | LAN only | Reverse proxy + wildcard SSL for LAN traffic |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/cloudflare.svg" width="22" /> | Cloudflare Tunnel | — | Secure external access (no open ports) |
@@ -161,8 +161,12 @@ Router DHCP hands out `192.168.0.11` (AdGuard) as the **only** DNS — no second
 "Fallback" DNS servers sound safe but trigger happy-eyeballs racing: clients query
 both in parallel and Cloudflare always wins, so ad/tracker filtering silently
 bypasses AdGuard for ~80%+ of traffic. Better to fail loudly if AdGuard is down.
-Tailscale admin pushes the same AdGuard DNS to remote devices, so filtering
-follows phones/laptops on mobile data and foreign WiFi too.
+Tailscale carries only the `khe.ee` zone to remote devices: a split-DNS route
+`khe.ee -> AdGuard` in the tailnet, no global override. LAN names resolve
+from anywhere; everything else stays with whatever DNS the local network or a
+work VPN provides. Changed 2026-09-12 so Tailscale can coexist with FortiClient
+and UniFi VPNs on the same laptop; the cost is that AdGuard no longer filters
+general traffic on mobile data.
 
 All external traffic goes through Cloudflare Tunnel — zero ports open on the router.
 
