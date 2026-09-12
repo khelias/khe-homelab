@@ -64,6 +64,9 @@ template:
         to: "on"
       - trigger: homeassistant
         event: start
+      # manual refresh after a package deploy: POST /api/events/khe_price_refresh
+      - trigger: event
+        event_type: khe_price_refresh
     actions:
       - action: nordpool.get_prices_for_date
         data:
