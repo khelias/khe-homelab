@@ -166,9 +166,14 @@ sensors present, but **only camera 1 got a camera entity**. Known upstream
 bug, not local: HA 2026.9 turned the deprecated `via_device` parameter into a
 RuntimeError, `hikvision_next` v1.1.1 still uses it (issues #365, #366, #368,
 #372; fix in PR #369, user-confirmed on 2026.9.1, maintainer silent so far).
-Decision: wait for the release rather than run a fork's branch; check HACS
-for the update in a week. Fallback if it drags: `generic` camera entries on
-the NVR's RTSP sub streams for channels 2-5.
+Resolved the same evening by installing the PR branch by hand
+(`pzelensky/hikvision_next`, branch `fix/ha-2026-9-compat`, copied over
+`custom_components/hikvision_next`). Before that the diff was reviewed and
+the branch verified to be upstream `dev` plus exactly the PR's changes, no
+other code. After restart: zero entity errors, ten camera entities (main and
+sub stream per channel, sub streams disabled by default). Manifest now says
+1.1.2; the next upstream release via HACS overwrites this copy, which is the
+intent. If HACS reports the install as modified, reinstall from HACS.
 
 Still to do here: DHCP reservation for the NVR at `.129`; verify an event
 actually reaches HA (walk past a camera, watch the motion sensor); identify
