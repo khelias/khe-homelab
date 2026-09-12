@@ -55,8 +55,8 @@ agent, so this is a manual step):
 ## Phase 1 - HA container up (done 2026-09-08)
 
 `services/home/homeassistant/` now holds `docker-compose.yml` and
-`config/configuration.yaml`. Pinned to `2026.9.1` by digest, current stable at
-the time of writing. `./config:/config` bind mount (repo-tracked, like
+`config/configuration.yaml`. Pinned by digest (Renovate bumps it; 2026.9.2 at
+the time of writing). `./config:/config` bind mount (repo-tracked, like
 Homepage), `proxy` network, host port 8123, 1536M / 1.0 CPU as a starting
 limit, healthcheck via busybox `wget --spider` on `/manifest.json` with a
 120s `start_period` because first boot is slow.
@@ -544,17 +544,11 @@ first cron run after deploy will show it.
 belongs in the encrypted offsite set (it is, via `/srv/backups`) and never in
 the repo.
 
-## Docs to update when this lands
+## Docs still to update
 
-Same commit as the change, per the update discipline. README, ROADMAP,
-network README and the operational notes were updated with phases 1-3;
-SECURITY.md is still pending and becomes due with write access.
+README, ROADMAP, network README and the operational notes were updated as the
+phases landed. The research report behind the dashboard and phase-6 choices
+is [ha-research-2026-09-12.md](ha-research-2026-09-12.md). One item is open:
 
-- `README.md` services table plus architecture diagram, and the new
-  `services/home/` group in the layout.
-- `ROADMAP.md` - remove Home Assistant from the weekend-projects wishlist.
-- `docs/operational-notes.md` - the Modbus uint32 pairing trap, the NPM
-  WebSocket toggle, `trusted_proxies`, the broken Daikin heating meter.
-- `infrastructure/network/README.md` - `home.khe.ee` under LAN-only services.
 - `SECURITY.md` - once HA can write to the ventilation or heat pump, the blast
   radius of this host changes and the security model has to say so.

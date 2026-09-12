@@ -52,12 +52,15 @@ services/
   productivity/    Nextcloud, Paperless-ngx
   ai/              Ollama, n8n, OpenClaw (+ workspace/ for agent config)
   home/            Home Assistant
-  apps/            landing, games hub, trips
+  apps/            landing, games hub, pages, trips
   observability/   Loki, Grafana, Alloy, Alertmanager (one stack)
 infrastructure/    Proxmox, network, Cloudflare, Tailscale docs
-scripts/           setup, deploy.sh, backup.sh, hardening
+scripts/           setup, deploy.sh, backup.sh, hardening,
+                   ha-dashboard.py (HA Overview generator), import-elektrilevi.py
 docs/              operational-notes.md (service quirks not in README),
-                   house-hvac.md (HVAC protocols, for future Home Assistant)
+                   house-hvac.md (HVAC protocols behind the live HA integrations),
+                   home-assistant-plan.md (HA rollout, dashboard, phase 6),
+                   ha-research-2026-09-12.md (HA improvement research)
 ```
 
 ## Conventions (HARD)
@@ -71,7 +74,10 @@ docs/              operational-notes.md (service quirks not in README),
    `--no-verify` is forbidden; if the hook flags a false positive,
    add an exclusion to `.gitleaks.toml` (none yet) and commit that.
 3. **Pin Docker image versions.** No `:latest` in production. Renovate
-   bumps tags via PR with digest + changelog.
+   bumps tags via PR with digest + changelog. Exception: images built on the
+   VM by another repo's CI (`games-adventure-proxy:latest`, tagged by the
+   khe-ai-adventure runner) cannot be pinned here; the version lives in that
+   repo's workflow.
 4. **Named Docker volumes** for service state, OR bind mounts under
    `/srv/data/<service>/`. Never bind to `/home` or arbitrary paths.
 5. **Services on shared `proxy` network** for NPM ingress. Service-specific
@@ -95,7 +101,9 @@ docs/              operational-notes.md (service quirks not in README),
 ./scripts/deploy.sh pull     # pull latest images
 ./scripts/deploy.sh up       # (re)start everything
 ./scripts/deploy.sh down     # stop everything
-./scripts/backup.sh          # dump Postgres DBs + snapshot configs
+./scripts/backup.sh          # dump Postgres DBs + snapshot configs (+ HA recorder)
+./scripts/ha-dashboard.py    # regenerate the Home Assistant Overview dashboard
+./scripts/import-elektrilevi.py <csv>  # Elektrilevi hourly CSV -> HA Energy statistics
 ```
 
 Per-service: `cd services/<group>/<service> && docker compose up -d`.
