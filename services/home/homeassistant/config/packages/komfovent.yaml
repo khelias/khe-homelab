@@ -1,0 +1,14 @@
+# Komfovent helpers on top of the HACS hass-komfovent integration.
+# The C6 only exposes lifetime energy counters; monthly meters make them
+# comparable with the Daikin "this month" DHW figure on the Energia tab.
+utility_meter:
+  ventilatsioon_sel_kuul:
+    name: "Ventilatsioon sel kuul"
+    unique_id: komfovent_ahu_energy_monthly
+    source: sensor.komfovent_total_ahu_energy
+    cycle: monthly
+  jarelkute_sel_kuul:
+    name: "Järelküte sel kuul"
+    unique_id: komfovent_heater_energy_monthly
+    source: sensor.komfovent_total_heater_energy
+    cycle: monthly
