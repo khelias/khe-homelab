@@ -215,20 +215,26 @@ subview, decided with the owner after trying three tabs first:
 - **Kodu**: view badges ("Kaido on Kodus" per person from a `PEOPLE` list,
   night tariff and four fault sensors shown only when on); Ilm (built-in
   weather-forecast hourly + daily); Elekter (previous / this / next hour
-  total price from `sensor.elektri_hind_{eelmine,see,jargmine}_tund`,
+  total price as one three-column glance card from
+  `sensor.elektri_hind_{eelmine,see,jargmine}_tund`,
   apexcharts today+tomorrow hourly columns with extremas, "tomorrow
   available" as a heading badge); Küte; Soe vesi (boiler state + target,
   tank temperature from the water_heater attribute,
   `sensor.boileri_vee_temperatuur` in `packages/daikin.yaml` for history);
-  Ventilatsioon (four temperatures, humidity, filter as bar-gauge feature);
-  Kaamerad (five motion tiles); Süsteem (updates, NVR disk, phone battery
+  Ventilatsioon (supply/extract temperature, humidity, filter as bar-gauge
+  feature); Süsteem (updates, NVR disk, phone battery
   only when they need attention, otherwise one "all fine" line). Headings
   navigate to the matching tab or subview.
 - **Energia**: house level only. Daily min/mean/max total price as
   statistics (fills in over time, survives recorder purge), Elektrilevi kWh
   and EUR per day straight from the external statistics, button to the HA
   Energy dashboard, and three "big consumers" tiles that link to the device
-  tabs.
+  tabs. Trimmed from Kodu after review: Daikin/Komfovent outdoor temps
+  (weather card covers it), fan %, DHW kWh today, the Daikin "indoor"
+  sensor (a constant 20.0 setpoint, entity disabled), daily weather card
+  (more-info has it), and the five motion tiles (NVR motion fires on
+  insects and rain; tune sensitivity and zones on the NVR before any motion
+  notification is built).
 - **Soojuspump**: temperatures with 24 h trend-graph features, DHW state,
   tank temperature and 48 h graph, DHW kWh per day (`change` of the daily
   bucket, whole-kWh resolution) and month.
