@@ -194,9 +194,9 @@ energy = {"title": "Energia", "path": "energia", "icon": "mdi:lightning-bolt", "
 
 cameras = {"title": "Valve", "path": "valve", "icon": "mdi:shield-home", "type": "sections", "max_columns": 2, "sections": [
     section("Kaamerad", [
-        note("Pilt on alamvoost ja uueneb iga 10 s, klõps avab põhivoo täisresolutsioonis. Ikoon pildi nurgas on NVR-i liikumistuvastus, mis praegu reageerib putukatele ja vihmale (150-240 sündmust kaamera kohta päevas), seega liikumise ajalugu siin ei näidata enne, kui NVR-is on tundlikkus ja tuvastusalad paika pandud."),
+        note("Pilt uueneb iga 10 s, klõps avab alamvoo otsepildi, mis käivitub kiiremini kui põhivoog. Täisresolutsiooni põhivood on Süsteemi alamvaates. Ikoon pildi nurgas on NVR-i liikumistuvastus, mis praegu reageerib putukatele ja vihmale (150-240 sündmust kaamera kohta päevas), seega liikumise ajalugu siin ei näidata enne, kui NVR-is on tundlikkus ja tuvastusalad paika pandud."),
     ] + [
-        {"type": "picture-glance", "camera_image": "camera." + slug + "_alamvoog", "entity": "camera." + slug, "title": n, "camera_view": "auto",
+        {"type": "picture-glance", "camera_image": "camera." + slug + "_alamvoog", "entity": "camera." + slug + "_alamvoog", "title": n, "camera_view": "auto",
          "entities": [{"entity": "binary_sensor." + slug + "_liikumine"}]}
         for slug, n in CAMS], column_span=2),
     section("Salvesti", [
@@ -312,6 +312,9 @@ susteem = {"title": "Süsteem", "path": "susteem", "icon": "mdi:home-assistant",
         note("HA salvesti hoiab 30 päeva olekuid, statistika jääb igavesti. Varundus käib homelabi backup.sh-ga igal öösel (konf + salvesti koopia), mitte HA enda varundusega, seetõttu on HA varundusandurid kinni."),
         tile("sensor.nvr_ketas", "NVR ketas"),
     ]),
+    section("Kaamerate põhivood", [
+        note("Täisresolutsiooni otsepilt, käivitub aeglaselt. Igapäevaseks vaatamiseks on Valve tabi alamvood."),
+    ] + [tile("camera." + slug, n) for slug, n in CAMS]),
     section("Nord Pool toorandmed", [
         note("Börsi 15-minuti hinnad ilma tasudeta ja koguhind 15-minuti sammuga. Kodu vaade kasutab tunni keskmisi, sest arvesti loeb tunni kaupa."),
         tile("sensor.nord_pool_ee_praegune_hind", "Börs praegu"),
