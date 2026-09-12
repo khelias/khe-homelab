@@ -231,8 +231,10 @@ something is used daily.
   kWh per day as max of the daily bucket), "Ventilatsioon" (AHU and heater
   kWh per day, heater counter 30 d flat-line KPI, power/recovery 7 d).
 - **Valve** (tab, was Kaamerad): picture-glance per camera (`camera_view:
-  auto`, motion overlaid), motion history 24 h, NVR disk, and the note that
-  the Paradox panel has no local interface; leak/alarm sensors land here.
+  auto`, motion overlaid), motion history 24 h, NVR disk, plus two explained
+  placeholder sections: Alarmikeskus (Paradox at .240 opens no ports, so no
+  IP150; route is HACS PAI via an IP150 module or serial) and Lekkeandurid
+  (Zigbee, once a coordinator exists).
 - **Tuled** (tab, placeholder): an explained empty section until Hue is
   connected.
 - **Soojuspump**, **Ventilatsioon**, **Süsteem** (subviews): every secondary
