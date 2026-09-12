@@ -4,3 +4,13 @@ recorder:
   purge_keep_days: 30
 
 modbus: !include modbus.yaml
+
+lovelace:
+  mode: storage
+  dashboards:
+    home-komfovent:
+      mode: yaml
+      title: Ventilatsioon
+      icon: mdi:fan
+      show_in_sidebar: true
+      filename: dashboards/komfovent.yaml
