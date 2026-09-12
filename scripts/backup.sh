@@ -13,6 +13,8 @@
 # journal replay handles most crashes on restore, but a snapshot captured
 # mid-transaction is not guaranteed consistent. Acceptable for this homelab
 # — fixing it properly requires per-service quiesce or SQLite .backup API.
+# The Home Assistant recorder DB is the one exception: it is large, written
+# continuously, and dumped through the .backup API below instead of tarred.
 set -uo pipefail
 
 # Optional heartbeat ping — silently disabled if no URL configured.
@@ -81,14 +83,17 @@ volume_exists() {
 # Daemon runs as root, so the mounted source is always readable regardless
 # of on-disk ownership. Writes stderr to a sidecar .err file we only keep
 # if the archive fails — matches the pg_dump pattern below.
+# Extra arguments after <name> go to tar verbatim (e.g. --exclude=PATTERN;
+# busybox matches an unanchored pattern against every path component).
 tar_via_alpine() {
   local src="$1" name="$2"
+  shift 2
   local out="$BACKUP_DIR/${name}.tar.gz"
   local err="$BACKUP_DIR/${name}.err"
   if docker run --rm \
        -v "$src":/data:ro \
        -v "$BACKUP_DIR":/backup \
-       alpine:3 tar czf "/backup/${name}.tar.gz" -C /data . 2>"$err"; then
+       alpine:3 tar czf "/backup/${name}.tar.gz" "$@" -C /data . 2>"$err"; then
     rm -f "$err"
     return 0
   fi
@@ -195,6 +200,47 @@ for entry in "${BIND_MOUNTS[@]}"; do
   tar_via_alpine "$path" "$name" \
     || fail "tar failed: $path (see ${name}.err)"
 done
+
+# --- Home Assistant. The config dir holds .storage (users, tokens, integration
+#     credentials) and hand-written YAML; the recorder DB is SQLite written
+#     continuously, so it is copied through the .backup API (consistent
+#     point-in-time copy of a live DB) and excluded from the tar together
+#     with its -wal/-shm journals and the rotating log.
+HA_CONTAINER="homeassistant"
+HA_CONFIG="/home/khe/homelab/services/home/homeassistant/config"
+HA_RECORDER_TMP="/tmp/recorder-backup.db"
+if container_running "$HA_CONTAINER"; then
+  echo "-> sqlite: $HA_CONTAINER recorder"
+  dump_file="$BACKUP_DIR/homeassistant-recorder.db"
+  err_file="$BACKUP_DIR/homeassistant-recorder.err"
+  if docker exec "$HA_CONTAINER" python3 -c "
+import sqlite3
+src = sqlite3.connect('/config/home-assistant_v2.db')
+dst = sqlite3.connect('$HA_RECORDER_TMP')
+src.backup(dst)
+dst.close(); src.close()
+" 2>"$err_file" \
+     && docker exec "$HA_CONTAINER" cat "$HA_RECORDER_TMP" > "$dump_file" 2>>"$err_file" \
+     && gzip -f "$dump_file" 2>>"$err_file"; then
+    rm -f "$err_file"
+  else
+    rm -f "$dump_file" "${dump_file}.gz"
+    fail "recorder backup failed: $HA_CONTAINER (see $(basename "$err_file"))"
+  fi
+  docker exec "$HA_CONTAINER" rm -f "$HA_RECORDER_TMP" >/dev/null 2>&1 || true
+else
+  fail "container not running: $HA_CONTAINER"
+fi
+
+if [ -d "$HA_CONFIG" ]; then
+  echo "-> bind: $HA_CONFIG (recorder DB excluded, dumped above)"
+  tar_via_alpine "$HA_CONFIG" "homeassistant-config" \
+      --exclude='home-assistant_v2.db*' \
+      --exclude='home-assistant.log*' \
+    || fail "tar failed: $HA_CONFIG (see homeassistant-config.err)"
+else
+  fail "bind path missing: $HA_CONFIG"
+fi
 
 # --- VM-local state that lives outside filesystem dirs or needs selective
 #     capture. Placed in /srv/backups so Etapp 2 (restic) picks them up

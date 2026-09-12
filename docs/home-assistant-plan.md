@@ -1,6 +1,7 @@
 # Home Assistant rollout plan
 
-Status: planned, nothing deployed yet (2026-09-08).
+Status: HA container deployed and onboarded; phase 3 (Komfovent read-only)
+and backup wiring committed 2026-09-12, awaiting a HA restart on the VM.
 
 Decisions taken up front:
 
@@ -92,6 +93,12 @@ Manual, because these live in UIs whose credentials sit in VM `.env` files:
   (Kuma is on the `proxy` network, so the container name resolves), same
   Telegram notifier as every other service.
 
+Checked 2026-09-12 from the LAN: `192.168.0.11:8123` answers and onboarding
+is complete, but AdGuard does not resolve `home.khe.ee` while its siblings
+resolve, and NPM has no host for it (TLS handshake fails where `photos.khe.ee`
+returns 200). So the three manual steps above are still open. The Kuma monitor
+could not be checked from outside.
+
 Deliberately not on the Cloudflare Tunnel.
 
 ## Where the earlier plan went
@@ -134,7 +141,19 @@ attention. It pays for itself at the spot-price heating phase. If that is not
 going to happen, the summer-standby problem is already solved by a calendar
 reminder, and this stack is a hobby rather than infrastructure.
 
-## Phase 3 - Komfovent, read-only
+## Phase 3 - Komfovent, read-only (repo side done 2026-09-12)
+
+`config/modbus.yaml`, pulled in by `modbus: !include modbus.yaml` and
+whitelisted in `.gitignore`. One TCP hub, `message_wait_milliseconds: 100`
+to pace the polls, seven sensors: 901/902/903 as int16 x0.1 C, 916 filter %,
+920 W, 923 %, 930 as uint32 x0.001 kWh with `total_increasing`. The block was
+re-read from the Mac the same day and matched: 17.3 / 24.7 / 15.6 C, filter
+11 %, 52 W, total 3015.2 kWh. Register 923 read 0 at that moment despite a
+19 % temperature-based recovery, so treat that entity as unproven until it
+shows non-zero values.
+
+Loading it needs a HA restart; bind-mounted config changes do not recreate
+the container, and `deploy-stacks.sh` only runs `compose up`.
 
 Native `modbus:` YAML platform, not a HACS integration. The register map is
 already measured, and a custom component is a dependency Renovate cannot track.
@@ -218,19 +237,25 @@ over every available period with the same method before attributing a change to
 a cause.** Two points always make a line. Pull outdoor temperature history from
 Open-Meteo alongside any energy conclusion.
 
-## Backup
+## Backup (wired 2026-09-12)
 
-Not wired up yet, and it needs a code change first: `tar_via_alpine()` in
-`backup.sh` takes no exclude argument, and tarring a live SQLite recorder DB
-produces an archive that may not restore. Either extend the helper or dump the
-DB with `sqlite3 .backup` before the tar.
+`backup.sh` now copies the recorder DB through Python's `sqlite3` backup API
+inside the container (consistent point-in-time copy, no `sqlite3` CLI needed)
+to `homeassistant-recorder.db.gz`, and tars the config dir as
+`homeassistant-config.tar.gz` with `home-assistant_v2.db*` and
+`home-assistant.log*` excluded. `tar_via_alpine()` grew a pass-through for
+extra tar arguments to make that possible. Not yet exercised on the VM; the
+first cron run after deploy will show it.
 
 `.storage` holds the user database, tokens and integration credentials, so it
-belongs in the encrypted offsite set and never in the repo.
+belongs in the encrypted offsite set (it is, via `/srv/backups`) and never in
+the repo.
 
 ## Docs to update when this lands
 
-Same commit as the change, per the update discipline:
+Same commit as the change, per the update discipline. README, ROADMAP,
+network README and the operational notes were updated with phases 1-3;
+SECURITY.md is still pending and becomes due with write access.
 
 - `README.md` services table plus architecture diagram, and the new
   `services/home/` group in the layout.
