@@ -21,7 +21,7 @@ DHW = "water_heater.hot_water_tank_domestic_hot_water_tank"
 # Family members are read from an untracked local file (this repo is public): a JSON list of [entity_id, label].
 _people_file = os.path.expanduser("~/.config/khe/ha-people.json")
 PEOPLE = json.load(open(_people_file)) if os.path.exists(_people_file) else [("person.owner", "Kaido on")]  # badge renders "<name> <state>"
-UPDATES = ["update.hacs_update", "update.komfovent_update", "update.daikin_altherma_update", "update.nvr_camera_update", "update.apexcharts_card_update"]
+UPDATES = ["update.hacs_update", "update.komfovent_update", "update.daikin_altherma_update", "update.estfeed_update", "update.nvr_camera_update", "update.apexcharts_card_update"]
 
 def tile(entity, name=None, **kw):
     c = {"type": "tile", "entity": entity}
@@ -305,32 +305,34 @@ ventilatsioon = {"title": "Ventilatsioon", "path": "ventilatsioon", "icon": "mdi
 ]}
 
 susteem = {"title": "Süsteem", "path": "susteem", "icon": "mdi:home-assistant", "type": "sections", "subview": True, "max_columns": 2, "sections": [
+    # Kodu shape, no captions. Operational notes that used to sit here (backup.sh, companion-app sensors, recorder
+    # retention) live in docs/home-assistant-plan.md. The NVR disk is on Valve and Kodu, not repeated here.
     section("Uuendused", [
-        note("HACS-i kaudu paigaldatud integratsioonid ja kaardid. Kodu vaates paistab see loend ainult siis, kui mõni uuendus ootab. HA enda uuendus käib repo kaudu Renovate'iga."),
         {"type": "entities", "entities": UPDATES},
     ]),
     section("Telefon", [
-        note("Companion äpi andurid. Kui need on \"pole saadaval\", ei ole äpp taustal andmeid saatnud: ava äpp või kontrolli Seaded → Kaasrakendus → Andurite haldus. Asukoht töötab eraldi ja on korras."),
-        tile("person.owner", "Kaido"),
-        tile("sensor.phone_battery_level", "Aku"),
-        tile("sensor.phone_battery_state", "Laadimine"),
-        tile("sensor.phone_connection_type", "Ühendus"),
-        tile("sensor.phone_ssid", "Wifi"),
-    ]),
-    section("Salvestus ja varundus", [
-        note("HA salvesti hoiab 30 päeva olekuid, statistika jääb igavesti. Varundus käib homelabi backup.sh-ga igal öösel (konf + salvesti koopia), mitte HA enda varundusega, seetõttu on HA varundusandurid kinni."),
-        tile("sensor.nvr_ketas", "NVR ketas"),
+        # SSID is left out: iOS only reports it with precise-location permission, so the tile sat on "unavailable".
+        {"type": "horizontal-stack", "cards": [
+            nowrite("person.owner", "Kaido", vertical=True),
+            nowrite("sensor.phone_battery_level", "Aku", vertical=True),
+            nowrite("sensor.phone_battery_state", "Laadimine", vertical=True),
+            nowrite("sensor.phone_connection_type", "Ühendus", vertical=True)]},
     ]),
     section("Kaamerate põhivood", [
-        note("Täisresolutsiooni otsepilt, käivitub aeglaselt. Igapäevaseks vaatamiseks on Valve tabi alamvood."),
-    ] + [tile("camera." + slug, n) for slug, n in CAMS]),
+        # Full-resolution live streams, slow to start; the everyday substreams are on Valve.
+        {"type": "horizontal-stack", "cards": [tile("camera." + slug, n, vertical=True) for slug, n in CAMS]},
+    ], column_span=2),
     section("Nord Pool toorandmed", [
-        note("Börsi 15-minuti hinnad ilma tasudeta ja koguhind 15-minuti sammuga. Kodu vaade kasutab tunni keskmisi, sest arvesti loeb tunni kaupa."),
-        tile("sensor.nord_pool_ee_praegune_hind", "Börs praegu"),
-        tile("sensor.nord_pool_ee_jargmine_hind", "Börs järgmine"),
-        tile("sensor.elektri_hind_kokku", "Kokku, 15 min"),
-        tile(FORECAST, "Prognoos katab"),
-    ]),
+        # 15-minute spot without fees, the 15-minute total, and how far the forecast reaches; Kodu uses hourly means because the meter bills hourly.
+        {"type": "horizontal-stack", "cards": [
+            nowrite("sensor.nord_pool_ee_praegune_hind", "Börs praegu", vertical=True),
+            nowrite("sensor.nord_pool_ee_jargmine_hind", "Börs järgmine", vertical=True),
+            nowrite("sensor.elektri_hind_kokku", "Kokku, 15 min", vertical=True),
+            nowrite(FORECAST, "Prognoos katab", vertical=True)]},
+        {"type": "horizontal-stack", "cards": [
+            nowrite("sensor.nord_pool_ee_madalaim_hind", "Täna madalaim", vertical=True),
+            nowrite("sensor.nord_pool_ee_korgeim_hind", "Täna kõrgeim", vertical=True)]},
+    ], column_span=2),
 ]}
 
 def mode_row(key, timer=False):
