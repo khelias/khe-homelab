@@ -95,14 +95,14 @@ def daikin_bars(title, entity, span, end_unit, js, fmt):
 
 
 MODE = "select.komfovent_operation_mode"
+def action_tile(entity, name, icon, color, perform_action, data, text):
+    """Quick-mode tile: same size as the other tiles, state hidden, tap runs an action after a confirmation."""
+    act = {"action": "perform-action", "perform_action": perform_action, "target": {"entity_id": entity},
+           "data": data, "confirmation": {"text": text}}
+    return tile(entity, name, icon=icon, color=color, hide_state=True, tap_action=act, icon_tap_action=act)
 def mode_button(name, icon, option, color=None):
-    c = {"type": "button", "name": name, "icon": icon, "show_state": False,
-         "tap_action": {"action": "perform-action", "perform_action": "select.select_option",
-                        "target": {"entity_id": MODE}, "data": {"option": option},
-                        "confirmation": {"text": f"Ventilatsioon režiimile {name}?"}},
-         "grid_options": {"columns": 6, "rows": 1}}
-    if color: c["icon_color"] = color
-    return c
+    return action_tile(MODE, name, icon, color, "select.select_option", {"option": option},
+                       f"Ventilatsioon režiimile {name}?")
 
 def note(text):
     return {"type": "heading", "heading": text, "heading_style": "subtitle"}
@@ -147,23 +147,19 @@ home = {"title": "Kodu", "path": "kodu", "icon": "mdi:home", "type": "sections",
         when_on("binary_sensor.space_heating_unit_state", "Soojuspumba viga"),
     ], **nav("/lovelace/soojuspump")),
     section("Soe vesi", [
-        nowrite(DHW, "Boiler", state_content=["state", "temperature"]),
-        nowrite(DHW, "Vee temperatuur", icon="mdi:thermometer-water", color="blue", state_content=["current_temperature"]),
+        nowrite(DHW, "Boiler", state_content=["state", "current_temperature"]),
         # Daikin Powerful: the one DHW quick mode on Kodu. Temporary, the unit returns to normal
         # by itself once the tank is hot, so an accidental tap costs one heat-up, not a setting.
-        {"type": "button", "name": "Kiirsoojendus", "icon": "mdi:water-boiler", "icon_color": "orange", "show_state": False,
-         "tap_action": {"action": "perform-action", "perform_action": "water_heater.set_operation_mode",
-                        "target": {"entity_id": DHW}, "data": {"operation_mode": "performance"},
-                        "confirmation": {"text": "Boileri kiirsoojendus (Daikin Powerful) sisse? Lõpeb ise, kui vesi on soe."}},
-         "grid_options": {"columns": 6, "rows": 1}},
+        action_tile(DHW, "Kiirsoojendus", "mdi:water-boiler", "orange", "water_heater.set_operation_mode",
+                    {"operation_mode": "performance"}, "Boileri kiirsoojendus (Daikin Powerful) sisse? Lõpeb ise, kui vesi on soe."),
         when_on("binary_sensor.hot_water_tank_state", "Boileri viga"),
     ], **nav("/lovelace/soojuspump")),
     section("Ventilatsioon", [
         mode_button("Köök", "mdi:stove", "kitchen", "orange"),
         mode_button("Tavaline", "mdi:fan", "normal", "green"),
-        tile("sensor.komfovent_supply_temperature", "Sissepuhe"),
-        tile("sensor.komfovent_extract_temperature", "Väljatõmme"),
-        tile("sensor.komfovent_panel_1_humidity", "Niiskus"),
+        third(tile("sensor.komfovent_supply_temperature", "Sissepuhe", vertical=True)),
+        third(tile("sensor.komfovent_extract_temperature", "Väljatõmme", vertical=True)),
+        third(tile("sensor.komfovent_panel_1_humidity", "Niiskus", vertical=True)),
         when_on("binary_sensor.komfovent_status_alarm_fault", "Ventilatsiooni viga"),
         when_on("binary_sensor.komfovent_status_alarm_warning", "Ventilatsiooni hoiatus"),
     ], badges=[{"type": "entity", "entity": MODE, "name": "Režiim", "show_state": True}], **nav("/lovelace/ventilatsioon")),
