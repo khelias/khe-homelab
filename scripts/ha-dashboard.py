@@ -239,8 +239,6 @@ soojuspump = {"title": "Soojuspump", "path": "soojuspump", "icon": "mdi:heat-pum
  # Kodu shape: heating and DHW state as badges plus a settings badge, one row of vertical tiles per section, charts only where the number moves.
  "badges": [
     {"type": "entity", "entity": "switch.space_heating_climate_control", "name": "Küte", "show_name": True, "show_state": True},
-    # The Komfovent wall panel sits in the utility room: the one indoor thermometer the house has.
-    {"type": "entity", "entity": "sensor.komfovent_panel_1_temperature", "name": "Tehnoruum", "show_name": True, "show_state": True},
     {"type": "entity", "entity": DHW, "name": "Boiler", "show_name": True, "show_state": True, "state_content": "current_temperature"},
     {"type": "entity", "entity": "switch.space_heating_climate_control", "name": "Seaded", "icon": "mdi:tune", "show_name": True, "show_state": False,
      "tap_action": {"action": "navigate", "navigation_path": "/lovelace/soojuspump-seaded"}},
@@ -249,6 +247,8 @@ soojuspump = {"title": "Soojuspump", "path": "soojuspump", "icon": "mdi:heat-pum
     section("Küte", [
         {"type": "horizontal-stack", "cards": [
             nowrite("sensor.space_heating_leaving_water_temperature", "Küttevesi", vertical=True),
+            # "Sees" is the Komfovent wall panel in the utility room, the one indoor thermometer the house has.
+            nowrite("sensor.komfovent_panel_1_temperature", "Sees", vertical=True),
             nowrite("sensor.space_heating_outdoor_temperature", "Väljas", vertical=True),
             nowrite("number.space_heating_temperature_control", "Kõvera nihe", vertical=True)]},
         when_on("binary_sensor.space_heating_unit_state", "Soojuspumba viga"),
