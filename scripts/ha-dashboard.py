@@ -334,96 +334,48 @@ susteem = {"title": "Süsteem", "path": "susteem", "icon": "mdi:home-assistant",
     ]),
 ]}
 
+def mode_row(key, timer=False):
+    """One mode's settings as a row of vertical tiles: fans, setpoint, heater flag, optional timer. Taps open more-info to edit."""
+    cards = [tile(f"number.komfovent_{key}_supply_flow", "Sissepuhe %", vertical=True),
+             tile(f"number.komfovent_{key}_extract_flow", "Väljatõmme %", vertical=True),
+             tile(f"number.komfovent_{key}_temperature", "Sihttemp", vertical=True),
+             confirm(f"switch.komfovent_{key}_electric_heater", "Järelküte", "Järelküte selles režiimis. Kindel?", color="red", vertical=True)]
+    if timer: cards.append(tile(f"number.komfovent_{key}_timer", "Kestus min", vertical=True))
+    return {"type": "horizontal-stack", "cards": cards}
+
 komfovent_seaded = {"title": "Ventilatsiooni seaded", "path": "komfovent-seaded", "icon": "mdi:tune", "type": "sections", "subview": True, "max_columns": 3, "sections": [
     section("Juhtimine", [
-        note("Režiimi vahetus otse. Köögi ja kamina kestus on siin minutites; 0 tähendab, et režiim püsib, kuni käsitsi tagasi vahetad."),
         tile(MODE, "Režiim", features=[{"type": "select-options"}]),
-        tile("number.komfovent_kitchen_timer", "Köögirežiimi kestus"),
-        tile("number.komfovent_fireplace_timer", "Kaminarežiimi kestus"),
-        confirm("switch.komfovent_power", "Seade sees", "Lülitad kogu ventilatsiooni. Kindel?"),
-        confirm("switch.komfovent_aq_electric_heater", "Järelküte lubatud", "Elektriline järelküte on kallis. Kindel?", color="red"),
-        tile("switch.komfovent_auto_mode", "Automaatrežiim"),
-        tile("switch.komfovent_eco_mode", "ECO"),
         tile("select.komfovent_scheduler_mode", "Ajakava", features=[{"type": "select-options"}]),
+        tile("switch.komfovent_auto_mode", "Automaatrežiim"),
+        confirm("switch.komfovent_power", "Seade sees", "Lülitad kogu ventilatsiooni. Kindel?"),
     ]),
-    section("Režiimide seaded", [
-        note("Iga režiimi ventilaatorite kiirus, sihttemperatuur ja kas elektriline järelküte on selles režiimis lubatud. Muuda harva ja teadlikult; järelkütte lülitid küsivad kinnitust."),
+    # ECO is the strategy since 2026-09-13: heater blocked, exchanger always on. Free cooling is the one seasonal switch
+    # (on in late spring for night cooling, off in autumn). The heat-recovery select writes fine but the integration
+    # cannot read that register back, so its tile is always blank; the name says so.
+    section("ECO", [
+        tile("switch.komfovent_eco_mode", "ECO sees"),
+        confirm("switch.komfovent_eco_heater_blocking", "Kütteblokeering", "Väljalülitamine lubab elektrilise järelkütte. Kindel?", color="red"),
+        confirm("switch.komfovent_eco_free_heating_cooling", "Suvine vaba jahutus", "Sees: soojusvaheti seisab, kui välisõhk on toast jahedam. Talvel peab olema väljas. Kindel?"),
+        tile("select.komfovent_eco_heat_recovery", "Soojustagastus (näit puudub)", features=[{"type": "select-options"}]),
+        tile("number.komfovent_eco_min_supply_temperature", "Min sissepuhe"),
+        tile("number.komfovent_eco_max_supply_temperature", "Max sissepuhe"),
     ]),
-    section("Tavaline", [
-        tile("number.komfovent_normal_supply_flow", "Sissepuhe %"),
-        tile("number.komfovent_normal_extract_flow", "Väljatõmme %"),
-        tile("number.komfovent_normal_temperature", "Sihttemp"),
-        confirm("switch.komfovent_normal_electric_heater", "Järelküte", "Järelküte selles režiimis. Kindel?", color="red"),
-    ]),
-    section("Eemal", [
-        tile("number.komfovent_away_supply_flow", "Sissepuhe %"),
-        tile("number.komfovent_away_extract_flow", "Väljatõmme %"),
-        tile("number.komfovent_away_temperature", "Sihttemp"),
-        confirm("switch.komfovent_away_electric_heater", "Järelküte", "Järelküte selles režiimis. Kindel?", color="red"),
-    ]),
-    section("Intensiivne", [
-        tile("number.komfovent_intensive_supply_flow", "Sissepuhe %"),
-        tile("number.komfovent_intensive_extract_flow", "Väljatõmme %"),
-        tile("number.komfovent_intensive_temperature", "Sihttemp"),
-        confirm("switch.komfovent_intensive_electric_heater", "Järelküte", "Järelküte selles režiimis. Kindel?", color="red"),
-    ]),
-    section("Boost", [
-        tile("number.komfovent_boost_supply_flow", "Sissepuhe %"),
-        tile("number.komfovent_boost_extract_flow", "Väljatõmme %"),
-        tile("number.komfovent_boost_temperature", "Sihttemp"),
-        confirm("switch.komfovent_boost_electric_heater", "Järelküte", "Järelküte selles režiimis. Kindel?", color="red"),
-    ]),
-    section("Köök", [
-        tile("number.komfovent_kitchen_supply_flow", "Sissepuhe %"),
-        tile("number.komfovent_kitchen_extract_flow", "Väljatõmme %"),
-        tile("number.komfovent_kitchen_temperature", "Sihttemp"),
-        confirm("switch.komfovent_kitchen_electric_heater", "Järelküte", "Järelküte selles režiimis. Kindel?", color="red"),
-        tile("number.komfovent_kitchen_timer", "Kestus min"),
-    ]),
-    section("Kamin", [
-        tile("number.komfovent_fireplace_supply_flow", "Sissepuhe %"),
-        tile("number.komfovent_fireplace_extract_flow", "Väljatõmme %"),
-        tile("number.komfovent_fireplace_temperature", "Sihttemp"),
-        confirm("switch.komfovent_fireplace_electric_heater", "Järelküte", "Järelküte selles režiimis. Kindel?", color="red"),
-        tile("number.komfovent_fireplace_timer", "Kestus min"),
-    ]),
-    section("Override", [
-        tile("number.komfovent_override_supply_flow", "Sissepuhe %"),
-        tile("number.komfovent_override_extract_flow", "Väljatõmme %"),
-        tile("number.komfovent_override_temperature", "Sihttemp"),
-        confirm("switch.komfovent_override_electric_heater", "Järelküte", "Järelküte selles režiimis. Kindel?", color="red"),
-        tile("number.komfovent_override_timer", "Kestus min"),
-        tile("number.komfovent_override_delay_start", "Viide start"),
-        tile("number.komfovent_override_delay_stop", "Viide stopp"),
-    ]),
-    section("Puhkus", [
-        tile("number.komfovent_holidays_temperature", "Sihttemp"),
-        confirm("switch.komfovent_holidays_electric_heater", "Järelküte", "Järelküte selles režiimis. Kindel?", color="red"),
-        tile("select.komfovent_holidays_micro_ventilation", "Mikroventilatsioon"),
-    ]),
-    section("ECO, õhukvaliteet ja muu", [
-        tile("number.komfovent_aq_check_period", "AQ kontrolli periood"),
-        tile("number.komfovent_aq_maximum_intensity", "AQ max intensiivsus"),
-        tile("number.komfovent_aq_minimum_intensity", "AQ min intensiivsus"),
-        tile("number.komfovent_aq_temperature_setpoint", "AQ sihttemp"),
-        tile("number.komfovent_eco_max_supply_temperature", "ECO max sissepuhe"),
-        tile("number.komfovent_eco_min_supply_temperature", "ECO min sissepuhe"),
-        tile("select.komfovent_aq_outdoor_humidity_sensor", "AQ välisniiskuse andur"),
-        tile("select.komfovent_aq_sensor_1_type", "AQ andur 1"),
-        tile("select.komfovent_aq_sensor_2_type", "AQ andur 2"),
-        tile("select.komfovent_control_stage_1", "Juhtaste 1"),
-        tile("select.komfovent_control_stage_2", "Juhtaste 2"),
-        tile("select.komfovent_control_stage_3", "Juhtaste 3"),
-        tile("select.komfovent_eco_heat_recovery", "ECO soojustagastus"),
-        tile("select.komfovent_external_coil_type", "Välise kalorifeeri tüüp"),
-        tile("select.komfovent_flow_control", "Vooluhulga juhtimine"),
-        tile("select.komfovent_temperature_control", "Temperatuuri juhtimine"),
-        tile("switch.komfovent_aq_humidity_control", "AQ niiskuse juhtimine"),
-        tile("switch.komfovent_aq_impurity_control", "AQ saaste juhtimine"),
-        tile("switch.komfovent_eco_cooler_blocking", "ECO jahuti blokeering"),
-        tile("switch.komfovent_eco_free_heating_cooling", "ECO vabaküte/-jahutus"),
-        tile("switch.komfovent_eco_heater_blocking", "ECO kütteblokeering"),
-    ]),
+    section("Tavaline", [mode_row("normal")]),
+    section("Köök", [mode_row("kitchen", timer=True)]),
+    section("Kamin", [mode_row("fireplace", timer=True)]),
+    section("Eemal", [mode_row("away")]),
+    section("Harva kasutatavad režiimid",
+        [note("Intensiivne"), mode_row("intensive"), note("Boost"), mode_row("boost"), note("Override"), mode_row("override", timer=True),
+        {"type": "horizontal-stack", "cards": [
+            tile("number.komfovent_override_delay_start", "Viide start", vertical=True),
+            tile("number.komfovent_override_delay_stop", "Viide stopp", vertical=True)]},
+        note("Puhkus"),
+        {"type": "horizontal-stack", "cards": [
+            tile("number.komfovent_holidays_temperature", "Sihttemp", vertical=True),
+            confirm("switch.komfovent_holidays_electric_heater", "Järelküte", "Järelküte selles režiimis. Kindel?", color="red", vertical=True),
+            tile("select.komfovent_holidays_micro_ventilation", "Mikroventilatsioon", vertical=True)]},
+    ], column_span=2),
     section("Hooldus", [
         {"type": "button", "name": "Puhaste filtrite kalibreerimine", "icon": "mdi:gesture-tap-button", "tap_action": {"action": "perform-action", "perform_action": "button.press", "target": {"entity_id": "button.komfovent_clean_filters_calibration"}, "confirmation": {"text": "Kindel?"}}},
         {"type": "button", "name": "Kustuta alarmid", "icon": "mdi:gesture-tap-button", "tap_action": {"action": "perform-action", "perform_action": "button.press", "target": {"entity_id": "button.komfovent_clear_active_alarms"}, "confirmation": {"text": "Kindel?"}}},
