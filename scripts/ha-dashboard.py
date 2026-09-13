@@ -232,8 +232,9 @@ cameras = {"title": "Valve", "path": "valve", "icon": "mdi:shield-home", "type":
     section("NVR", [
         {"type": "horizontal-stack", "cards": [
             nowrite("sensor.nvr_ketas", "Ketas", vertical=True),
-            {"type": "tile", "entity": "sensor.nvr_ketas", "name": "Ava NVR", "icon": "mdi:open-in-new", "hide_state": True, "vertical": True,
-             "tap_action": {"action": "url", "url_path": "http://192.168.0.x/"}, "icon_tap_action": {"action": "url", "url_path": "http://192.168.0.x/"}}]},
+            # Opens the the NVR vendor app app on the phone (its URL scheme); the NVR web UI at .129 is too slow to be worth a button.
+            {"type": "tile", "entity": "sensor.nvr_ketas", "name": "Ava NVR", "icon": "mdi:cellphone-play", "hide_state": True, "vertical": True,
+             "tap_action": {"action": "url", "url_path": "nvr-app://"}, "icon_tap_action": {"action": "url", "url_path": "nvr-app://"}}]},
         # Per-camera motion detection. the camera integration switches these back on at every reload, so treat them as a temporary mute.
         {"type": "horizontal-stack", "cards": [tile("switch." + slug + "_liikumistuvastus", n, vertical=True) for slug, n in CAMS]},
     ], column_span=2),
