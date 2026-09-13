@@ -128,10 +128,12 @@ home = {"title": "Kodu", "path": "kodu", "icon": "mdi:home", "type": "sections",
  "sections": [
     section("Elekter", [
         price_chart,
-        third(nowrite("sensor.maja_tana", "Täna", state_content=["state", "kulu"])),
-        third(nowrite("sensor.maja_eile", "Eile", state_content=["state", "kulu"])),
-        third(nowrite("sensor.maja_sel_kuul", "Sel kuul", state_content=["state", "kulu"])),
-        bars("Maja 7 päeva", [("estfeed:estfeed_consumption_642b", "kWh"), ("estfeed:estfeed_cost_642b", "€")], 7),
+        {"type": "horizontal-stack", "cards": [
+            nowrite("sensor.maja_tana", "Täna", state_content=["state", "kulu"]),
+            nowrite("sensor.maja_eile", "Eile", state_content=["state", "kulu"]),
+            nowrite("sensor.maja_sel_kuul", "Sel kuul", state_content=["state", "kulu"])]},
+        bars("Tarbimine 7 päeva, kWh", [("estfeed:estfeed_consumption_642b", "kWh")], 7),
+        bars("Kulu 7 päeva, €", [("estfeed:estfeed_cost_642b", "€")], 7),
     ], column_span=2,
        badges=[{"type": "entity", "entity": "binary_sensor.nord_pool_ee_homne_hind_on_saadaval", "name": "Homne hind olemas", "state_content": "name",
                 "visibility": [{"condition": "state", "entity": "binary_sensor.nord_pool_ee_homne_hind_on_saadaval", "state": "on"}]},
