@@ -390,7 +390,7 @@ soojuspump_seaded = {"title": "Soojuspumba seaded", "path": "soojuspump-seaded",
         note("Küttevee nihe on faasi 6 hoob: +1 kraad nihutab küttekõverat üles, -1 alla. Boileri siht 55 °C; mitte alla 45 °C (legionella). Ohtlikud lülitid küsivad kinnitust."),
         confirm("switch.space_heating_climate_control", "Küte", "Lülitad maja kütte. Kindel?"),
         tile("number.space_heating_temperature_control", "Küttevee nihe", features=[{"type": "numeric-input", "style": "buttons"}]),
-        tile("select.space_heating_operation_mode", "Kütte režiim", features=[{"type": "select-options"}]),
+        tile("select.space_heating_operation_mode", "Kütte režiim"),  # raw option keys from the integration; tap opens the picker
         tile("water_heater.hot_water_tank_domestic_hot_water_tank", "Boiler", state_content=["state", "temperature"],
              features=[{"type": "target-temperature"}]),
     ]),
