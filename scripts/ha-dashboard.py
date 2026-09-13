@@ -293,8 +293,8 @@ ventilatsioon = {"title": "Ventilatsioon", "path": "ventilatsioon", "icon": "mdi
         when_on("binary_sensor.komfovent_status_alarm_warning", "Hoiatus"),
         tile("sensor.komfovent_active_alarms", "Aktiivsed alarmid", color="red",
              visibility=[{"condition": "state", "entity": "sensor.komfovent_active_alarms", "state_not": ""}]),
-        # The payback chart: what the exchanger returned versus what the electric heater burned (should stay at zero under ECO).
-        bars("Tagastatud ja järelküte päevas, kWh", [("sensor.komfovent_total_recovered_energy", "Tagastatud"), ("sensor.komfovent_total_heater_energy", "Järelküte")], 14),
+        # The payback chart. The heater is not plotted: under ECO it is zero by design, which the month tile and the alert cover.
+        bars("Tagastatud päevas, kWh", [("sensor.komfovent_total_recovered_energy", "Tagastatud")], 14),
     ]),
     section("Energia", [
         {"type": "horizontal-stack", "cards": [
