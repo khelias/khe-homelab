@@ -106,7 +106,7 @@ def mode_button(name, icon, option, color=None):
 def note(text):
     return {"type": "heading", "heading": text, "heading_style": "subtitle"}
 def bars(title, ents, days, stat="change"):
-    return {"type": "statistics-graph", "title": title, "chart_type": "bar", "period": "day", "days_to_show": days, "hide_legend": len(ents) == 1,
+    return {"type": "statistics-graph", "title": title, "chart_type": "bar", "period": "day", "days_to_show": days, "hide_legend": len(ents) == 1, "min_y_axis": 0,
             "stat_types": [stat], "entities": [{"entity": e, "name": n} for e, n in ents]}
 
 
@@ -129,9 +129,9 @@ home = {"title": "Kodu", "path": "kodu", "icon": "mdi:home", "type": "sections",
     section("Elekter", [
         price_chart,
         {"type": "horizontal-stack", "cards": [
-            nowrite("sensor.maja_tana", "Täna", state_content=["state", "kulu"]),
-            nowrite("sensor.maja_eile", "Eile", state_content=["state", "kulu"]),
-            nowrite("sensor.maja_sel_kuul", "Sel kuul", state_content=["state", "kulu"])]},
+            nowrite("sensor.maja_tana", "Täna", state_content=["state", "kulu"], vertical=True),
+            nowrite("sensor.maja_eile", "Eile", state_content=["state", "kulu"], vertical=True),
+            nowrite("sensor.maja_sel_kuul", "Sel kuul", state_content=["state", "kulu"], vertical=True)]},
         bars("Tarbimine 7 päeva, kWh", [("estfeed:estfeed_consumption_642b", "kWh")], 7),
         bars("Kulu 7 päeva, €", [("estfeed:estfeed_cost_642b", "€")], 7),
     ], column_span=2,
