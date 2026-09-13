@@ -100,7 +100,7 @@ def mode_button(name, icon, option, color=None):
          "tap_action": {"action": "perform-action", "perform_action": "select.select_option",
                         "target": {"entity_id": MODE}, "data": {"option": option},
                         "confirmation": {"text": f"Ventilatsioon režiimile {name}?"}},
-         "grid_options": {"columns": 3, "rows": 1}}
+         "grid_options": {"columns": 6, "rows": 1}}
     if color: c["icon_color"] = color
     return c
 
@@ -155,13 +155,11 @@ home = {"title": "Kodu", "path": "kodu", "icon": "mdi:home", "type": "sections",
          "tap_action": {"action": "perform-action", "perform_action": "water_heater.set_operation_mode",
                         "target": {"entity_id": DHW}, "data": {"operation_mode": "performance"},
                         "confirmation": {"text": "Boileri kiirsoojendus (Daikin Powerful) sisse? Lõpeb ise, kui vesi on soe."}},
-         "grid_options": {"columns": 12, "rows": 1}},
+         "grid_options": {"columns": 6, "rows": 1}},
         when_on("binary_sensor.hot_water_tank_state", "Boileri viga"),
     ], **nav("/lovelace/soojuspump")),
     section("Ventilatsioon", [
         mode_button("Köök", "mdi:stove", "kitchen", "orange"),
-        mode_button("Intensiivne", "mdi:fan-plus", "intensive", "blue"),
-        mode_button("Eemal", "mdi:home-export-outline", "away", "grey"),
         mode_button("Tavaline", "mdi:fan", "normal", "green"),
         tile("sensor.komfovent_supply_temperature", "Sissepuhe"),
         tile("sensor.komfovent_extract_temperature", "Väljatõmme"),
