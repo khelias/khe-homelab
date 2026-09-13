@@ -488,7 +488,8 @@ gunzipped DB in as `home-assistant_v2.db`, start the container.
 
 **Grid consumption from Estfeed (since 2026-09-13).** HACS custom repository
 `khelias/ha-estfeed` (fork of `tehisain/ha-estfeed` with the day/night grid
-tariff, cost sensors and the resume-point fix, upstream PRs #1-#3). The API key is entered in the integration's UI
+tariff, cost sensors, the resume-point fix and the hourly price statistic
+`estfeed:estfeed_price`, upstream PRs #1-#4). The API key is entered in the integration's UI
 flow and lives in `.storage`, nowhere else. Tariff options are on the config
 entry (Settings -> Devices -> Estfeed -> Configure); the values and the
 reasoning are in

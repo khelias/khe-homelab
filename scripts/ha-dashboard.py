@@ -175,6 +175,17 @@ home = {"title": "Kodu", "path": "kodu", "icon": "mdi:home", "type": "sections",
     ], **nav("/lovelace/susteem")),
 ]}
 
+# The fork's price statistic (estfeed:estfeed_price) has the whole tariff price for every cached hour,
+# so the month view has history from day one. apexcharts-card cannot plot an external statistic
+# directly (it needs a state object), so the series borrow the price sensor as the entity and pull
+# the daily aggregates over the websocket themselves.
+PRICE_STAT = "estfeed:estfeed_price"
+def price_stat_js(stat_type):
+    return f"""
+const r = await hass.callWS({{type: 'recorder/statistics_during_period', start_time: new Date(start).toISOString(),
+  end_time: new Date(end).toISOString(), statistic_ids: ['{PRICE_STAT}'], period: 'day', types: ['{stat_type}']}});
+return (r['{PRICE_STAT}'] || []).filter(x => x.{stat_type} != null).map(x => [x.start, x.{stat_type}]);
+"""
 price_month = {
     "type": "custom:apexcharts-card", "graph_span": "30d", "span": {"end": "day"},
     "header": {"show": True, "title": "Koguhind 30 päeva, €/kWh (päeva keskmine ja kõrgeim tund)", "show_states": False},
@@ -184,10 +195,10 @@ price_month = {
                     "xaxis": {"labels": {"datetimeFormatter": {"day": "d. MMM"}}}},
     "series": [
         {"entity": "sensor.elektri_hind_see_tund", "name": "Keskmine", "type": "column", "float_precision": 3,
-         "statistics": {"type": "mean", "period": "day"},
+         "data_generator": price_stat_js("mean"),
          "color_threshold": [{"value": 0, "color": "#43a047"}, {"value": 0.15, "color": "#fb8c00"}, {"value": 0.25, "color": "#e53935"}]},
         {"entity": "sensor.elektri_hind_see_tund", "name": "Kõrgeim tund", "type": "line", "curve": "stepline", "stroke_width": 1,
-         "color": "#90a4ae", "float_precision": 3, "statistics": {"type": "max", "period": "day"}}]}
+         "color": "#90a4ae", "float_precision": 3, "data_generator": price_stat_js("max")}]}
 
 energy = {"title": "Energia", "path": "energia", "icon": "mdi:lightning-bolt", "type": "sections", "max_columns": 2, "sections": [
     section("Hind", [price_month], column_span=2),
