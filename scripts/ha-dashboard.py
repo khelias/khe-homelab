@@ -16,6 +16,7 @@ TOKEN = open(os.path.expanduser("~/.config/khe/ha-token")).read().strip()
 URL = "lovelace"  # the Overview, a dashboard entry since the 2026.9 migration
 CAMS = [tuple(c) for c in _house.get("cams", [])]
 FORECAST = "sensor.elektri_hinna_prognoos"
+DHW = "water_heater.hot_water_tank_domestic_hot_water_tank"
 # Presence badges render "<name> <state>", so the verb rides in the name ("Kaido on" -> "Kaido on Kodus").
 # Family members are read from an untracked local file (this repo is public): a JSON list of [entity_id, label].
 _people_file = os.path.expanduser("~/.config/khe/ha-people.json")
@@ -146,8 +147,15 @@ home = {"title": "Kodu", "path": "kodu", "icon": "mdi:home", "type": "sections",
         when_on("binary_sensor.space_heating_unit_state", "Soojuspumba viga"),
     ], **nav("/lovelace/soojuspump")),
     section("Soe vesi", [
-        nowrite("water_heater.hot_water_tank_domestic_hot_water_tank", "Boiler", state_content=["state", "temperature"]),
-        nowrite("water_heater.hot_water_tank_domestic_hot_water_tank", "Vee temperatuur", icon="mdi:thermometer-water", color="blue", state_content=["current_temperature"]),
+        nowrite(DHW, "Boiler", state_content=["state", "temperature"]),
+        nowrite(DHW, "Vee temperatuur", icon="mdi:thermometer-water", color="blue", state_content=["current_temperature"]),
+        # Daikin Powerful: the one DHW quick mode on Kodu. Temporary, the unit returns to normal
+        # by itself once the tank is hot, so an accidental tap costs one heat-up, not a setting.
+        {"type": "button", "name": "Kiirsoojendus", "icon": "mdi:water-boiler", "icon_color": "orange", "show_state": False,
+         "tap_action": {"action": "perform-action", "perform_action": "water_heater.set_operation_mode",
+                        "target": {"entity_id": DHW}, "data": {"operation_mode": "performance"},
+                        "confirmation": {"text": "Boileri kiirsoojendus (Daikin Powerful) sisse? Lõpeb ise, kui vesi on soe."}},
+         "grid_options": {"columns": 12, "rows": 1}},
         when_on("binary_sensor.hot_water_tank_state", "Boileri viga"),
     ], **nav("/lovelace/soojuspump")),
     section("Ventilatsioon", [
