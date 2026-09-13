@@ -197,7 +197,6 @@ All external traffic goes through Cloudflare Tunnel — zero ports open on the r
 ./scripts/deploy.sh up       # (Re)start everything
 ./scripts/deploy.sh down     # Stop everything
 ./scripts/backup.sh          # Backup databases + configs
-./scripts/import-elektrilevi.py <csv>  # the grid operator hourly export -> HA Energy dashboard statistics
 ./scripts/ha-dashboard.py            # Regenerate the Home Assistant Overview dashboard
 ```
 

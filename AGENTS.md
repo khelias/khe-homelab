@@ -56,7 +56,7 @@ services/
   observability/   Loki, Grafana, Alloy, Alertmanager (one stack)
 infrastructure/    Proxmox, network, Cloudflare, Tailscale docs
 scripts/           setup, deploy.sh, backup.sh, hardening,
-                   ha-dashboard.py (HA Overview generator), import-elektrilevi.py
+                   ha-dashboard.py (HA Overview generator)
 docs/              operational-notes.md (service quirks not in README),
                    house-hvac.md (HVAC protocols behind the live HA integrations),
                    home-assistant-plan.md (HA rollout, dashboard, phase 6),
@@ -103,7 +103,6 @@ docs/              operational-notes.md (service quirks not in README),
 ./scripts/deploy.sh down     # stop everything
 ./scripts/backup.sh          # dump Postgres DBs + snapshot configs (+ HA recorder)
 ./scripts/ha-dashboard.py    # regenerate the Home Assistant Overview dashboard
-./scripts/import-elektrilevi.py <csv>  # the grid operator hourly CSV -> HA Energy statistics
 ```
 
 Per-service: `cd services/<group>/<service> && docker compose up -d`.

@@ -180,12 +180,12 @@ energy = {"title": "Energia", "path": "energia", "icon": "mdi:lightning-bolt", "
         third(tile("binary_sensor.vorgu_ootariif", "Öötariif", vertical=True)),
     ]),
     section("Kui palju maja tarbib", [
-        note("the grid operator tunnitarbimine, imporditud CSV-st. Uueneb ainult uue ekspordiga. Kuu ja aasta summad on külgriba Energia töölaual."),
-        bars("Tarbimine päevas, kWh", [("elektrilevi:grid_consumption", "kWh")], 31),
-        bars("Kulu päevas, € (ilma kuutasudeta)", [("elektrilevi:grid_cost", "€")], 31),
+        note("Maja tunnitarbimine Eleringi Estfeedist (HACS ha-estfeed), uueneb iga tund; tunnid jõuavad kohale mõne tunni kuni päeva hilinemisega. Kuu ja aasta summad on külgriba Energia töölaual."),
+        bars("Tarbimine päevas, kWh", [("estfeed:estfeed_consumption_642b", "kWh")], 31),
+        bars("Kulu päevas, € (ilma kuutasudeta)", [("estfeed:estfeed_cost_642b", "€")], 31),
     ]),
     section("Suuremad tarbijad sel kuul", [
-        note("Seadmete oma loendurid kuu algusest. Maja kokku on ülal the grid operator tulpades. Plaat viib seadme tabile."),
+        note("Seadmete oma loendurid kuu algusest. Maja kokku on ülal Estfeedi tulpades. Plaat viib seadme tabile."),
         tile("sensor.boiler_energy_month", "Boiler", **nav("/lovelace/soojuspump")),
         tile("sensor.ventilatsioon_sel_kuul", "Ventilatsioon", **nav("/lovelace/ventilatsioon")),
         tile("sensor.jarelkute_sel_kuul", "Järelküte", color="red", **nav("/lovelace/ventilatsioon")),

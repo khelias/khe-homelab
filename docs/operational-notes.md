@@ -486,6 +486,17 @@ dir with the live DB, its journals and the log excluded
 (`homeassistant-config.tar.gz`). Restore: untar the config dir, drop the
 gunzipped DB in as `home-assistant_v2.db`, start the container.
 
+**Grid consumption from Estfeed (since 2026-09-13).** HACS custom repository
+`khelias/ha-estfeed` (fork of `tehisain/ha-estfeed` with the day/night grid
+tariff, upstream PR #1). The API key is entered in the integration's UI
+flow and lives in `.storage`, nowhere else. Tariff options are on the config
+entry (Settings -> Devices -> Estfeed -> Configure); the values and the
+reasoning are in
+[home-assistant-plan.md](home-assistant-plan.md#house-meter-without-hardware-estfeed-via-hacs-2026-09-13).
+If the cost history looks like spot-only after an options change, run the
+`estfeed.backfill_history` service (months: 2). The integration's entity ids
+embed the metering point EIC; do not paste them into the public repo.
+
 ### Komfovent Modbus
 
 Read by the HACS integration `lnagel/hass-komfovent` against 192.168.0.x:502
