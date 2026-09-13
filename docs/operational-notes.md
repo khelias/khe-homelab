@@ -494,8 +494,11 @@ entry (Settings -> Devices -> Estfeed -> Configure); the values and the
 reasoning are in
 [home-assistant-plan.md](home-assistant-plan.md#house-meter-without-hardware-estfeed-via-hacs-2026-09-13).
 If the cost history looks like spot-only after an options change, run the
-`estfeed.backfill_history` service (months: 2). The integration's entity ids
-embed the metering point EIC; do not paste them into the public repo.
+`estfeed.backfill_history` service (months: 2). The integration's default
+entity ids embed the metering point EIC; they were renamed in the entity
+registry to `sensor.maja_*`, `binary_sensor.maja_andmed_varsked` and
+`button.maja_*` so the dashboard generator can reference them in this public
+repo. A fresh install of the integration would recreate the EIC-based ids.
 
 ### Komfovent Modbus
 
