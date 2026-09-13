@@ -346,8 +346,9 @@ def mode_row(key, timer=False):
 
 komfovent_seaded = {"title": "Ventilatsiooni seaded", "path": "komfovent-seaded", "icon": "mdi:tune", "type": "sections", "subview": True, "max_columns": 3, "sections": [
     section("Juhtimine", [
-        tile(MODE, "Režiim", features=[{"type": "select-options"}]),
-        tile("select.komfovent_scheduler_mode", "Ajakava", features=[{"type": "select-options"}]),
+        # No inline dropdown: the integration ships raw option keys ("working_week"), so the tap opens more-info to pick instead.
+        tile(MODE, "Režiim"),
+        tile("select.komfovent_scheduler_mode", "Ajakava"),
         tile("switch.komfovent_auto_mode", "Automaatrežiim"),
         confirm("switch.komfovent_power", "Seade sees", "Lülitad kogu ventilatsiooni. Kindel?"),
     ]),
