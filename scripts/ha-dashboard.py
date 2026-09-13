@@ -175,25 +175,34 @@ home = {"title": "Kodu", "path": "kodu", "icon": "mdi:home", "type": "sections",
     ], **nav("/lovelace/susteem")),
 ]}
 
+price_month = {
+    "type": "custom:apexcharts-card", "graph_span": "30d", "span": {"end": "day"},
+    "header": {"show": True, "title": "Koguhind 30 päeva, €/kWh (päeva keskmine ja kõrgeim tund)", "show_states": False},
+    "yaxis": [{"min": 0, "decimals": 2}],
+    "experimental": {"color_threshold": True},
+    "apex_config": {"legend": {"show": True}, "plotOptions": {"bar": {"columnWidth": "70%"}},
+                    "xaxis": {"labels": {"datetimeFormatter": {"day": "d. MMM"}}}},
+    "series": [
+        {"entity": "sensor.elektri_hind_see_tund", "name": "Keskmine", "type": "column", "float_precision": 3,
+         "statistics": {"type": "mean", "period": "day"},
+         "color_threshold": [{"value": 0, "color": "#43a047"}, {"value": 0.15, "color": "#fb8c00"}, {"value": 0.25, "color": "#e53935"}]},
+        {"entity": "sensor.elektri_hind_see_tund", "name": "Kõrgeim tund", "type": "line", "curve": "stepline", "stroke_width": 1,
+         "color": "#90a4ae", "float_precision": 3, "statistics": {"type": "max", "period": "day"}}]}
+
 energy = {"title": "Energia", "path": "energia", "icon": "mdi:lightning-bolt", "type": "sections", "max_columns": 2, "sections": [
-    section("Mis elekter maksab", [
-        note("Koguhind tunni kaupa koos võrgutasu ja käibemaksuga, viimased 7 päeva."),
-        hist("Koguhind 7 päeva, €/kWh", [("sensor.elektri_hind_see_tund", "Kokku")], 168),
-        third(tile("sensor.nord_pool_ee_madalaim_hind", "Börsi madalaim täna", vertical=True, color="green")),
-        third(tile("sensor.nord_pool_ee_korgeim_hind", "Börsi kõrgeim täna", vertical=True, color="red")),
-        third(tile("binary_sensor.vorgu_ootariif", "Öötariif", vertical=True)),
-    ]),
-    section("Kui palju maja tarbib", [
-        note("Maja tunnitarbimine Eleringi Estfeedist (HACS ha-estfeed), uueneb iga tund; tunnid jõuavad kohale mõne tunni kuni päeva hilinemisega. Kuu ja aasta summad on külgriba Energia töölaual."),
+    section("Hind", [price_month], column_span=2),
+    section("Maja", [
+        {"type": "horizontal-stack", "cards": [
+            nowrite("sensor.maja_sel_kuul", "Sel kuul", state_content=["state", "kulu", "hind"], vertical=True),
+            nowrite("sensor.maja_eelmine_kuu", "Eelmine kuu", state_content=["state", "kulu", "hind"], vertical=True)]},
         bars("Tarbimine päevas, kWh", [("estfeed:estfeed_consumption_642b", "kWh")], 31),
         bars("Kulu päevas, € (ilma kuutasudeta)", [("estfeed:estfeed_cost_642b", "€")], 31),
-    ]),
+    ], column_span=2, **nav("/energy")),
     section("Suuremad tarbijad sel kuul", [
-        note("Seadmete oma loendurid kuu algusest. Maja kokku on ülal Estfeedi tulpades. Plaat viib seadme tabile."),
-        tile("sensor.boiler_energy_month", "Boiler", **nav("/lovelace/soojuspump")),
-        tile("sensor.ventilatsioon_sel_kuul", "Ventilatsioon", **nav("/lovelace/ventilatsioon")),
-        tile("sensor.jarelkute_sel_kuul", "Järelküte", color="red", **nav("/lovelace/ventilatsioon")),
-    ]),
+        third(tile("sensor.boiler_energy_month", "Boiler", vertical=True, **nav("/lovelace/soojuspump"))),
+        third(tile("sensor.ventilatsioon_sel_kuul", "Ventilatsioon", vertical=True, **nav("/lovelace/ventilatsioon"))),
+        third(tile("sensor.jarelkute_sel_kuul", "Järelküte", color="red", vertical=True, **nav("/lovelace/ventilatsioon"))),
+    ], column_span=2),
 ]}
 
 cameras = {"title": "Valve", "path": "valve", "icon": "mdi:shield-home", "type": "sections", "max_columns": 2, "sections": [

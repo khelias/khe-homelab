@@ -2,7 +2,8 @@
 # integration (khelias/ha-estfeed fork). The integration gives kWh and EUR
 # as separate sensors per period; a tile can show only one entity, so these
 # templates carry the kWh as state and the cost as a formatted attribute,
-# which the tile renders as "14,7 kWh · 3,20 €". The maja_* entity ids are
+# which the tile renders as "14,7 kWh · 3,20 €"; `hind` is the
+# average paid price of the period in c/kWh (cost / kWh), the phase-6 KPI. The maja_* entity ids are
 # registry renames of the integration's EIC-based defaults.
 template:
   - sensor:
@@ -14,6 +15,9 @@ template:
         state: "{{ states('sensor.maja_tanane_tarbimine') | float | round(1) }}"
         attributes:
           kulu: "{{ ('%.2f' | format(states('sensor.maja_tanane_kulu') | float(0))).replace('.', ',') }} €"
+          hind: >-
+            {% set kwh = states('sensor.maja_tanane_tarbimine') | float(0) %}
+            {{ ('%.1f' | format(100 * states('sensor.maja_tanane_kulu') | float(0) / kwh)).replace('.', ',') if kwh > 0 else '-' }} c/kWh
       - name: "Maja eile"
         unique_id: house_energy_yesterday
         unit_of_measurement: kWh
@@ -22,6 +26,9 @@ template:
         state: "{{ states('sensor.maja_eilne_tarbimine') | float | round(1) }}"
         attributes:
           kulu: "{{ ('%.2f' | format(states('sensor.maja_eilne_kulu') | float(0))).replace('.', ',') }} €"
+          hind: >-
+            {% set kwh = states('sensor.maja_eilne_tarbimine') | float(0) %}
+            {{ ('%.1f' | format(100 * states('sensor.maja_eilne_kulu') | float(0) / kwh)).replace('.', ',') if kwh > 0 else '-' }} c/kWh
       - name: "Maja sel kuul"
         unique_id: house_energy_month_to_date
         unit_of_measurement: kWh
@@ -30,3 +37,17 @@ template:
         state: "{{ states('sensor.maja_tarbimine_sel_kuul') | float | round(0) }}"
         attributes:
           kulu: "{{ ('%.2f' | format(states('sensor.maja_kulu_sel_kuul') | float(0))).replace('.', ',') }} €"
+          hind: >-
+            {% set kwh = states('sensor.maja_tarbimine_sel_kuul') | float(0) %}
+            {{ ('%.1f' | format(100 * states('sensor.maja_kulu_sel_kuul') | float(0) / kwh)).replace('.', ',') if kwh > 0 else '-' }} c/kWh
+      - name: "Maja eelmine kuu"
+        unique_id: house_energy_previous_month
+        unit_of_measurement: kWh
+        icon: mdi:calendar-month-outline
+        availability: "{{ has_value('sensor.maja_eelmise_kuu_tarbimine') }}"
+        state: "{{ states('sensor.maja_eelmise_kuu_tarbimine') | float | round(0) }}"
+        attributes:
+          kulu: "{{ ('%.2f' | format(states('sensor.maja_eelmise_kuu_kulu') | float(0))).replace('.', ',') }} €"
+          hind: >-
+            {% set kwh = states('sensor.maja_eelmise_kuu_tarbimine') | float(0) %}
+            {{ ('%.1f' | format(100 * states('sensor.maja_eelmise_kuu_kulu') | float(0) / kwh)).replace('.', ',') if kwh > 0 else '-' }} c/kWh

@@ -12,3 +12,92 @@ utility_meter:
     unique_id: komfovent_heater_energy_monthly
     source: sensor.komfovent_total_heater_energy
     cycle: monthly
+
+# Alerts only, no actuation (decided 2026-09-13): the unit runs extract
+# control at 22 C with ECO on (heater blocking on, free cooling off, constant
+# heat recovery, min supply 14 C). These tell the phone when that setup stops
+# holding, and the fix is a manual tap in the app. Target is the default
+# notify group (every registered mobile app); narrow it here if needed.
+automation:
+  - alias: "Ventilatsioon: järelküte käivitus"
+    id: komfovent_alert_heater_running
+    description: "Elektriline järelküte peab ECO kütteblokeeringu all püsima 0 W."
+    mode: single
+    triggers:
+      - trigger: numeric_state
+        entity_id: sensor.komfovent_heater_power
+        above: 0
+        for: "00:10:00"
+    actions:
+      - action: notify.notify
+        data:
+          title: "Komfovent: järelküte töötab"
+          message: >
+            Järelküte {{ states('sensor.komfovent_heater_power') }} W,
+            sissepuhe {{ states('sensor.komfovent_supply_temperature') | round(1) }} °C,
+            väljas {{ states('sensor.komfovent_outdoor_temperature') | round(1) }} °C.
+            Kontrolli ECO ja kütteblokeeringut.
+
+  - alias: "Ventilatsioon: külm sissepuhe"
+    id: komfovent_alert_cold_supply
+    description: "Sissepuhe alla 14 C tund aega, ECO hakkab õhuhulka vähendama."
+    mode: single
+    triggers:
+      - trigger: numeric_state
+        entity_id: sensor.komfovent_supply_temperature
+        below: 14
+        for: "01:00:00"
+    actions:
+      - action: notify.notify
+        data:
+          title: "Komfovent: sissepuhe külm"
+          message: >
+            Sissepuhe {{ states('sensor.komfovent_supply_temperature') | round(1) }} °C,
+            väljas {{ states('sensor.komfovent_outdoor_temperature') | round(1) }} °C,
+            vaheti {{ states('sensor.komfovent_heat_exchanger_efficiency') | round(0) }} %.
+            Valik: luba järelküte ajutiselt või lase ECO-l õhuhulka vähendada.
+
+  - alias: "Ventilatsioon: ECO vähendab õhuhulka"
+    id: komfovent_alert_flow_reduced
+    description: "Normal-režiimis on ventilaatorid 50 %; madalam väärtus tähendab ECO temperatuurikaitset."
+    mode: single
+    triggers:
+      - trigger: numeric_state
+        entity_id: sensor.komfovent_supply_flow
+        below: 50
+        for: "00:30:00"
+    conditions:
+      - condition: state
+        entity_id: select.komfovent_operation_mode
+        state: normal
+    actions:
+      - action: notify.notify
+        data:
+          title: "Komfovent: õhuhulk vähendatud"
+          message: >
+            Sissepuhe {{ states('sensor.komfovent_supply_flow') | round(0) }} %,
+            temperatuur {{ states('sensor.komfovent_supply_temperature') | round(1) }} °C,
+            väljas {{ states('sensor.komfovent_outdoor_temperature') | round(1) }} °C.
+
+  - alias: "Ventilatsioon: soojusvaheti seisab jahedas"
+    id: komfovent_alert_exchanger_idle
+    description: "Vaheti alla 5 % tund aega, kui väljas on alla 15 C: tagastus on mingil põhjusel peatunud."
+    mode: single
+    triggers:
+      - trigger: numeric_state
+        entity_id: sensor.komfovent_heat_exchanger
+        below: 5
+        for: "01:00:00"
+    conditions:
+      - condition: numeric_state
+        entity_id: sensor.komfovent_outdoor_temperature
+        below: 15
+    actions:
+      - action: notify.notify
+        data:
+          title: "Komfovent: soojusvaheti seisab"
+          message: >
+            Vaheti {{ states('sensor.komfovent_heat_exchanger') | round(0) }} %,
+            väljas {{ states('sensor.komfovent_outdoor_temperature') | round(1) }} °C,
+            väljatõmme {{ states('sensor.komfovent_extract_temperature') | round(1) }} °C.
+            Kontrolli ECO, free cooling ja constant heat recovery sätteid.
