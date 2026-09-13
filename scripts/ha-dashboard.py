@@ -235,31 +235,35 @@ lights = {"title": "Tuled", "path": "tuled", "icon": "mdi:lightbulb-group", "typ
     ]),
 ]}
 
-soojuspump = {"title": "Soojuspump", "path": "soojuspump", "icon": "mdi:heat-pump", "type": "sections", "max_columns": 2, "sections": [
-    section("Seaded", [
-        note("Kütte ja boileri lülitid on eraldi lehel, et neile kogemata pihta ei läheks."),
-        tile("switch.space_heating_climate_control", "Soojuspumba seaded", icon="mdi:tune", hide_state=True, tap_action={"action": "navigate", "navigation_path": "/lovelace/soojuspump-seaded"}, icon_tap_action={"action": "navigate", "navigation_path": "/lovelace/soojuspump-seaded"}, grid_options={"columns": "full", "rows": 1}),
-    ]),
+soojuspump = {"title": "Soojuspump", "path": "soojuspump", "icon": "mdi:heat-pump", "type": "sections", "max_columns": 2,
+ # Kodu shape: heating and DHW state as badges plus a settings badge, one row of vertical tiles per section, charts only where the number moves.
+ "badges": [
+    {"type": "entity", "entity": "switch.space_heating_climate_control", "name": "Küte", "show_name": True, "show_state": True},
+    {"type": "entity", "entity": DHW, "name": "Boiler", "show_name": True, "show_state": True},
+    {"type": "entity", "entity": "switch.space_heating_climate_control", "name": "Seaded", "icon": "mdi:tune", "show_name": True, "show_state": False,
+     "tap_action": {"action": "navigate", "navigation_path": "/lovelace/soojuspump-seaded"}},
+ ],
+ "sections": [
     section("Küte", [
-        note("Põrandaküte. Kui küte töötab, näitab graafik küttekõverat: mida külmem väljas, seda soojem küttevesi. Ruumitermostaati pumbal pole."),
-        tile("sensor.space_heating_leaving_water_temperature", "Küttevee temp", features=[{"type": "trend-graph", "hours_to_show": 24}]),
-        tile("sensor.space_heating_outdoor_temperature", "Väljas (pumba andur)", features=[{"type": "trend-graph", "hours_to_show": 24}]),
+        {"type": "horizontal-stack", "cards": [
+            nowrite("sensor.space_heating_leaving_water_temperature", "Küttevesi", vertical=True),
+            nowrite("sensor.space_heating_outdoor_temperature", "Väljas", vertical=True),
+            nowrite("number.space_heating_temperature_control", "Kõvera nihe", vertical=True)]},
         when_on("binary_sensor.space_heating_unit_state", "Soojuspumba viga"),
         hist("Küttevesi ja välistemperatuur 48 h", [("sensor.space_heating_leaving_water_temperature", "Küttevesi"),
                                                     ("sensor.space_heating_outdoor_temperature", "Väljas")], 48),
     ]),
     section("Soe vesi", [
-        note("180 l paak, siht 55 °C. Graafikul on näha, millal pump paaki soojendab (järsk tõus) ja kuidas tarbimine seda tühjendab (langus). See on faasi 6 automaatika alusmaterjal."),
-        tile("sensor.boileri_vee_temperatuur", "Vee temperatuur", color="blue"),
+        {"type": "horizontal-stack", "cards": [
+            nowrite("sensor.boileri_vee_temperatuur", "Vee temperatuur", color="blue", vertical=True),
+            nowrite(DHW, "Siht", state_content=["temperature"], vertical=True),
+            nowrite("sensor.boiler_energy_today", "Täna", vertical=True),
+            nowrite("sensor.boiler_energy_month", "Sel kuul", vertical=True)]},
         when_on("binary_sensor.hot_water_tank_state", "Boileri viga"),
         hist("Boileri vee temperatuur 48 h", [("sensor.boileri_vee_temperatuur", "Boileri vesi")], 48),
-    ]),
-    section("Sooja vee energia", [
-        note("Soojuspumba elekter sooja vee jaoks Daikini enda loenduri järgi, täis-kWh sammuga. Kütte loendur on seadmel katki, seetõttu kütte kWh-numbreid siin ei ole."),
-        tile("sensor.boiler_energy_today", "Täna"),
-        tile("sensor.boiler_energy_month", "Sel kuul"),
-        daikin_bars("Boiler päevas, kWh (2 nädalat)", "sensor.boiler_energy_today", "15d", "day", DAYS_JS, {"day": "dd.MM"}),
-        daikin_bars("Boiler kuus, kWh (2 aastat)", "sensor.boiler_energy_month", "731d", "month", MONTHS_JS, {"month": "MMM yy", "year": "yyyy"}),
+        # Daikin's own DHW electricity counter, whole kWh. Space-heating kWh are deliberately absent: that counter is broken on the unit.
+        daikin_bars("Boiler päevas, kWh", "sensor.boiler_energy_today", "15d", "day", DAYS_JS, {"day": "dd.MM"}),
+        daikin_bars("Boiler kuus, kWh", "sensor.boiler_energy_month", "731d", "month", MONTHS_JS, {"month": "MMM yy", "year": "yyyy"}),
     ]),
 ]}
 
