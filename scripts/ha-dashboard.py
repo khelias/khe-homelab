@@ -336,8 +336,9 @@ susteem = {"title": "Süsteem", "path": "susteem", "icon": "mdi:home-assistant",
 
 def mode_row(key, timer=False):
     """One mode's settings as a row of vertical tiles: fans, setpoint, heater flag, optional timer. Taps open more-info to edit."""
-    cards = [tile(f"number.komfovent_{key}_supply_flow", "Sissepuhe %", vertical=True),
-             tile(f"number.komfovent_{key}_extract_flow", "Väljatõmme %", vertical=True),
+    # Short names: five vertical tiles in a row truncate "Sissepuhe %" on a phone, and the value already carries the unit.
+    cards = [tile(f"number.komfovent_{key}_supply_flow", "Sisse", vertical=True),
+             tile(f"number.komfovent_{key}_extract_flow", "Välja", vertical=True),
              tile(f"number.komfovent_{key}_temperature", "Sihttemp", vertical=True),
              confirm(f"switch.komfovent_{key}_electric_heater", "Järelküte", "Järelküte selles režiimis. Kindel?", color="red", vertical=True)]
     if timer: cards.append(tile(f"number.komfovent_{key}_timer", "Kestus min", vertical=True))
@@ -357,7 +358,7 @@ komfovent_seaded = {"title": "Ventilatsiooni seaded", "path": "komfovent-seaded"
         tile("switch.komfovent_eco_mode", "ECO sees"),
         confirm("switch.komfovent_eco_heater_blocking", "Kütteblokeering", "Väljalülitamine lubab elektrilise järelkütte. Kindel?", color="red"),
         confirm("switch.komfovent_eco_free_heating_cooling", "Suvine vaba jahutus", "Sees: soojusvaheti seisab, kui välisõhk on toast jahedam. Talvel peab olema väljas. Kindel?"),
-        tile("select.komfovent_eco_heat_recovery", "Soojustagastus (näit puudub)", features=[{"type": "select-options"}]),
+        tile("select.komfovent_eco_heat_recovery", "Soojustagastus"),  # reads back as unknown; tap opens more-info where the option can still be set
         tile("number.komfovent_eco_min_supply_temperature", "Min sissepuhe"),
         tile("number.komfovent_eco_max_supply_temperature", "Max sissepuhe"),
     ]),
