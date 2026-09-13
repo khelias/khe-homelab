@@ -386,13 +386,18 @@ komfovent_seaded = {"title": "Ventilatsiooni seaded", "path": "komfovent-seaded"
 ]}
 
 soojuspump_seaded = {"title": "Soojuspumba seaded", "path": "soojuspump-seaded", "icon": "mdi:tune", "type": "sections", "subview": True, "max_columns": 2, "sections": [
-    section("Juhtimine", [
-        note("Küttevee nihe on faasi 6 hoob: +1 kraad nihutab küttekõverat üles, -1 alla. Boileri siht 55 °C; mitte alla 45 °C (legionella). Ohtlikud lülitid küsivad kinnitust."),
+    section("Küte", [
         confirm("switch.space_heating_climate_control", "Küte", "Lülitad maja kütte. Kindel?"),
-        tile("number.space_heating_temperature_control", "Küttevee nihe", features=[{"type": "numeric-input", "style": "buttons"}]),
         tile("select.space_heating_operation_mode", "Kütte režiim"),  # raw option keys from the integration; tap opens the picker
-        tile("water_heater.hot_water_tank_domestic_hot_water_tank", "Boiler", state_content=["state", "temperature"],
+        # The one heating knob the unit exposes: +1 shifts the weather curve one degree up, -1 down.
+        tile("number.space_heating_temperature_control", "Küttevee nihe", features=[{"type": "numeric-input", "style": "buttons"}]),
+    ]),
+    section("Soe vesi", [
+        note("Siht 55 °C, mitte alla 45 °C (legionella)."),
+        tile("water_heater.hot_water_tank_domestic_hot_water_tank", "Boiler", state_content=["state", "current_temperature"],
              features=[{"type": "target-temperature"}]),
+        action_tile(DHW, "Kiirsoojendus", "mdi:water-boiler", "orange", "water_heater.set_operation_mode",
+                    {"operation_mode": "performance"}, "Boileri kiirsoojendus (Daikin Powerful) sisse? Lõpeb ise, kui vesi on soe."),
     ]),
 ]}
 
