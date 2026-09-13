@@ -106,7 +106,7 @@ def mode_button(name, icon, option, color=None):
 def note(text):
     return {"type": "heading", "heading": text, "heading_style": "subtitle"}
 def bars(title, ents, days, stat="change"):
-    return {"type": "statistics-graph", "title": title, "chart_type": "bar", "period": "day", "days_to_show": days,
+    return {"type": "statistics-graph", "title": title, "chart_type": "bar", "period": "day", "days_to_show": days, "hide_legend": len(ents) == 1,
             "stat_types": [stat], "entities": [{"entity": e, "name": n} for e, n in ents]}
 
 
@@ -126,17 +126,16 @@ home = {"title": "Kodu", "path": "kodu", "icon": "mdi:home", "type": "sections",
     for e, n in FAULTS
  ],
  "sections": [
-    section("Elekter", [price_chart], column_span=2,
-       badges=[{"type": "entity", "entity": "binary_sensor.nord_pool_ee_homne_hind_on_saadaval", "name": "Homne hind olemas", "state_content": "name",
-                "visibility": [{"condition": "state", "entity": "binary_sensor.nord_pool_ee_homne_hind_on_saadaval", "state": "on"}]}],
-       **nav("/lovelace/energia")),
-    section("Maja tarbimine", [
-        note("Tunni kaupa Estfeedist, viimased 2 päeva. Tunnid jõuavad kohale mõne tunni kuni päeva hilinemisega."),
-        {"type": "statistics-graph", "chart_type": "bar", "period": "hour", "days_to_show": 2, "stat_types": ["change"],
-         "entities": [{"entity": "estfeed:estfeed_consumption_642b", "name": "Tarbimine, kWh"},
-                      {"entity": "estfeed:estfeed_cost_642b", "name": "Kulu, €"}]},
+    section("Elekter", [
+        price_chart,
+        third(nowrite("sensor.maja_tana", "Täna", state_content=["state", "kulu"])),
+        third(nowrite("sensor.maja_eile", "Eile", state_content=["state", "kulu"])),
+        third(nowrite("sensor.maja_sel_kuul", "Sel kuul", state_content=["state", "kulu"])),
+        bars("Maja 7 päeva", [("estfeed:estfeed_consumption_642b", "kWh"), ("estfeed:estfeed_cost_642b", "€")], 7),
     ], column_span=2,
-       badges=[{"type": "entity", "entity": "binary_sensor.maja_andmed_varsked", "name": "Estfeedi andmed hilinevad", "state_content": "name", "color": "red",
+       badges=[{"type": "entity", "entity": "binary_sensor.nord_pool_ee_homne_hind_on_saadaval", "name": "Homne hind olemas", "state_content": "name",
+                "visibility": [{"condition": "state", "entity": "binary_sensor.nord_pool_ee_homne_hind_on_saadaval", "state": "on"}]},
+               {"type": "entity", "entity": "binary_sensor.maja_andmed_varsked", "name": "Estfeedi andmed hilinevad", "state_content": "name", "color": "red",
                 "visibility": [{"condition": "state", "entity": "binary_sensor.maja_andmed_varsked", "state": "off"}]}],
        **nav("/lovelace/energia")),
     section("Küte", [

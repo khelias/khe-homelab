@@ -1,0 +1,32 @@
+# House consumption summary for the Kodu view, on top of the HACS ha-estfeed
+# integration (khelias/ha-estfeed fork). The integration gives kWh and EUR
+# as separate sensors per period; a tile can show only one entity, so these
+# templates carry the kWh as state and the cost as a formatted attribute,
+# which the tile renders as "14,7 kWh · 3,20 €". The maja_* entity ids are
+# registry renames of the integration's EIC-based defaults.
+template:
+  - sensor:
+      - name: "Maja täna"
+        unique_id: house_energy_today
+        unit_of_measurement: kWh
+        icon: mdi:home-lightning-bolt
+        availability: "{{ has_value('sensor.maja_tanane_tarbimine') }}"
+        state: "{{ states('sensor.maja_tanane_tarbimine') | float | round(1) }}"
+        attributes:
+          kulu: "{{ ('%.2f' | format(states('sensor.maja_tanane_kulu') | float(0))).replace('.', ',') }} €"
+      - name: "Maja eile"
+        unique_id: house_energy_yesterday
+        unit_of_measurement: kWh
+        icon: mdi:home-lightning-bolt-outline
+        availability: "{{ has_value('sensor.maja_eilne_tarbimine') }}"
+        state: "{{ states('sensor.maja_eilne_tarbimine') | float | round(1) }}"
+        attributes:
+          kulu: "{{ ('%.2f' | format(states('sensor.maja_eilne_kulu') | float(0))).replace('.', ',') }} €"
+      - name: "Maja sel kuul"
+        unique_id: house_energy_month_to_date
+        unit_of_measurement: kWh
+        icon: mdi:calendar-month
+        availability: "{{ has_value('sensor.maja_tarbimine_sel_kuul') }}"
+        state: "{{ states('sensor.maja_tarbimine_sel_kuul') | float | round(0) }}"
+        attributes:
+          kulu: "{{ ('%.2f' | format(states('sensor.maja_kulu_sel_kuul') | float(0))).replace('.', ',') }} €"
