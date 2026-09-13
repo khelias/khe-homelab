@@ -205,34 +205,27 @@ energy = {"title": "Energia", "path": "energia", "icon": "mdi:lightning-bolt", "
     ], column_span=2),
 ]}
 
-cameras = {"title": "Valve", "path": "valve", "icon": "mdi:shield-home", "type": "sections", "max_columns": 2, "sections": [
+cameras = {"title": "Valve", "path": "valve", "icon": "mdi:shield-home", "type": "sections", "max_columns": 2,
+ # Kodu shape: cameras as they were, NVR and per-camera motion switches in one section, no captions. The NVR disk
+ # badge shows only when the disk is not OK. Motion is too noisy for a badge (fires on insects and rain).
+ # Planned alarm panel and leak-sensor sections live in docs/home-assistant-plan.md until the hardware exists.
+ "badges": [
+    {"type": "entity", "entity": "sensor.nvr_ketas", "name": "NVR ketas", "color": "red", "show_name": True, "show_state": True,
+     "visibility": [{"condition": "state", "entity": "sensor.nvr_ketas", "state_not": "OK"}]},
+ ],
+ "sections": [
     section("Kaamerad", [
-        note("Pilt uueneb iga 10 s, klõps avab alamvoo otsepildi, mis käivitub kiiremini kui põhivoog. Täisresolutsiooni põhivood on Süsteemi alamvaates. Ikoon pildi nurgas on NVR-i liikumistuvastus, mis reageerib ka putukatele ja vihmale, seega liikumise ajalugu siin ei näidata enne, kui NVR-is on tundlikkus ja tuvastusalad paika pandud."),
-    ] + [
         {"type": "picture-glance", "camera_image": "camera." + slug + "_alamvoog", "entity": "camera." + slug + "_alamvoog", "title": n, "camera_view": "auto",
          "entities": [{"entity": "binary_sensor." + slug + "_liikumine"}]}
         for slug, n in CAMS], column_span=2),
-    section("Salvesti", [
-        note("Järelvaatamine on NVR-i enda veebiliideses, mis avaneb ainult koduvõrgus või Tailscale'iga ja 2019. aasta püsivara tõttu ilmselt ainult arvutis. HA-sse ta ennast raamida ei lase (X-Frame-Options)."),
-        tile("sensor.nvr_ketas", "NVR ketas"),
-        {"type": "button", "name": "Ava NVR-i veebiliides", "icon": "mdi:open-in-new",
-         "tap_action": {"action": "url", "url_path": "http://192.168.0.x/"}},
-    ]),
-    section("Liikumistuvastus", [
-        note("Kaamera kaupa sisse/välja. Tundlikkus ja tuvastusalad on NVR-i enda seadetes."),
-    ] + [tile("switch." + slug + "_liikumistuvastus", n) for slug, n in CAMS]),
-    section("Alarmikeskus (tuleb)", [
-        note("alarm panel on võrgus (192.168.0.x), aga ei ava ühtegi porti, seega IP150 võrgumoodulit tal pole. HA-sse saab ta HACS-i PAI integratsiooniga kas IP150 mooduli või jadaliidese kaudu. Siia tulevad valve olek, tsoonid ja sisse/välja lülitamine."),
-    ]),
-    section("Lekkeandurid (tuleb)", [
-        note("Zigbee lekkeandurid tehnoruumi, köögi ja vannitubade alla, kui Zigbee koordinaator on olemas. Siia tuleb iga anduri olek ja häire ülaribale."),
-    ]),
-]}
-
-lights = {"title": "Tuled", "path": "tuled", "icon": "mdi:lightbulb-group", "type": "sections", "max_columns": 2, "sections": [
-    section("Tuled (tuleb)", [
-        note("Philips Hue pirnid on Zigbee seadmed ja lähevad HA-sse otse, ilma Hue sillata. Vaja on Zigbee koordinaatorit (nt SMLIGHT SLZB-06, võrgukaabliga) ja Zigbee2MQTT konteinerit homelabis, siis pirnid tehaseseadetele ja paaritada. Siia tulevad tuled tubade kaupa, iga tuba oma sektsioon."),
-    ]),
+    section("NVR", [
+        {"type": "horizontal-stack", "cards": [
+            nowrite("sensor.nvr_ketas", "Ketas", vertical=True),
+            {"type": "tile", "entity": "sensor.nvr_ketas", "name": "Ava NVR", "icon": "mdi:open-in-new", "hide_state": True, "vertical": True,
+             "tap_action": {"action": "url", "url_path": "http://192.168.0.x/"}, "icon_tap_action": {"action": "url", "url_path": "http://192.168.0.x/"}}]},
+        # Per-camera motion detection. the camera integration switches these back on at every reload, so treat them as a temporary mute.
+        {"type": "horizontal-stack", "cards": [tile("switch." + slug + "_liikumistuvastus", n, vertical=True) for slug, n in CAMS]},
+    ], column_span=2),
 ]}
 
 soojuspump = {"title": "Soojuspump", "path": "soojuspump", "icon": "mdi:heat-pump", "type": "sections", "max_columns": 2,
@@ -407,7 +400,7 @@ soojuspump_seaded = {"title": "Soojuspumba seaded", "path": "soojuspump-seaded",
     ]),
 ]}
 
-config = {"title": "Kodu", "views": [home, energy, soojuspump, ventilatsioon, cameras, lights, susteem, komfovent_seaded, soojuspump_seaded]}
+config = {"title": "Kodu", "views": [home, energy, soojuspump, ventilatsioon, cameras, susteem, komfovent_seaded, soojuspump_seaded]}
 
 async def main():
     async with websockets.connect(f"ws://{HA}/api/websocket", max_size=2**24) as ws:
