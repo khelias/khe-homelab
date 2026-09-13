@@ -263,48 +263,45 @@ soojuspump = {"title": "Soojuspump", "path": "soojuspump", "icon": "mdi:heat-pum
     ]),
 ]}
 
-ventilatsioon = {"title": "Ventilatsioon", "path": "ventilatsioon", "icon": "mdi:fan", "type": "sections", "max_columns": 2, "sections": [
-    section("Seaded", [
-        note("Režiim, lülitid ja kõik režiimide seaded on eraldi lehel, et neile kogemata pihta ei läheks. Kiirrežiimid on Kodu vaates."),
-        tile(MODE, "Ventilatsiooni seaded", icon="mdi:tune", hide_state=True, tap_action={"action": "navigate", "navigation_path": "/lovelace/komfovent-seaded"}, icon_tap_action={"action": "navigate", "navigation_path": "/lovelace/komfovent-seaded"}, grid_options={"columns": "full", "rows": 1}),
-    ]),
+ventilatsioon = {"title": "Ventilatsioon", "path": "ventilatsioon", "icon": "mdi:fan", "type": "sections", "max_columns": 2,
+ # Same shape as Kodu: one row of vertical tiles per section, a chart only where the number moves, no captions.
+ # Mode and ECO ride as badges; the settings subview is a badge too, so the view has no card that is only a link.
+ "badges": [
+    {"type": "entity", "entity": MODE, "name": "Režiim", "show_name": True, "show_state": True},
+    {"type": "entity", "entity": "switch.komfovent_eco_mode", "name": "ECO", "show_name": True, "show_state": True},
+    {"type": "entity", "entity": MODE, "name": "Seaded", "icon": "mdi:tune", "show_name": True, "show_state": False,
+     "tap_action": {"action": "navigate", "navigation_path": "/lovelace/komfovent-seaded"}},
+ ],
+ "sections": [
     section("Õhk", [
-        note("Sissepuhe on see, mis tubadesse tuleb, väljatõmme see, mis tubadest lahkub. Suvel on sissepuhe umbes välisõhk (bypass), talvel soojusvaheti tõstab selle väljatõmbe lähedale."),
-        tile("sensor.komfovent_supply_temperature", "Sissepuhe"),
-        tile("sensor.komfovent_extract_temperature", "Väljatõmme"),
-        tile("sensor.komfovent_outdoor_temperature", "Välisõhk"),
-        tile("sensor.komfovent_panel_1_humidity", "Niiskus"),
+        {"type": "horizontal-stack", "cards": [
+            nowrite("sensor.komfovent_supply_temperature", "Sissepuhe", vertical=True),
+            nowrite("sensor.komfovent_extract_temperature", "Väljatõmme", vertical=True),
+            nowrite("sensor.komfovent_outdoor_temperature", "Välisõhk", vertical=True),
+            nowrite("sensor.komfovent_panel_1_humidity", "Niiskus", vertical=True)]},
         hist("Temperatuurid 48 h", [("sensor.komfovent_supply_temperature", "Sissepuhe"), ("sensor.komfovent_extract_temperature", "Väljatõmme"),
-                                    ("sensor.komfovent_outdoor_temperature", "Välisõhk"), ("sensor.komfovent_panel_1_temperature", "Tehnoruum")], 48),
+                                    ("sensor.komfovent_outdoor_temperature", "Välisõhk")], 48),
     ]),
     section("Soojusvaheti", [
-        note("0 % tähendab suvist bypassi: soojust ei tagastata, sest välisõhk on piisavalt soe. Kui ööd jahenevad, hakkab vaheti tööle ja tagastus kasvab. Tagastatud kokku on seadme eluea loendur."),
-        tile("sensor.komfovent_heat_exchanger", "Soojusvaheti"),
-        tile("sensor.komfovent_heat_exchanger_efficiency", "Kasutegur"),
-        tile("sensor.komfovent_heat_recovery", "Soojustagastus"),
-        tile("sensor.komfovent_total_recovered_energy", "Tagastatud kokku"),
-        hist("Soojusvaheti ja tagastus 7 päeva", [("sensor.komfovent_heat_exchanger", "Vaheti %"), ("sensor.komfovent_heat_recovery", "Tagastus W")], 168),
-    ]),
-    section("Ventilaatorid ja filter", [
-        note("Ventilaatorid käivad tavarežiimis püsival kiirusel. Filtri saastatus kasvab aeglaselt; seade annab hoiatuse ise, kui vahetus on käes."),
-        tile("sensor.komfovent_supply_fan", "Sissepuhke ventilaator"),
-        tile("sensor.komfovent_extract_fan", "Väljatõmbe ventilaator"),
+        {"type": "horizontal-stack", "cards": [
+            nowrite("sensor.komfovent_heat_exchanger", "Vaheti", vertical=True),
+            nowrite("sensor.komfovent_heat_exchanger_efficiency", "Kasutegur", vertical=True),
+            nowrite("sensor.komfovent_heat_recovery", "Tagastus", vertical=True)]},
         tile("sensor.komfovent_filter_clogging", "Filter", features=[{"type": "bar-gauge", "min": 0, "max": 100}], features_position="inline"),
         when_on("binary_sensor.komfovent_status_flow_down", "Õhuvool alandatud"),
         when_on("binary_sensor.komfovent_status_alarm_fault", "Viga"),
         when_on("binary_sensor.komfovent_status_alarm_warning", "Hoiatus"),
         tile("sensor.komfovent_active_alarms", "Aktiivsed alarmid", color="red",
              visibility=[{"condition": "state", "entity": "sensor.komfovent_active_alarms", "state_not": ""}]),
-        hist("Filtri saastatus 30 päeva, %", [("sensor.komfovent_filter_clogging", "Filter")], 720),
+        # The payback chart: what the exchanger returned versus what the electric heater burned (should stay at zero under ECO).
+        bars("Tagastatud ja järelküte päevas, kWh", [("sensor.komfovent_total_recovered_energy", "Tagastatud"), ("sensor.komfovent_total_heater_energy", "Järelküte")], 14),
     ]),
     section("Energia", [
-        note("Seade võtab püsivalt umbes 50 W, see on ventilaatorid. Järelküte on elektriline ja kallis: selle loendur peab suvel ja sügisel sirge püsima, talvel näitab, kui palju vaheti ei jõudnud."),
-        tile("sensor.komfovent_power_consumption", "Võimsus", features=[{"type": "trend-graph", "hours_to_show": 24}]),
-        tile("sensor.komfovent_heater_power", "Järelküte", color="red", features=[{"type": "trend-graph", "hours_to_show": 24}]),
-        tile("sensor.ventilatsioon_sel_kuul", "Sel kuul"),
-        tile("sensor.jarelkute_sel_kuul", "Järelküte sel kuul", color="red"),
-        bars("Päevas, kWh", [("sensor.komfovent_total_ahu_energy", "Seade kokku"), ("sensor.komfovent_total_heater_energy", "Järelküte")], 31),
-        hist("Järelkütte loendur 30 päeva, kWh (peab olema sirge)", [("sensor.komfovent_total_heater_energy", "Loendur")], 720),
+        {"type": "horizontal-stack", "cards": [
+            nowrite("sensor.komfovent_power_consumption", "Võimsus", vertical=True),
+            nowrite("sensor.ventilatsioon_sel_kuul", "Sel kuul", vertical=True),
+            nowrite("sensor.jarelkute_sel_kuul", "Järelküte sel kuul", color="red", vertical=True)]},
+        bars("Seade päevas, kWh", [("sensor.komfovent_total_ahu_energy", "Seade")], 31),
     ]),
 ]}
 
