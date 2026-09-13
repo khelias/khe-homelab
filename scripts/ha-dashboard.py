@@ -239,7 +239,9 @@ soojuspump = {"title": "Soojuspump", "path": "soojuspump", "icon": "mdi:heat-pum
  # Kodu shape: heating and DHW state as badges plus a settings badge, one row of vertical tiles per section, charts only where the number moves.
  "badges": [
     {"type": "entity", "entity": "switch.space_heating_climate_control", "name": "Küte", "show_name": True, "show_state": True},
-    {"type": "entity", "entity": DHW, "name": "Boiler", "show_name": True, "show_state": True},
+    # The Komfovent wall panel sits in the utility room: the one indoor thermometer the house has.
+    {"type": "entity", "entity": "sensor.komfovent_panel_1_temperature", "name": "Tehnoruum", "show_name": True, "show_state": True},
+    {"type": "entity", "entity": DHW, "name": "Boiler", "show_name": True, "show_state": True, "state_content": "current_temperature"},
     {"type": "entity", "entity": "switch.space_heating_climate_control", "name": "Seaded", "icon": "mdi:tune", "show_name": True, "show_state": False,
      "tap_action": {"action": "navigate", "navigation_path": "/lovelace/soojuspump-seaded"}},
  ],
@@ -255,7 +257,7 @@ soojuspump = {"title": "Soojuspump", "path": "soojuspump", "icon": "mdi:heat-pum
     ]),
     section("Soe vesi", [
         {"type": "horizontal-stack", "cards": [
-            nowrite("sensor.boileri_vee_temperatuur", "Vee temperatuur", color="blue", vertical=True),
+            nowrite("sensor.boileri_vee_temperatuur", "Vesi", color="blue", vertical=True),
             nowrite(DHW, "Siht", state_content=["temperature"], vertical=True),
             nowrite("sensor.boiler_energy_today", "Täna", vertical=True),
             nowrite("sensor.boiler_energy_month", "Sel kuul", vertical=True)]},
