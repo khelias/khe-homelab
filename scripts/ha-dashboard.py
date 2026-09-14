@@ -63,7 +63,10 @@ price_now = {"type": "markdown", "content": (
     "**{{ states('sensor.elektri_hinna_tase') | capitalize }}.** "
     "{{ state_attr('sensor.elektri_hinna_tase', 'tekst') }}\n\n"
     "Pesumasin 2 h: {{ state_attr('sensor.odavaim_aken_2_h', 'tekst') }}\n\n"
-    "Saun 3 h: {{ state_attr('sensor.odavaim_aken_3_h', 'tekst') }}")}
+    "Saun 3 h: {{ state_attr('sensor.odavaim_aken_3_h', 'tekst') }}"),
+    # three lines of text: a band above the curve, not a column beside it,
+    # or the desktop grid stretches it to the chart's height
+    "grid_options": {"columns": "full"}}
 
 price_chart = {
     "type": "custom:apexcharts-card", "graph_span": "2d", "span": {"start": "day"},
