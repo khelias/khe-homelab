@@ -59,17 +59,24 @@ def nav(path):
 # The "what should I do now" answer, above the curve. Two price bases on purpose:
 # the level word is classified on the bare spot price (see energy_price.yaml), the
 # windows are searched on the billed price, so the text names both numbers.
+# The text is the point here, not a stand-in for the chart below it: one of the two
+# adults does not read the curve. So it gets designed rather than shortened - the
+# verdict as a coloured ha-alert (the colour follows the current hour's band, so a
+# glance is enough), one icon per decision, tomorrow set off on its own line.
+ALERT = ("{% set t = states('sensor.elektri_hinna_tase') %}"
+         "{{ 'success' if t in ['väga odav', 'odav'] else 'info' if t in ['tavaline', 'kõrgevõitu']"
+         " else 'warning' if t == 'kallis' else 'error' }}")
 price_now = {"type": "markdown", "content": (
-    "**{{ state_attr('sensor.elektri_hinna_tase', 'hinnang') }}.** "
-    "{{ state_attr('sensor.elektri_hinna_tase', 'tekst') }}\n\n"
-    "Pesu 4 h: {{ state_attr('sensor.odavaim_aken_pesu', 'tekst') }}\n\n"
-    "Saun 2 h: {{ state_attr('sensor.odavaim_aken_saun', 'tekst') }}"
-    # appears from ~14:00, when Nord Pool publishes; it is also what the daily
-    # push says, so tapping the notification lands on the same text
+    f'<ha-alert alert-type="{ALERT}">'
+    "{{ state_attr('sensor.elektri_hinna_tase', 'hinnang') }}. "
+    "{{ state_attr('sensor.elektri_hinna_tase', 'tekst') }}</ha-alert>\n\n"
+    '<ha-icon icon="mdi:washing-machine"></ha-icon> **Pesu 4 h:** '
+    "{{ state_attr('sensor.odavaim_aken_pesu', 'tekst') }}\n\n"
+    '<ha-icon icon="mdi:hot-tub"></ha-icon> **Saun 2 h:** '
+    "{{ state_attr('sensor.odavaim_aken_saun', 'tekst') }}"
     "{% if has_value('sensor.homme_elekter') %}\n\n"
+    '<ha-icon icon="mdi:weather-night"></ha-icon> '
     "{{ state_attr('sensor.homme_elekter', 'tekst') }}{% endif %}"),
-    # three lines of text: a band above the curve, not a column beside it,
-    # or the desktop grid stretches it to the chart's height
     "grid_options": {"columns": "full"}}
 
 price_chart = {
