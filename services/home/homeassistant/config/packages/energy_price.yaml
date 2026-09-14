@@ -469,7 +469,7 @@ template:
 automation:
   - alias: "Elekter: homsed hinnad"
     id: khe_price_tomorrow_digest
-    description: "Homse päeva keskmine, odavaim 3 h aken ja kalleim tund."
+    description: "Tänase päeva järelejäänud osa ja homne: odavaimad 3 h aknad, homne keskmine tänase vastu, kalleim tund."
     mode: single
     triggers:
       - trigger: state
@@ -482,23 +482,39 @@ automation:
           title: "Homme elekter"
           message: >
             {%- set all = state_attr('sensor.elektri_hinna_prognoos', 'prices') or [] -%}
-            {%- set d0 = ((today_at('00:00') | as_timestamp) | int) + 86400 -%}
-            {%- set rows = all | selectattr('s', 'ge', d0) | selectattr('s', 'lt', d0 + 86400) | list -%}
+            {%- set h = ((as_timestamp(now()) // 3600) * 3600) | int -%}
+            {%- set d0 = (today_at('00:00') | as_timestamp) | int -%}
+            {%- set d1 = d0 + 86400 -%}
+            {%- set jaanud = all | selectattr('s', 'ge', h) | selectattr('s', 'lt', d1) | list -%}
+            {%- set tana = all | selectattr('s', 'ge', d0) | selectattr('s', 'lt', d1) | list -%}
+            {%- set homme = all | selectattr('s', 'ge', d1) | selectattr('s', 'lt', d1 + 86400) | list -%}
             {#- 20 is the DST-tolerant floor: a normal day has 24 rows, the spring day 23 -#}
-            {%- if rows | count >= 20 -%}
-              {%- set avg = (rows | map(attribute='t') | sum) / (rows | count) -%}
-              {%- set mx = rows | max(attribute='t') -%}
-              {%- set ns = namespace(best=none, avg=none) -%}
+            {%- if homme | count >= 20 -%}
+            {%- set ns = namespace(res=[]) -%}
+            {#- one window search, run over both day parts -#}
+            {%- for rows in [jaanud, homme] -%}
+              {%- set w = namespace(best=none, avg=none) -%}
               {%- for i in range(rows | count - 2) -%}
                 {%- set win = rows[i:i + 3] -%}
                 {%- if win[-1].s - win[0].s == 2 * 3600 -%}
                   {%- set a = (win | map(attribute='t') | sum) / 3 -%}
-                  {%- if ns.avg is none or a < ns.avg -%}{%- set ns.avg = a -%}{%- set ns.best = win[0].s -%}{%- endif -%}
+                  {%- if w.avg is none or a < w.avg -%}{%- set w.avg = a -%}{%- set w.best = win[0].s -%}{%- endif -%}
                 {%- endif -%}
               {%- endfor -%}
-            Keskmine {{ ('%.1f' | format(avg * 100)).replace('.', ',') }} s/kWh.
-            {% if ns.best %}Odavaim 3 h kell {{ ns.best | timestamp_custom('%H:%M', true) }}-{{ (ns.best + 3 * 3600) | timestamp_custom('%H:%M', true) }}, keskmine {{ ('%.1f' | format(ns.avg * 100)).replace('.', ',') }} s/kWh.{% endif %}
-            Kalleim tund {{ mx.s | timestamp_custom('%H:%M', true) }}, {{ ('%.1f' | format(mx.t * 100)).replace('.', ',') }} s/kWh.
+              {%- set ns.res = ns.res + [w] -%}
+            {%- endfor -%}
+            {%- set ta = ns.res[0] -%}
+            {%- set ho = ns.res[1] -%}
+            {%- set tavg = (tana | map(attribute='t') | sum) / (tana | count) -%}
+            {%- set havg = (homme | map(attribute='t') | sum) / (homme | count) -%}
+            {%- set vahe = ((havg - tavg) / tavg * 100) | round(0) | int -%}
+            {%- set mx = homme | max(attribute='t') -%}
+            {%- macro eur(v) -%}{{ ('%.1f' | format(v * 100)).replace('.', ',') }}{%- endmacro -%}
+            {%- macro kell(s) -%}{{ s | timestamp_custom('%H:%M', true) }}{%- endmacro -%}
+            {% if ta.best %}Täna veel odavaim 3 h kell {{ kell(ta.best) }}-{{ kell(ta.best + 10800) }}, keskmine {{ eur(ta.avg) }} s/kWh.{% else %}Täna 3 h akent enam ei mahu.{% endif %}
+            Homme keskmiselt {{ eur(havg) }} s/kWh, {{ vahe | abs }}% {{ 'kallim' if vahe > 0 else 'odavam' }} kui täna.
+            {% if ho.best %}Odavaim 3 h kell {{ kell(ho.best) }}-{{ kell(ho.best + 10800) }}, keskmine {{ eur(ho.avg) }} s/kWh.{% endif %}
+            Kalleim tund {{ kell(mx.s) }}, {{ eur(mx.t) }} s/kWh.
             {%- endif -%}
           data:
             tag: elektri_hind
