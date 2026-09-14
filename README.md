@@ -79,7 +79,7 @@ Jellyfin and Immich machine-learning both use `/dev/dri` for Quick Sync accelera
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/dockge.svg" width="22" /> | Dockge | LAN only | Docker Compose management UI |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/nginx-proxy-manager.svg" width="22" /> | Nginx Proxy Manager | LAN only | Reverse proxy + wildcard SSL for LAN traffic |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/cloudflare.svg" width="22" /> | Cloudflare Tunnel | — | Secure external access (no open ports) |
-| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/grafana.svg" width="22" /> | Grafana + Loki + Alloy + Alertmanager | `grafana.khe.ee` (LAN) | Log aggregation for every container, Telegram alerting via Loki ruler |
+| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/grafana.svg" width="22" /> | Grafana + Loki + Alloy + Alertmanager | `192.168.0.11:3030` (LAN) | Log aggregation for every container, Telegram alerting via Loki ruler |
 
 ## Security & Access
 
@@ -158,7 +158,8 @@ Operational work is kept to a minimum by pushing everything into code and cron.
 192.168.0.1       Asus RT-AX55 (gateway, DHCP .100-.254)
 192.168.0.10      Proxmox host (pve.khe.ee)
 192.168.0.11      Docker VM (+ Tailscale subnet router)
-192.168.0.2-99    Reserved for static devices
+192.168.0.2-99    Static block: infrastructure and the cameras
+192.168.0.100+    DHCP, including the house devices HA addresses by IP
 ```
 
 Router DHCP hands out `192.168.0.11` (AdGuard) as the **only** DNS — no secondary.

@@ -3,7 +3,11 @@
 ## Local Network
 - Router: Asus RT-AX55 (192.168.0.1)
 - Subnet: 192.168.0.0/24
-- DHCP range: 192.168.0.100–254 (static devices below .100)
+- DHCP range: 192.168.0.100–254; the static block below .100 holds the
+  infrastructure and the cameras
+- The heat pump, AHU, NVR and alarm answer from inside the DHCP range, not
+  from the static block, and the Home Assistant integrations address them by
+  IP. They need router DHCP reservations; whether those exist is unverified
 - Proxmox host: 192.168.0.10
 - Docker VM: 192.168.0.11
 - Connection: CAT5e/CAT6 gigabit LAN
