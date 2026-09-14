@@ -324,13 +324,14 @@ def rare(entity, name, state=None, state_not=None):
             "show_name": True, "show_state": False, "visibility": [cond]}
 
 valve = {"title": "Valve", "path": "valve", "icon": "mdi:shield-home", "type": "sections", "max_columns": 2,
- # Three permanent badges answer the two questions this tab exists for: is it
- # armed, and can I arm it. The other two are genuinely rare, so the badge row
- # reflowing when they show is a cost worth paying.
+ # The two partition states answer what this tab exists for. An open-contact
+ # count used to sit here too and was dropped: with exactly three contacts,
+ # the door tiles a few pixels below say the same thing with more detail. The
+ # other two badges are genuinely rare, so the row reflowing when they appear
+ # is a cost worth paying.
  "badges": [
     {"type": "entity", "entity": "alarm_control_panel.maja", "name": "Maja", "show_name": True, "show_state": True},
     {"type": "entity", "entity": "alarm_control_panel.garaaz", "name": "Garaaž", "show_name": True, "show_state": True},
-    {"type": "entity", "entity": "sensor.valve_lahti", "name": "Lahti", "show_name": True, "show_state": True},
     rare("binary_sensor.suitsuandurid", "Tulekahju", state="on"),
     rare("sensor.valve_uhendus", "Ühendus katkes", state_not="online"),
  ],

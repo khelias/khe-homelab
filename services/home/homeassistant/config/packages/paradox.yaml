@@ -43,6 +43,87 @@ automation:
 # something changed. A layout that reflows every time a PIR fires is unusable,
 # and 14 tamper tiles that are almost always off is not a dashboard either.
 
+  - alias: "Valve: häire"
+    id: paradox_alert_triggered
+    description: "Partitsioon läks häiresse."
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id:
+          - alarm_control_panel.maja
+          - alarm_control_panel.garaaz
+        to: "triggered"
+    actions:
+      - action: notify.notify
+        data:
+          title: "HÄIRE"
+          message: >
+            {% set active = expand(
+                 'binary_sensor.peauks', 'binary_sensor.elutoa_uks', 'binary_sensor.vannitoa_uks',
+                 'binary_sensor.kook_liikumine', 'binary_sensor.elutuba_liikumine',
+                 'binary_sensor.koridor_liikumine', 'binary_sensor.garaaz_liikumine',
+                 'binary_sensor.tehnoruum_liikumine', 'binary_sensor.vanemate_tuba_liikumine',
+                 'binary_sensor.magamistuba_2', 'binary_sensor.magamistuba_4',
+                 'binary_sensor.kontor_liikumine', 'binary_sensor.suitsuandurid'
+               ) | selectattr('state', 'eq', 'on') | map(attribute='name') | list %}
+            {{ trigger.to_state.attributes.friendly_name }} läks häiresse.
+            {% if active %}Aktiivsed: {{ active | join(', ') }}.
+            {% else %}Ükski tsoon ei ole hetkel aktiivne.{% endif %}
+          data:
+            tag: valve_haire
+            push:
+              sound:
+                name: default
+                critical: 1
+                volume: 1.0
+            interruption-level: critical
+
+  # The panel decides what an intrusion is, not this file. Its zone config
+  # already knows which sensors are pet-immune and which are bypassed while
+  # someone sleeps, so watching a single PIR here would fight it and would
+  # fire on the dog. The panel going to `triggered` is the whole signal.
+
+  - alias: "Valve: toide akult"
+    id: paradox_alert_battery
+    description: "Aku pinge langes, ehk võrgutoide on kadunud või aku on nõrk."
+    mode: single
+    triggers:
+      - trigger: numeric_state
+        entity_id: sensor.valve_aku
+        below: 12.5
+        for: "00:10:00"
+    actions:
+      - action: notify.notify
+        data:
+          title: "Valve: toide"
+          message: >
+            Valvepaneeli aku {{ states('sensor.valve_aku') }} V, tavaliselt 13,8 V.
+            Kas võrgutoide on kadunud või aku ei pea enam laengut.
+          data:
+            tag: valve_aku
+
+  - alias: "Valve: andurit rikutakse"
+    id: paradox_alert_tamper
+    description: "Mõne anduri korpus on avatud või juhe lahti."
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.valve_rikkumine
+        to: "on"
+        for: "00:00:30"
+    actions:
+      - action: notify.notify
+        data:
+          title: "Valve: rikkumine"
+          message: >
+            {% set t = states.binary_sensor
+                 | selectattr('entity_id', 'search', '_rikkumine$')
+                 | selectattr('state', 'eq', 'on') | map(attribute='name') | list %}
+            {{ t | join(', ') if t else 'Tundmatu andur' }}.
+            Korpus avatud või juhe lahti.
+          data:
+            tag: valve_rikkumine
+
 template:
   - binary_sensor:
       - name: "Valve rikkumine"
@@ -59,15 +140,3 @@ template:
                'binary_sensor.koridor_liikumine_rikkumine', 'binary_sensor.garaaz_liikumine_rikkumine',
                'binary_sensor.tehnoruum_liikumine_rikkumine'
              ) | selectattr('state', 'eq', 'on') | list | count > 0 }}
-
-  - sensor:
-      # The three real contacts. Measured 2026-09-14: the four zones the
-      # installer labelled MAGAMISTUBA are PIRs, not contacts - each fired
-      # 3-36 times in three hours while the front door fired twice - so they
-      # have no business in an "is the house closed up" count.
-      - name: "Valve lahti"
-        unique_id: paradox_open_count
-        state: >
-          {{ expand(
-               'binary_sensor.peauks', 'binary_sensor.elutoa_uks', 'binary_sensor.vannitoa_uks'
-             ) | selectattr('state', 'eq', 'on') | list | count }}
