@@ -291,7 +291,10 @@ cameras = {"title": "Kaamerad", "path": "kaamerad", "icon": "mdi:cctv", "type": 
 # that would otherwise need a growing list are template sensors.
 DOORS = [("binary_sensor.peauks", "Peauks"), ("binary_sensor.elutoa_uks", "Elutoa uks"),
          ("binary_sensor.sauna_uks", "Sauna uks")]
-ROOMS = [("binary_sensor.magamistuba_%d" % i, "Magamistuba %d" % i) for i in (1, 2, 3, 4)]
+# Display names come from the entity registry, never from here: two of these
+# rooms are named after the children and this repo is public.
+ROOMS = ["binary_sensor.vanemate_magamistuba", "binary_sensor.magamistuba_2",
+         "binary_sensor.magamistuba_4", "binary_sensor.kontor"]
 MOTION = [("binary_sensor.kook_liikumine", "Köök"), ("binary_sensor.elutuba_liikumine", "Elutuba"),
           ("binary_sensor.koridor_liikumine", "Koridor"), ("binary_sensor.garaaz_liikumine", "Garaaž"),
           ("binary_sensor.tehnoruum_liikumine", "Tehnoruum")]
@@ -324,8 +327,8 @@ valve = {"title": "Valve", "path": "valve", "icon": "mdi:shield-home", "type": "
                       armed("alarm_control_panel.garaaz", "Garaaž")], column_span=2),
     section("Uksed ja aknad", [
         {"type": "horizontal-stack", "cards": [tile(e, n, vertical=True) for e, n in DOORS]},
-        {"type": "horizontal-stack", "cards": [tile(e, n, vertical=True) for e, n in ROOMS[:2]]},
-        {"type": "horizontal-stack", "cards": [tile(e, n, vertical=True) for e, n in ROOMS[2:]]},
+        {"type": "horizontal-stack", "cards": [tile(e, vertical=True) for e in ROOMS[:2]]},
+        {"type": "horizontal-stack", "cards": [tile(e, vertical=True) for e in ROOMS[2:]]},
     ], column_span=2),
     section("Liikumine", [
         hist("Liikumine 24 h", MOTION, 24),
