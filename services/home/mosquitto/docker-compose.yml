@@ -15,11 +15,14 @@ services:
       - /etc/localtime:/etc/localtime:ro
     networks:
       - proxy
-    # Port-level probe only. A protocol-level check would need broker
-    # credentials inside this container; real end-to-end liveness is the
+    # Checks the listening socket without opening a connection. A connecting
+    # probe (nc, mosquitto_sub) works too, but every probe logs a connect and
+    # a disconnect at notice level, which Alloy then ships to Loki twice a
+    # minute forever. A protocol-level check would also need broker
+    # credentials in this container; real end-to-end liveness belongs in the
     # Uptime Kuma MQTT monitor instead.
     healthcheck:
-      test: ["CMD-SHELL", "nc -z 127.0.0.1 1883 || exit 1"]
+      test: ["CMD-SHELL", "netstat -ltn | grep -q ':1883' || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
