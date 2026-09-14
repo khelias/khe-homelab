@@ -63,7 +63,11 @@ price_now = {"type": "markdown", "content": (
     "**{{ state_attr('sensor.elektri_hinna_tase', 'hinnang') }}.** "
     "{{ state_attr('sensor.elektri_hinna_tase', 'tekst') }}\n\n"
     "Pesu 4 h: {{ state_attr('sensor.odavaim_aken_pesu', 'tekst') }}\n\n"
-    "Saun 2 h: {{ state_attr('sensor.odavaim_aken_saun', 'tekst') }}"),
+    "Saun 2 h: {{ state_attr('sensor.odavaim_aken_saun', 'tekst') }}"
+    # appears from ~14:00, when Nord Pool publishes; it is also what the daily
+    # push says, so tapping the notification lands on the same text
+    "{% if has_value('sensor.homme_elekter') %}\n\n"
+    "{{ state_attr('sensor.homme_elekter', 'tekst') }}{% endif %}"),
     # three lines of text: a band above the curve, not a column beside it,
     # or the desktop grid stretches it to the chart's height
     "grid_options": {"columns": "full"}}
