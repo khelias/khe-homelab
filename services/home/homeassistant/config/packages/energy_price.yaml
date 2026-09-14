@@ -185,7 +185,7 @@ template:
           {% set m = state_attr('sensor.elektri_hinna_prognoos', 'prices') | selectattr('s', 'eq', h) | list %}
           {% if m %}
             {% set c = m[0].p * 124 %}
-            {{ 'väga odav' if c < 0.26 else 'odav' if c < 2.48 else 'keskmine' if c < 8.51 else 'kõrgevõitu' if c < 14.83 else 'kallis' if c < 27.51 else 'väga kallis' }}
+            {{ 'väga odav' if c < 0.26 else 'odav' if c < 2.48 else 'tavaline' if c < 8.51 else 'kõrgevõitu' if c < 14.83 else 'kallis' if c < 27.51 else 'väga kallis' }}
           {% endif %}
         attributes:
           # spot incl. VAT, the number elektrikell.ee shows
@@ -221,12 +221,11 @@ template:
                                | selectattr('s', 'lt', (today_at('00:00') | as_timestamp) | int + 86400) | list -%}
             {%- if m and paev | count > 0 -%}
               {%- set avg = (paev | map(attribute='p') | sum) / (paev | count) -%}
-              {%- set c = m[0].p * 124 -%}
-              {%- set tase = 'väga odav' if c < 0.26 else 'odav' if c < 2.48 else 'keskmine' if c < 8.51 else 'kõrgevõitu' if c < 14.83 else 'kallis' if c < 27.51 else 'väga kallis' -%}
+              {%- set c = avg * 124 -%}
+              {%- set tase = 'väga odav' if c < 0.26 else 'odav' if c < 2.48 else 'tavaline' if c < 8.51 else 'kõrgevõitu' if c < 14.83 else 'kallis' if c < 27.51 else 'väga kallis' -%}
               {%- set d = ((m[0].p - avg) / avg * 100) | round(0) | int if avg > 0 else 0 -%}
-              {%- set pos = 'tänase odavaim ots' if d <= -25 else 'alla päeva keskmise' if d <= -10 else 'tänane keskmine' if d < 10 else 'üle päeva keskmise' if d < 25 else 'tänase kalleim ots' -%}
-              {%- set vastuolu = (c >= 8.51 and d <= -10) or (c < 2.48 and d >= 10) -%}
-              {{ tase | capitalize }}{{ ', aga' if vastuolu else ' ja' }} {{ pos }}
+              {%- set pos = 'selle odavaim ots' if d <= -25 else 'alla keskmise' if d <= -10 else 'keskmise juures' if d < 10 else 'üle keskmise' if d < 25 else 'selle kalleim ots' -%}
+              {{ tase | capitalize }} päev, praegu {{ pos }}
             {%- endif -%}
           tekst: >
             {% set h = ((as_timestamp(now()) // 3600) * 3600) | int %}
@@ -341,12 +340,12 @@ template:
               {%- if ns.best == h -%}
                 {#- "now is cheapest" reads as a recommendation; when it is the only candidate left it is not one -#}
                 {%- if rows | count - n + 1 > 1 -%}
-                  Praegu, keskmine {{ hind }} s/kWh.
+                  Praegu, {{ hind }} s/kWh.
                 {%- else -%}
-                  Paremat ei tule, keskmine {{ hind }} s/kWh.
+                  Paremat ei tule, {{ hind }} s/kWh.
                 {%- endif -%}
               {%- else -%}
-                {{ 'Homme' if homme else 'Kell' }} {{ algus }}-{{ lopp }}, keskmine {{ hind }} s/kWh{% if d > 0 %}, {{ d }}% odavam kui praegu alustades{% endif %}.
+                {{ 'Homme' if homme else 'Kell' }} {{ algus }}-{{ lopp }}, {{ hind }} s/kWh{% if d > 0 %}, {{ d }}% odavam kui praegu{% endif %}.
               {%- endif -%}
             {%- else -%}
               Homseid hindu veel ei ole.
@@ -470,12 +469,12 @@ template:
               {%- if ns.best == h -%}
                 {#- "now is cheapest" reads as a recommendation; when it is the only candidate left it is not one -#}
                 {%- if rows | count - n + 1 > 1 -%}
-                  Praegu, keskmine {{ hind }} s/kWh.
+                  Praegu, {{ hind }} s/kWh.
                 {%- else -%}
-                  Paremat ei tule, keskmine {{ hind }} s/kWh.
+                  Paremat ei tule, {{ hind }} s/kWh.
                 {%- endif -%}
               {%- else -%}
-                {{ 'Homme' if homme else 'Kell' }} {{ algus }}-{{ lopp }}, keskmine {{ hind }} s/kWh{% if d > 0 %}, {{ d }}% odavam kui praegu alustades{% endif %}.
+                {{ 'Homme' if homme else 'Kell' }} {{ algus }}-{{ lopp }}, {{ hind }} s/kWh{% if d > 0 %}, {{ d }}% odavam kui praegu{% endif %}.
               {%- endif -%}
             {%- else -%}
               Homseid hindu veel ei ole.
