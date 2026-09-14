@@ -53,7 +53,7 @@ template:
                'binary_sensor.suitsuandurid_rikkumine', 'binary_sensor.valissireen_rikkumine',
                'binary_sensor.peauks_rikkumine', 'binary_sensor.elutoa_uks_rikkumine',
                'binary_sensor.sauna_uks_rikkumine',
-               'binary_sensor.vanemate_magamistuba_rikkumine', 'binary_sensor.magamistuba_2_rikkumine',
+               'binary_sensor.vanemate_tuba_rikkumine', 'binary_sensor.magamistuba_2_rikkumine',
                'binary_sensor.kontor_rikkumine', 'binary_sensor.magamistuba_4_rikkumine',
                'binary_sensor.kook_liikumine_rikkumine', 'binary_sensor.elutuba_liikumine_rikkumine',
                'binary_sensor.koridor_liikumine_rikkumine', 'binary_sensor.garaaz_liikumine_rikkumine',
@@ -68,6 +68,6 @@ template:
         state: >
           {{ expand(
                'binary_sensor.peauks', 'binary_sensor.elutoa_uks', 'binary_sensor.sauna_uks',
-               'binary_sensor.vanemate_magamistuba', 'binary_sensor.magamistuba_2',
+               'binary_sensor.vanemate_tuba', 'binary_sensor.magamistuba_2',
                'binary_sensor.kontor', 'binary_sensor.magamistuba_4'
              ) | selectattr('state', 'eq', 'on') | list | count }}
