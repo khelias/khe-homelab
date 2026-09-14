@@ -348,7 +348,11 @@ valve = {"title": "Valve", "path": "valve", "icon": "mdi:shield-home", "type": "
         {"type": "horizontal-stack", "cards": [
             nowrite("sensor.valve_aku", "Aku", vertical=True),
             nowrite("sensor.valve_uhendus", "Ühendus", vertical=True)]},
+        # Smoke was a badge only, which meant it was invisible until the house
+        # was already on fire. You need to see that it is connected on a normal
+        # day too, so it leads the row that answers "is anything wrong".
         {"type": "horizontal-stack", "cards": [
+            tile("binary_sensor.suitsuandurid", "Suitsuandurid", vertical=True),
             tile("binary_sensor.valve_rikkumine", "Rikkumine", vertical=True),
             tile("binary_sensor.valissireen", "Sireen", vertical=True)]},
     ], column_span=2),
