@@ -271,19 +271,23 @@ energy = {"title": "Energia", "path": "energia", "icon": "mdi:lightning-bolt", "
 # 7-12 s to start (HLS; native WebRTC is advertised but go2rtc fails to open these
 # streams, so the frontend always falls back to HLS). So the everyday grid keeps the
 # substream and the zoom view takes the main one; there is no speed penalty for it.
+#
+# Every subview is the same viewer with a different camera selected first, because the
+# card lets you swipe on to the next camera. So nothing outside the card names a camera:
+# the view title stays "Kaamerad" and the card's own status bar carries the name, since
+# dashboard chrome cannot follow a selection made inside a card. Per-camera state and the
+# motion switches stay on the tab behind, for the same reason.
 def cam_view(slug, name):
     others = [{"camera_entity": "camera." + s, "title": t} for s, t in CAMS if s != slug]
-    return {"title": name, "path": "kaamera-" + slug, "icon": "mdi:cctv", "type": "sections",
+    return {"title": "Kaamerad", "path": "kaamera-" + slug, "icon": "mdi:cctv", "type": "sections",
             "subview": True, "max_columns": 1, "sections": [
-        section(name, [
+        {"type": "grid", "cards": [
             {"type": "custom:advanced-camera-card",
              "cameras": [{"camera_entity": "camera." + slug, "title": name}] + others,
              "view": {"default": "live"}, "menu": {"style": "hover"},
-             "grid_options": {"columns": "full"}},
-            {"type": "horizontal-stack", "cards": [
-                nowrite("binary_sensor." + slug + "_liikumine", "Liikumine", vertical=True),
-                tile("switch." + slug + "_liikumistuvastus", "Liikumistuvastus", vertical=True)]},
-        ])]}
+             "live": {"display": {"mode": "single"}},  # grid mode would open all five streams at once
+             "status_bar": {"style": "outside", "position": "bottom"},
+             "grid_options": {"columns": "full"}}]}]}
 
 cameras = {"title": "Kaamerad", "path": "kaamerad", "icon": "mdi:cctv", "type": "sections", "max_columns": 2,
  # Kodu shape: cameras as they were, NVR and per-camera motion switches in one section, no captions. The NVR disk
