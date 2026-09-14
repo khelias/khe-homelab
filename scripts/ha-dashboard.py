@@ -278,56 +278,65 @@ cameras = {"title": "Kaamerad", "path": "kaamerad", "icon": "mdi:cctv", "type": 
     ], column_span=2),
 ]}
 
-# Alarm zones grouped by what they are rather than by panel numbering. "Lahti"
-# answers one question - can I arm right now - so the whole section disappears
-# when the house is closed up, and the tamper row behaves the same way.
+# Alarm zones grouped by what they are rather than by panel numbering, and
+# every card here keeps its size when state changes. The first version made the
+# open-zone section appear and disappear, which moved the whole page every time
+# a PIR fired: "show faults only when active" is a rule for rare faults, and
+# motion is the most volatile thing in the house. So contacts are always on
+# screen and change colour, motion appears only as history, and the two counts
+# that would otherwise need a growing list are template sensors.
 DOORS = [("binary_sensor.peauks", "Peauks"), ("binary_sensor.elutoa_uks", "Elutoa uks"),
          ("binary_sensor.sauna_uks", "Sauna uks")]
 ROOMS = [("binary_sensor.magamistuba_%d" % i, "Magamistuba %d" % i) for i in (1, 2, 3, 4)]
 MOTION = [("binary_sensor.kook_liikumine", "Köök"), ("binary_sensor.elutuba_liikumine", "Elutuba"),
           ("binary_sensor.koridor_liikumine", "Koridor"), ("binary_sensor.garaaz_liikumine", "Garaaž"),
           ("binary_sensor.tehnoruum_liikumine", "Tehnoruum")]
-ZONES = [e for e, _ in DOORS + ROOMS + MOTION]
-TAMPERS = [e + "_rikkumine" for e in ZONES + ["binary_sensor.suitsuandurid", "binary_sensor.valissireen"]]
 
-def open_only(title, entities):
-    return {"type": "entity-filter", "entities": entities, "state_filter": ["on"], "show_empty": False,
-            "card": {"type": "entities", "title": title}}
-def when_any(sec, entities):
-    sec["visibility"] = [{"condition": "or", "conditions":
-        [{"condition": "state", "entity": e, "state": "on"} for e in entities]}]
-    return sec
+def armed(entity, name):
+    return {"type": "tile", "entity": entity, "name": name, "features": [
+        {"type": "alarm-modes", "modes": ["armed_away", "armed_home", "armed_night", "disarmed"]}]}
+def rare(entity, name, state=None, state_not=None):
+    cond = {"condition": "state", "entity": entity}
+    cond.update({"state": state} if state else {"state_not": state_not})
+    return {"type": "entity", "entity": entity, "name": name, "color": "red",
+            "show_name": True, "show_state": False, "visibility": [cond]}
 
 valve = {"title": "Valve", "path": "valve", "icon": "mdi:shield-home", "type": "sections", "max_columns": 2,
+ # Three permanent badges answer the two questions this tab exists for: is it
+ # armed, and can I arm it. The other two are genuinely rare, so the badge row
+ # reflowing when they show is a cost worth paying.
  "badges": [
     {"type": "entity", "entity": "alarm_control_panel.maja", "name": "Maja", "show_name": True, "show_state": True},
     {"type": "entity", "entity": "alarm_control_panel.garaaz", "name": "Garaaž", "show_name": True, "show_state": True},
-    {"type": "entity", "entity": "binary_sensor.suitsuandurid", "name": "Tulekahju", "color": "red", "show_name": True, "show_state": False,
-     "visibility": [{"condition": "state", "entity": "binary_sensor.suitsuandurid", "state": "on"}]},
-    {"type": "entity", "entity": "sensor.valve_uhendus", "name": "Ühendus katkes", "color": "red", "show_name": True, "show_state": False,
-     "visibility": [{"condition": "state", "entity": "sensor.valve_uhendus", "state_not": "online"}]},
+    {"type": "entity", "entity": "sensor.valve_lahti", "name": "Lahti", "show_name": True, "show_state": True},
+    rare("binary_sensor.suitsuandurid", "Tulekahju", state="on"),
+    rare("sensor.valve_uhendus", "Ühendus katkes", state_not="online"),
  ],
  "sections": [
-    # Keypad cards rather than tiles: disarming asks for a code and a keypad is the honest way to type one.
-    section("Valve", [
-        {"type": "alarm-panel", "entity": "alarm_control_panel.maja", "name": "Maja",
-         "states": ["arm_away", "arm_home", "arm_night"]},
-        {"type": "alarm-panel", "entity": "alarm_control_panel.garaaz", "name": "Garaaž",
-         "states": ["arm_away", "arm_home", "arm_night"]},
+    # Tiles rather than keypad cards: the keypad is a tall block to look at all
+    # day for something you tap twice, and the tile feature raises the code
+    # dialog by itself when disarming asks for one.
+    section("Valve", [armed("alarm_control_panel.maja", "Maja"),
+                      armed("alarm_control_panel.garaaz", "Garaaž")], column_span=2),
+    section("Uksed ja aknad", [
+        note("Punane on lahti. Need peavad kinni olema, enne kui valvesse paned."),
+        {"type": "horizontal-stack", "cards": [tile(e, n, vertical=True) for e, n in DOORS]},
+        {"type": "horizontal-stack", "cards": [tile(e, n, vertical=True) for e, n in ROOMS[:2]]},
+        {"type": "horizontal-stack", "cards": [tile(e, n, vertical=True) for e, n in ROOMS[2:]]},
     ], column_span=2),
-    when_any(section("Lahti", [open_only("Avatud tsoonid", ZONES)]), ZONES),
-    section("Uksed", [{"type": "horizontal-stack", "cards": [nowrite(e, n, vertical=True) for e, n in DOORS]}]
-                     + [{"type": "horizontal-stack", "cards": [nowrite(e, n, vertical=True) for e, n in ROOMS[:2]]},
-                        {"type": "horizontal-stack", "cards": [nowrite(e, n, vertical=True) for e, n in ROOMS[2:]]}]),
-    section("Liikumine", [hist("Liikumine 12 h", MOTION, 12)]),
+    section("Liikumine", [
+        note("Ainult ajalugu. Hetkeseis vahetub liiga tihti, et seda vaadata."),
+        hist("Liikumine 24 h", MOTION, 24),
+    ], column_span=2),
     section("Süsteem", [
         {"type": "horizontal-stack", "cards": [
             nowrite("sensor.valve_aku", "Aku", vertical=True),
             nowrite("sensor.valve_toide", "Toide", vertical=True),
             nowrite("sensor.valve_uhendus", "Ühendus", vertical=True)]},
-        nowrite("binary_sensor.valissireen", "Välissireen"),
-        open_only("Rikutud andurid", TAMPERS),
-    ]),
+        {"type": "horizontal-stack", "cards": [
+            tile("binary_sensor.valve_rikkumine", "Rikkumine", vertical=True),
+            tile("binary_sensor.valissireen", "Sireen", vertical=True)]},
+    ], column_span=2),
 ]}
 
 soojuspump = {"title": "Soojuspump", "path": "soojuspump", "icon": "mdi:heat-pump", "type": "sections", "max_columns": 2,

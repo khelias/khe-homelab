@@ -38,3 +38,36 @@ automation:
                 critical: 1
                 volume: 1.0
             interruption-level: critical
+
+# Two aggregates so the dashboard never has to grow or shrink a card to say
+# something changed. A layout that reflows every time a PIR fires is unusable,
+# and 14 tamper tiles that are almost always off is not a dashboard either.
+
+template:
+  - binary_sensor:
+      - name: "Valve rikkumine"
+        unique_id: paradox_tamper_any
+        device_class: tamper
+        state: >
+          {{ expand(
+               'binary_sensor.suitsuandurid_rikkumine', 'binary_sensor.valissireen_rikkumine',
+               'binary_sensor.peauks_rikkumine', 'binary_sensor.elutoa_uks_rikkumine',
+               'binary_sensor.sauna_uks_rikkumine',
+               'binary_sensor.magamistuba_1_rikkumine', 'binary_sensor.magamistuba_2_rikkumine',
+               'binary_sensor.magamistuba_3_rikkumine', 'binary_sensor.magamistuba_4_rikkumine',
+               'binary_sensor.kook_liikumine_rikkumine', 'binary_sensor.elutuba_liikumine_rikkumine',
+               'binary_sensor.koridor_liikumine_rikkumine', 'binary_sensor.garaaz_liikumine_rikkumine',
+               'binary_sensor.tehnoruum_liikumine_rikkumine'
+             ) | selectattr('state', 'eq', 'on') | list | count > 0 }}
+
+  - sensor:
+      # Contacts only. Motion is deliberately excluded: a PIR that is on says
+      # somebody is home, not that the house cannot be armed.
+      - name: "Valve lahti"
+        unique_id: paradox_open_count
+        state: >
+          {{ expand(
+               'binary_sensor.peauks', 'binary_sensor.elutoa_uks', 'binary_sensor.sauna_uks',
+               'binary_sensor.magamistuba_1', 'binary_sensor.magamistuba_2',
+               'binary_sensor.magamistuba_3', 'binary_sensor.magamistuba_4'
+             ) | selectattr('state', 'eq', 'on') | list | count }}
