@@ -34,7 +34,8 @@ PHONE = _house.get("phone")
 NVR_APP = _house.get("nvr_app_url")
 PEOPLE = [tuple(p) for p in _local("ha-people.json", [])]
 UPDATES = ["update.hacs_update", "update.komfovent_update", "update.daikin_altherma_update",
-           "update.estfeed_update", "update.apexcharts_card_update"] + _house.get("updates", [])
+           "update.estfeed_update", "update.apexcharts_card_update",
+           "update.advanced_camera_card_update"] + _house.get("updates", [])
 
 def tile(entity, name=None, **kw):
     c = {"type": "tile", "entity": entity}
@@ -262,6 +263,28 @@ energy = {"title": "Energia", "path": "energia", "icon": "mdi:lightning-bolt", "
     ], column_span=2),
 ]}
 
+# One subview per camera behind the grid above. The grid stays on cheap still images
+# (0.3 s, 1080p from the NVR); a live stream is only opened when a camera is tapped.
+# Advanced Camera Card because the stock cards cannot zoom: here ctrl+wheel or pinch
+# zooms and pans. That only buys anything on the main stream - measured 2026-09-14,
+# the main stream is 2688x1520 and the substream 640x480, and both take the same
+# 7-12 s to start (HLS; native WebRTC is advertised but go2rtc fails to open these
+# streams, so the frontend always falls back to HLS). So the everyday grid keeps the
+# substream and the zoom view takes the main one; there is no speed penalty for it.
+def cam_view(slug, name):
+    others = [{"camera_entity": "camera." + s, "title": t} for s, t in CAMS if s != slug]
+    return {"title": name, "path": "kaamera-" + slug, "icon": "mdi:cctv", "type": "sections",
+            "subview": True, "max_columns": 1, "sections": [
+        section(name, [
+            {"type": "custom:advanced-camera-card",
+             "cameras": [{"camera_entity": "camera." + slug, "title": name}] + others,
+             "view": {"default": "live"}, "menu": {"style": "hover"},
+             "grid_options": {"columns": "full"}},
+            {"type": "horizontal-stack", "cards": [
+                nowrite("binary_sensor." + slug + "_liikumine", "Liikumine", vertical=True),
+                tile("switch." + slug + "_liikumistuvastus", "Liikumistuvastus", vertical=True)]},
+        ])]}
+
 cameras = {"title": "Kaamerad", "path": "kaamerad", "icon": "mdi:cctv", "type": "sections", "max_columns": 2,
  # Kodu shape: cameras as they were, NVR and per-camera motion switches in one section, no captions. The NVR disk
  # badge shows only when the disk is not OK. Motion is too noisy for a badge (fires on insects and rain).
@@ -273,7 +296,7 @@ cameras = {"title": "Kaamerad", "path": "kaamerad", "icon": "mdi:cctv", "type": 
  "sections": [
     section("Kaamerad", [
         {"type": "picture-glance", "camera_image": "camera." + slug + "_alamvoog", "entity": "camera." + slug + "_alamvoog", "title": n, "camera_view": "auto",
-         "entities": [{"entity": "binary_sensor." + slug + "_liikumine"}]}
+         "entities": [{"entity": "binary_sensor." + slug + "_liikumine"}], **nav("/lovelace/kaamera-" + slug)}
         for slug, n in CAMS], column_span=2),
     section("NVR", [
         {"type": "horizontal-stack", "cards": [
@@ -454,7 +477,7 @@ susteem = {"title": "Süsteem", "path": "susteem", "icon": "mdi:home-assistant",
                nowrite(PHONE + "_connection_type", "Ühendus", vertical=True)] if PHONE else [])]},
     ]),
     section("Kaamerate põhivood", [
-        # Full-resolution live streams, slow to start; the everyday substreams are on Valve.
+        # Full-resolution live streams as tiles; the same streams are zoomable on the Kaamerad tab.
         {"type": "horizontal-stack", "cards": [tile("camera." + slug, n, vertical=True) for slug, n in CAMS]},
     ], column_span=2),
     section("Nord Pool toorandmed", [
@@ -541,7 +564,8 @@ soojuspump_seaded = {"title": "Soojuspumba seaded", "path": "soojuspump-seaded",
     ]),
 ]}
 
-config = {"title": "Kodu", "views": [home, energy, soojuspump, ventilatsioon, valve, cameras, susteem, komfovent_seaded, soojuspump_seaded]}
+config = {"title": "Kodu", "views": [home, energy, soojuspump, ventilatsioon, valve, cameras, susteem,
+                                    komfovent_seaded, soojuspump_seaded] + [cam_view(s, n) for s, n in CAMS]}
 
 async def main():
     async with websockets.connect(f"ws://{HA}/api/websocket", max_size=2**24) as ws:
