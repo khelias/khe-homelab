@@ -20,8 +20,10 @@ Don't duplicate that content here. AGENTS.md only holds rules and pointers.
   what would force a re-evaluation
 - [docs/house-hvac.md](docs/house-hvac.md) - heat pump, ventilation and
   underfloor heating: local protocols, register/path maps, and which of
-  their readings are known-bad. Integration spec for a future Home
-  Assistant deployment
+  their readings are known-bad. The protocol layer under the live HA
+  integrations
+- [docs/home-assistant-plan.md](docs/home-assistant-plan.md) - HA rollout
+  phases, the dashboard generator's layout, and the house energy work
 - [SECURITY.md](SECURITY.md) - security model
 - [ROADMAP.md](ROADMAP.md) - planned changes
 - [infrastructure/cloudflare.md](infrastructure/cloudflare.md) - CF Tunnel + Access
@@ -57,10 +59,8 @@ services/
 infrastructure/    Proxmox, network, Cloudflare, Tailscale docs
 scripts/           setup, deploy.sh, backup.sh, hardening,
                    ha-dashboard.py (HA Overview generator)
-docs/              operational-notes.md (service quirks not in README),
-                   house-hvac.md (HVAC protocols behind the live HA integrations),
-                   home-assistant-plan.md (HA rollout, dashboard, phase 6),
-                   ha-research-2026-09-12.md (HA improvement research)
+docs/              runbook, operational notes, service choices, HVAC
+                   protocols, HA plan - see the pointer list above
 ```
 
 ## Conventions (HARD)

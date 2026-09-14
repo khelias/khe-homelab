@@ -10,29 +10,17 @@
 
 ## DNS Strategy (Split-Horizon)
 - **External**: Cloudflare DNS for khe.ee → Cloudflare Tunnel
-- **Internal**: AdGuard Home as local DNS, rewrites *.khe.ee → 192.168.0.11
+- **Internal**: AdGuard Home as local DNS, 10 `*.khe.ee` rewrites → 192.168.0.11
   - Local traffic stays local (no hairpin NAT)
-  - Router DNS: 192.168.0.11 (primary) + 1.1.1.1 (fallback) — ACTIVE
+  - Router DHCP DNS: 192.168.0.11 only, never a secondary. Clients race two
+    servers in parallel and Cloudflare usually wins, which silently bypasses
+    filtering. Upstream DoH happens inside AdGuard.
 
 ## Cloudflare Tunnel Routing
 
-The tunnel routes directly to Docker containers. LAN traffic goes via NPM.
-See `../cloudflare.md` for the authoritative routing table.
-
-| Domain              | Container           | Port  |
-|---------------------|---------------------|-------|
-| khe.ee              | landing             | 80    |
-| dash.khe.ee         | homepage            | 3000  |
-| cloud.khe.ee        | nextcloud           | 80    |
-| vault.khe.ee        | vaultwarden         | 80    |
-| docs.khe.ee         | paperless           | 8000  |
-| photos.khe.ee       | immich-server       | 2283  |
-| jellyfin.khe.ee     | jellyfin            | 8096  |
-| books.khe.ee        | audiobookshelf      | 80    |
-| n8n.khe.ee          | n8n                 | 5678  |
-| status.khe.ee       | uptime-kuma         | 3001  |
-| games.khe.ee        | study-game (alias→games) | 80 |
-| openclaw.khe.ee     | openclaw            | 18789 |
+The tunnel routes directly to Docker containers; LAN traffic goes via NPM.
+The routing table lives in [`../cloudflare.md`](../cloudflare.md) and is not
+duplicated here.
 
 ## LAN-Only Services (not exposed via tunnel)
 
@@ -42,6 +30,7 @@ See `../cloudflare.md` for the authoritative routing table.
 | Dockge              | 192.168.0.11:5001        |
 | Nginx Proxy Manager | 192.168.0.11:81 (admin)  |
 | Proxmox             | 192.168.0.10:8006        |
+| Grafana             | 192.168.0.11:3030        |
 | Home Assistant      | 192.168.0.11:8123 (`home.khe.ee`) |
 
 ## Remote Access (Tailscale VPN)

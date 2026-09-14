@@ -12,10 +12,10 @@ graph TB
 
     Internet --> CF[Cloudflare Tunnel]
     VPN -->|subnet route<br/>192.168.0.0/24| LAN
-    AG[AdGuard Home<br/>split-horizon DNS] -.->|9 hosts<br/>*.khe.ee → 192.168.0.11| LAN
+    AG[AdGuard Home<br/>split-horizon DNS] -.->|10 hosts<br/>*.khe.ee → 192.168.0.11| LAN
     LAN --> NPM[Nginx Proxy Manager<br/>wildcard *.khe.ee · LAN-only]
 
-    CF -->|14 public hostnames<br/>CF Access OTP on<br/>dash, n8n, openclaw, trips, draft| DVM
+    CF -->|15 public hostnames<br/>CF Access OTP on<br/>dash, n8n, openclaw, trips, draft| DVM
     NPM --> DVM
 
     subgraph DVM[Docker VM · 192.168.0.11 — 25 stacks · 41 containers]
@@ -36,8 +36,8 @@ graph TB
 > NPM, AdGuard, and Cloudflare Tunnel also run on the same Docker VM (shown above in the ingress tier, not listed again inside Core).
 
 Two independent paths to the same containers:
-- **External** — Cloudflare Tunnel goes directly to each container (14 public hostnames). CF Access OTP gates `dash`, `n8n`, `openclaw`, `trips`, `draft`. Subject to Cloudflare's 100MB upload limit.
-- **LAN / Tailscale** — AdGuard rewrites 9 hostnames (`khe.ee`, `dash`, `cloud`, `vault`, `docs`, `photos`, `jellyfin`, `books`, `status`) to `192.168.0.11`, so devices hit NPM with the wildcard cert and no upload limit. `n8n`, `openclaw`, `games`, `pages`, `draft` have no LAN shortcut — always via CF.
+- **External** — Cloudflare Tunnel goes directly to each container (15 public hostnames). CF Access OTP gates `dash`, `n8n`, `openclaw`, `trips`, `draft`. Subject to Cloudflare's 100MB upload limit.
+- **LAN / Tailscale** — AdGuard rewrites 10 hostnames (`khe.ee`, `dash`, `cloud`, `vault`, `docs`, `photos`, `jellyfin`, `books`, `status`, `home`) to `192.168.0.11`, so devices hit NPM with the wildcard cert and no upload limit. `n8n`, `openclaw`, `games`, `pages`, `draft` have no LAN shortcut — always via CF.
 
 Proxmox VE (192.168.0.10) is the hypervisor; the Docker VM (192.168.0.11) is the only guest. Fast storage (NVMe) holds the VM root + DB volumes; bulk storage (ZFS mirror, NFS-mounted at `/srv`) holds photos, media, documents.
 
@@ -74,7 +74,7 @@ Jellyfin and Immich machine-learning both use `/dev/dri` for Quick Sync accelera
 | 🗺️ | **trips** | `trips.khe.ee` | Private family trip atlas, CF Access protected, own GitHub runner |
 | 📝 | **pages** | `pages.khe.ee` | Quick-publish HTML pages; edited at `draft.khe.ee` (CF Access protected) |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/ollama.svg" width="22" /> | Ollama | LAN only | Local AI models (qwen2.5:7b, CPU-only) |
-| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/home-assistant.svg" width="22" /> | Home Assistant | `home.khe.ee` (LAN + Tailscale) | House automation: Komfovent ventilation, Daikin heat pump. Deliberately not on the tunnel |
+| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/home-assistant.svg" width="22" /> | Home Assistant | `home.khe.ee` (LAN + Tailscale) | House automation: Komfovent ventilation, Daikin heat pump, cameras, grid metering and price via Estfeed. Deliberately not on the tunnel |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/adguard-home.svg" width="22" /> | AdGuard Home | LAN + Tailscale | DNS ad-blocking on the LAN + split-horizon DNS; over Tailscale it answers only the `khe.ee` zone |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/dockge.svg" width="22" /> | Dockge | LAN only | Docker Compose management UI |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/nginx-proxy-manager.svg" width="22" /> | Nginx Proxy Manager | LAN only | Reverse proxy + wildcard SSL for LAN traffic |
@@ -108,7 +108,7 @@ every LAN service gets HTTPS without per-service certs. AdGuard does split-horiz
 
 ## Resilience
 
-Three independent layers, each catching what the others miss:
+Five layers, each catching what the others miss:
 
 1. **Kernel hang — hardware watchdog.** The Docker VM runs the `watchdog` daemon
    pinging `/dev/watchdog` (Proxmox-emulated iTCO, 30s hardware timeout). If the
@@ -147,7 +147,10 @@ Operational work is kept to a minimum by pushing everything into code and cron.
   portfolio metrics file; only `/srv/data/reports/khe/public` is served read-only
   by the public landing nginx at `/reports/`.
 - **Certificate renewal** — NPM auto-renews the wildcard cert via Cloudflare DNS API. No manual steps.
-- **Backup script** — `scripts/backup.sh` dumps all Postgres DBs and snapshots configs on a schedule.
+- **Backups** — `scripts/backup.sh` dumps every Postgres DB, the Home Assistant
+  recorder and the service configs on a schedule; `scripts/offsite-backup.sh` then
+  pushes the set to Cloudflare R2 with `restic` (client-side AES-256), which is what
+  makes this 3-2-1. See [infrastructure/offsite-backup.md](infrastructure/offsite-backup.md).
 
 ## Network
 
@@ -159,15 +162,11 @@ Operational work is kept to a minimum by pushing everything into code and cron.
 ```
 
 Router DHCP hands out `192.168.0.11` (AdGuard) as the **only** DNS — no secondary.
-"Fallback" DNS servers sound safe but trigger happy-eyeballs racing: clients query
-both in parallel and Cloudflare always wins, so ad/tracker filtering silently
-bypasses AdGuard for ~80%+ of traffic. Better to fail loudly if AdGuard is down.
-Tailscale carries only the `khe.ee` zone to remote devices: a split-DNS route
-`khe.ee -> AdGuard` in the tailnet, no global override. LAN names resolve
-from anywhere; everything else stays with whatever DNS the local network or a
-work VPN provides. Changed 2026-09-12 so Tailscale can coexist with FortiClient
-and UniFi VPNs on the same laptop; the cost is that AdGuard no longer filters
-general traffic on mobile data.
+A fallback server gets raced in parallel and Cloudflare usually wins, so filtering
+would silently stop applying. Better to fail loudly if AdGuard is down.
+Tailscale carries only the `khe.ee` zone to remote devices (split-DNS route, no
+global override), so since 2026-09-12 it coexists with FortiClient and UniFi VPNs
+on the same laptop. The cost: AdGuard no longer filters general mobile traffic.
 
 All external traffic goes through Cloudflare Tunnel — zero ports open on the router.
 
@@ -197,7 +196,7 @@ All external traffic goes through Cloudflare Tunnel — zero ports open on the r
 ./scripts/deploy.sh up       # (Re)start everything
 ./scripts/deploy.sh down     # Stop everything
 ./scripts/backup.sh          # Backup databases + configs
-./scripts/ha-dashboard.py            # Regenerate the Home Assistant Overview dashboard
+./scripts/ha-dashboard.py    # Regenerate the Home Assistant Overview dashboard
 ```
 
 Health snapshot without touching the VM, via the self-hosted runner:
@@ -217,7 +216,7 @@ services/
 ├── productivity/    Nextcloud, Paperless-ngx
 ├── ai/              Ollama, n8n, OpenClaw (+ workspace/ for agent config)
 ├── home/            Home Assistant
-└── apps/            Landing Page, games hub (launcher + khe-study), pages (quick-publish), trips
+├── apps/            Landing Page, games hub (launcher + khe-study), pages (quick-publish), trips
 └── observability/   Loki, Grafana, Alloy, Alertmanager
 
 infrastructure/      Proxmox, network, Cloudflare, and Tailscale documentation

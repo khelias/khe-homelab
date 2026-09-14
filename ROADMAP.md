@@ -4,6 +4,12 @@ Direction and priorities for the homelab — what it should become, beyond curre
 
 ## Near-term (next few sessions)
 
+- **House automation** — the active work since 2026-09-08 and the only area
+  with its own plan: phases, dashboard and the energy work are in
+  [docs/home-assistant-plan.md](docs/home-assistant-plan.md). Everything is
+  read-only today. The next step that changes the house is phase 6
+  (spot-price-aware heating), which also forces a `SECURITY.md` update because
+  it gives this host write access to the heat pump and ventilation.
 - **Resource-limit tuning from metrics** — initial `deploy.resources.limits`
   now cover every long-running container. Watch Docker stats / service behavior
   and tune caps where Nextcloud, Immich, Paperless, Jellyfin, or Ollama show
@@ -50,6 +56,7 @@ Direction and priorities for the homelab — what it should become, beyond curre
 - **Disaster recovery runbook + tested restore** — actually restore a Postgres dump
   into a spare container and verify. Today we trust the backup script to work
   without evidence it does under pressure.
+
 ## Long-term (when app-heavy projects arrive)
 
 - **Komodo as GitOps controller** — once adventure-engine, spliit, or similar

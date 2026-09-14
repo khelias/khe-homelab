@@ -44,6 +44,10 @@ Thumbs.db
 backups/*.tar.gz
 backups/*.sql
 
+# Python bytecode (scripts/ha-dashboard.py)
+__pycache__/
+*.pyc
+
 # Editor
 .vscode/
 .idea/

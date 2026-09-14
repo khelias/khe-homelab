@@ -55,6 +55,7 @@ comparable, the one that scores better on these wins.
 | Hypervisor            | Proxmox VE            | High       | 2026-05-05    |
 | Container auto-heal   | autoheal              | High       | 2026-05-05    |
 | Dependency updates    | Renovate              | High       | 2026-05-05    |
+| House automation      | Home Assistant (Container) | High  | 2026-09-13    |
 
 `Confidence` reflects how stable the choice is given current constraints —
 **High** = no realistic reason to migrate, **Medium** = working but a known
@@ -590,6 +591,28 @@ GitHub-native dependency-update bot. Dependabot is the realistic alternative
 but Renovate's grouping + scheduling + Docker-tag strategies are richer
 for a homelab where we want "Tuesday morning, all minor bumps in one PR."
 Configured in `renovate.json` at repo root.
+
+---
+
+## House automation — Home Assistant (Container)
+
+At this scale HA has no serious open-source rival, so the decision that
+actually mattered was **Container over HAOS**. HAOS ships the Supervisor and
+the add-on store, but it wants to own the machine, which breaks the single-VM
+Docker model, the pinned-image + Renovate flow, `backup.sh` and the Kuma
+monitor. The official container keeps all of that; the price is no add-ons, so
+their equivalents (Mosquitto, Zigbee2MQTT, ESPHome) run as ordinary containers
+in `services/home/` and integrations come from HACS instead.
+
+**Known cost:** HACS and `custom_components/` are hand-installed and
+deliberately untracked, so that layer is restored from the config backup, not
+from git. Constraint 6 (public-repo blast radius) also bites harder here than
+anywhere else — `.storage` holds the user database, tokens and integration
+credentials, and the house's coordinates, so almost the whole config dir is
+gitignored behind a whitelist.
+
+**When we'd revisit:** we need something only the Supervisor provides, or a
+HACS integration we depend on starts requiring it.
 
 ---
 
