@@ -159,6 +159,10 @@ FAULTS = [("binary_sensor.suitsuandurid", "Tulekahju"),
 home = {"title": "Kodu", "path": "kodu", "icon": "mdi:home", "type": "sections", "max_columns": 2,
  "badges": [
     *[{"type": "entity", "entity": e, "name": n, "show_name": True, "show_state": True} for e, n in PEOPLE],
+    # Arming on the way out is a daily action, so the state belongs here. Tap
+    # opens more-info, which carries the arm buttons: no detour via the tab.
+    {"type": "entity", "entity": "alarm_control_panel.maja", "name": "Maja", "show_name": True, "show_state": True},
+    {"type": "entity", "entity": "alarm_control_panel.garaaz", "name": "Garaaž", "show_name": True, "show_state": True},
  ] + [
     {"type": "entity", "entity": e, "name": n, "color": "red", "show_name": True, "show_state": False, "visibility": [{"condition": "state", "entity": e, "state": "on"}]}
     for e, n in FAULTS
