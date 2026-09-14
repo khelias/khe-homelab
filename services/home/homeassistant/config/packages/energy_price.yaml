@@ -584,52 +584,35 @@ automation:
           {{ (state_attr('sensor.elektri_hinna_prognoos', 'prices') or [])
              | selectattr('s', 'ge', d1) | selectattr('s', 'lt', d1 + 86400) | list | count >= 20 }}
     actions:
+      - variables:
+          teade: >
+            {%- set all = state_attr('sensor.elektri_hinna_prognoos', 'prices') or [] -%} {%- set h = ((as_timestamp(now()) // 3600) * 3600) | int -%} {%- set d0 = (today_at('00:00') | as_timestamp) | int -%} {%- set d1 = d0 + 86400 -%} {#- only the handover needs a human: start + 2 h must land between 08:00 and
+            23:00, so the start itself runs from 06:00 to 21:00, same as the sensor -#}
+            {%- set argus = (today_at('06:00') | as_timestamp) | int -%} {%- set ohtu = ((today_at('21:00') | as_timestamp) | int) + 4 * 3600 -%} {%- set jaanud = all | selectattr('s', 'ge', [h, argus] | max) | selectattr('s', 'lt', ohtu) | list -%} {%- set tana = all | selectattr('s', 'ge', d0) | selectattr('s', 'lt', d1) | list -%} {%- set homme = all | selectattr('s', 'ge', d1) | selectattr('s', 'lt', d1 + 86400) | list -%} {%- set homme_aken = all | selectattr('s', 'ge', argus + 86400) | selectattr('s', 'lt', ohtu + 86400) | list -%} {#- 20 is the DST-tolerant floor: a normal day has 24 rows, the spring day 23 -#} {%- if homme | count >= 20 -%} {%- set ns = namespace(res=[]) -%} {#- one window search, run over both day parts -#} {%- for rows in [jaanud, homme_aken] -%}
+            {%- set w = namespace(best=none, avg=none) -%}
+            {%- for i in range(rows | count - 3) -%}
+            {%- set win = rows[i:i + 4] -%}
+            {%- if win[-1].s - win[0].s == 3 * 3600 -%}
+            {%- set a = (win | map(attribute='t') | sum) / 4 -%}
+            {%- if w.avg is none or a < w.avg -%}{%- set w.avg = a -%}{%- set w.best = win[0].s -%}{%- endif -%}
+            {%- endif -%}
+            {%- endfor -%}
+            {%- set ns.res = ns.res + [w] -%}
+            {%- endfor -%} {%- set ta = ns.res[0] -%} {%- set ho = ns.res[1] -%} {%- set tavg = (tana | map(attribute='t') | sum) / (tana | count) -%} {%- set havg = (homme | map(attribute='t') | sum) / (homme | count) -%} {%- set vahe = ((havg - tavg) / tavg * 100) | round(0) | int -%} {%- set mx = homme | max(attribute='t') -%} {%- macro eur(v) -%}{{ ('%.1f' | format(v * 100)).replace('.', ',') }}{%- endmacro -%} {%- macro kell(s) -%}{{ s | timestamp_custom('%H:%M', true) }}{%- endmacro -%} {% if ta.best %}Täna veel parim 4 h aken {{ kell(ta.best) }}-{{ kell(ta.best + 14400) }}, keskmine {{ eur(ta.avg) }} s/kWh.{% else %}Täna 4 h akent enam ei mahu.{% endif %} Homme keskmiselt {{ eur(havg) }} s/kWh, {{ vahe | abs }}% {{ 'kallim' if vahe > 0 else 'odavam' }} kui täna. {% if ho.best %}Homme parim 4 h aken {{ kell(ho.best) }}-{{ kell(ho.best + 14400) }}, keskmine {{ eur(ho.avg) }} s/kWh.{% endif %} Kalleim tund {{ kell(mx.s) }}, {{ eur(mx.t) }} s/kWh. {%- endif -%}
+
+      - action: persistent_notification.create
+        data:
+          title: "Elektri hinnad"
+          notification_id: elektri_hind
+          message: "{{ teade }}"
       - action: notify.notify
         data:
           title: "Elektri hinnad"
-          message: >
-            {%- set all = state_attr('sensor.elektri_hinna_prognoos', 'prices') or [] -%}
-            {%- set h = ((as_timestamp(now()) // 3600) * 3600) | int -%}
-            {%- set d0 = (today_at('00:00') | as_timestamp) | int -%}
-            {%- set d1 = d0 + 86400 -%}
-            {#- only the handover needs a human: start + 2 h must land between 08:00 and
-                23:00, so the start itself runs from 06:00 to 21:00, same as the sensor -#}
-            {%- set argus = (today_at('06:00') | as_timestamp) | int -%}
-            {%- set ohtu = ((today_at('21:00') | as_timestamp) | int) + 4 * 3600 -%}
-            {%- set jaanud = all | selectattr('s', 'ge', [h, argus] | max) | selectattr('s', 'lt', ohtu) | list -%}
-            {%- set tana = all | selectattr('s', 'ge', d0) | selectattr('s', 'lt', d1) | list -%}
-            {%- set homme = all | selectattr('s', 'ge', d1) | selectattr('s', 'lt', d1 + 86400) | list -%}
-            {%- set homme_aken = all | selectattr('s', 'ge', argus + 86400) | selectattr('s', 'lt', ohtu + 86400) | list -%}
-            {#- 20 is the DST-tolerant floor: a normal day has 24 rows, the spring day 23 -#}
-            {%- if homme | count >= 20 -%}
-            {%- set ns = namespace(res=[]) -%}
-            {#- one window search, run over both day parts -#}
-            {%- for rows in [jaanud, homme_aken] -%}
-              {%- set w = namespace(best=none, avg=none) -%}
-              {%- for i in range(rows | count - 3) -%}
-                {%- set win = rows[i:i + 4] -%}
-                {%- if win[-1].s - win[0].s == 3 * 3600 -%}
-                  {%- set a = (win | map(attribute='t') | sum) / 4 -%}
-                  {%- if w.avg is none or a < w.avg -%}{%- set w.avg = a -%}{%- set w.best = win[0].s -%}{%- endif -%}
-                {%- endif -%}
-              {%- endfor -%}
-              {%- set ns.res = ns.res + [w] -%}
-            {%- endfor -%}
-            {%- set ta = ns.res[0] -%}
-            {%- set ho = ns.res[1] -%}
-            {%- set tavg = (tana | map(attribute='t') | sum) / (tana | count) -%}
-            {%- set havg = (homme | map(attribute='t') | sum) / (homme | count) -%}
-            {%- set vahe = ((havg - tavg) / tavg * 100) | round(0) | int -%}
-            {%- set mx = homme | max(attribute='t') -%}
-            {%- macro eur(v) -%}{{ ('%.1f' | format(v * 100)).replace('.', ',') }}{%- endmacro -%}
-            {%- macro kell(s) -%}{{ s | timestamp_custom('%H:%M', true) }}{%- endmacro -%}
-            {% if ta.best %}Täna veel parim 4 h aken {{ kell(ta.best) }}-{{ kell(ta.best + 14400) }}, keskmine {{ eur(ta.avg) }} s/kWh.{% else %}Täna 4 h akent enam ei mahu.{% endif %}
-            Homme keskmiselt {{ eur(havg) }} s/kWh, {{ vahe | abs }}% {{ 'kallim' if vahe > 0 else 'odavam' }} kui täna.
-            {% if ho.best %}Parim 4 h aken {{ kell(ho.best) }}-{{ kell(ho.best + 14400) }}, keskmine {{ eur(ho.avg) }} s/kWh.{% endif %}
-            Kalleim tund {{ kell(mx.s) }}, {{ eur(mx.t) }} s/kWh.
-            {%- endif -%}
+          message: "{{ teade }}"
           data:
             tag: elektri_hind
+            clickAction: /lovelace/kodu
+            url: /lovelace/kodu
 
 
 recorder:
