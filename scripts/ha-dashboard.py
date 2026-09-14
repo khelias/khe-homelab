@@ -50,7 +50,7 @@ def flat(card):
     card["grid_options"] = {"columns": 4, "rows": 1}; return card
 def hist(title, ents, hours):
     return {"type": "history-graph", "title": title, "hours_to_show": hours,
-            "entities": [{"entity": e, "name": n} for e, n in ents]}
+            "entities": [{"entity": e, **({"name": n} if n else {})} for e, n in ents]}
 def section(title, cards, column_span=1, **heading):
     return {"type": "grid", "column_span": column_span, "cards": [{"type": "heading", "heading": title, **heading}] + cards}
 def nav(path):
@@ -291,13 +291,15 @@ cameras = {"title": "Kaamerad", "path": "kaamerad", "icon": "mdi:cctv", "type": 
 # that would otherwise need a growing list are template sensors.
 DOORS = [("binary_sensor.peauks", "Peauks"), ("binary_sensor.elutoa_uks", "Elutoa uks"),
          ("binary_sensor.sauna_uks", "Sauna uks")]
-# Display names come from the entity registry, never from here: two of these
-# rooms are named after the children and this repo is public.
-ROOMS = ["binary_sensor.vanemate_tuba", "binary_sensor.magamistuba_2",
-         "binary_sensor.magamistuba_4", "binary_sensor.kontor"]
-MOTION = [("binary_sensor.kook_liikumine", "Köök"), ("binary_sensor.elutuba_liikumine", "Elutuba"),
-          ("binary_sensor.koridor_liikumine", "Koridor"), ("binary_sensor.garaaz_liikumine", "Garaaž"),
-          ("binary_sensor.tehnoruum_liikumine", "Tehnoruum")]
+# Nine PIRs and three contacts. The four zones the installer called
+# MAGAMISTUBA turned out to be motion as well, settled by how often they
+# switch rather than by the label. Names come from the entity registry: two of
+# these rooms are named after the children and this repo is public.
+SHARED = ["binary_sensor.kook_liikumine", "binary_sensor.elutuba_liikumine",
+          "binary_sensor.koridor_liikumine", "binary_sensor.garaaz_liikumine",
+          "binary_sensor.tehnoruum_liikumine"]
+PRIVATE = ["binary_sensor.vanemate_tuba_liikumine", "binary_sensor.magamistuba_2",
+           "binary_sensor.magamistuba_4", "binary_sensor.kontor_liikumine"]
 
 def armed(entity, name):
     return {"type": "tile", "entity": entity, "name": name, "features": [
@@ -325,13 +327,12 @@ valve = {"title": "Valve", "path": "valve", "icon": "mdi:shield-home", "type": "
     # dialog by itself when disarming asks for one.
     section("Valve", [armed("alarm_control_panel.maja", "Maja"),
                       armed("alarm_control_panel.garaaz", "Garaaž")], column_span=2),
-    section("Uksed ja aknad", [
+    section("Uksed", [
         {"type": "horizontal-stack", "cards": [tile(e, n, vertical=True) for e, n in DOORS]},
-        {"type": "horizontal-stack", "cards": [tile(e, vertical=True) for e in ROOMS[:2]]},
-        {"type": "horizontal-stack", "cards": [tile(e, vertical=True) for e in ROOMS[2:]]},
     ], column_span=2),
     section("Liikumine", [
-        hist("Liikumine 24 h", MOTION, 24),
+        hist("Ühisruumid 24 h", [(e, None) for e in SHARED], 24),
+        hist("Toad 24 h", [(e, None) for e in PRIVATE], 24),
     ], column_span=2),
     section("Süsteem", [
         {"type": "horizontal-stack", "cards": [

@@ -61,13 +61,13 @@ template:
              ) | selectattr('state', 'eq', 'on') | list | count > 0 }}
 
   - sensor:
-      # Contacts only. Motion is deliberately excluded: a PIR that is on says
-      # somebody is home, not that the house cannot be armed.
+      # The three real contacts. Measured 2026-09-14: the four zones the
+      # installer labelled MAGAMISTUBA are PIRs, not contacts - each fired
+      # 3-36 times in three hours while the front door fired twice - so they
+      # have no business in an "is the house closed up" count.
       - name: "Valve lahti"
         unique_id: paradox_open_count
         state: >
           {{ expand(
-               'binary_sensor.peauks', 'binary_sensor.elutoa_uks', 'binary_sensor.sauna_uks',
-               'binary_sensor.vanemate_tuba', 'binary_sensor.magamistuba_2',
-               'binary_sensor.kontor', 'binary_sensor.magamistuba_4'
+               'binary_sensor.peauks', 'binary_sensor.elutoa_uks', 'binary_sensor.sauna_uks'
              ) | selectattr('state', 'eq', 'on') | list | count }}
