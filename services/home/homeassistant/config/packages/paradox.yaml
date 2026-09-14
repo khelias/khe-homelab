@@ -124,6 +124,48 @@ automation:
           data:
             tag: valve_rikkumine
 
+  # The keypad's Paanika button raises one of three panics, and the panel
+  # publishes each as its own partition flag. A silent panic deliberately does
+  # not sound the siren and may not move the partition to `triggered`, so the
+  # state-based automation above would miss exactly the case where somebody
+  # pressed the button on purpose and cannot shout. Before the monitoring
+  # contract ended a silent panic went to the centre; now it goes here.
+  # Same notification tag as the alarm, so a panic that also trips the siren
+  # collapses into one notification instead of two.
+  - alias: "Valve: paanikanupp"
+    id: paradox_alert_panic
+    description: "Vaikne, meditsiiniline või tulekahju paanika klahvistikult."
+    mode: single
+    triggers:
+      - trigger: mqtt
+        topic: "paradox/states/partitions/+/silent_alarm"
+        payload: "True"
+      - trigger: mqtt
+        topic: "paradox/states/partitions/+/paramedic_alarm"
+        payload: "True"
+      - trigger: mqtt
+        topic: "paradox/states/partitions/+/pulse_fire_alarm"
+        payload: "True"
+    actions:
+      - action: notify.notify
+        data:
+          title: "PAANIKANUPP"
+          message: >
+            {% set part = trigger.topic.split('/')[3] %}
+            {% set kind = trigger.topic.split('/')[4] %}
+            {{ {'silent_alarm': 'Vaikne häire',
+                'paramedic_alarm': 'Meditsiiniline abikutse',
+                'pulse_fire_alarm': 'Tulekahju'}.get(kind, kind) }}
+            partitsioonis {{ part }}. Keegi vajutas klahvistikul paanikanuppu.
+          data:
+            tag: valve_haire
+            push:
+              sound:
+                name: default
+                critical: 1
+                volume: 1.0
+            interruption-level: critical
+
 template:
   - binary_sensor:
       - name: "Valve rikkumine"
