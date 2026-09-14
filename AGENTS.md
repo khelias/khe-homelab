@@ -71,7 +71,9 @@ docs/              runbook, operational notes, service choices
    A pre-commit gitleaks scan enforces this — install with
    `./scripts/install-hooks.sh` after cloning. Bypassing with
    `--no-verify` is forbidden; if the hook flags a false positive,
-   add an exclusion to `.gitleaks.toml` (none yet) and commit that.
+   add an exclusion to `.gitleaks.toml` and commit that. That file also
+   carries two custom rules for crypt-format password hashes, which the
+   upstream ruleset does not cover.
 3. **Pin Docker image versions.** No `:latest` in production. Renovate
    bumps tags via PR with digest + changelog. Exception: images built on the
    VM by another repo's CI (`games-adventure-proxy:latest`, tagged by the
