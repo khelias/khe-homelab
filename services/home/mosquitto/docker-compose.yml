@@ -4,6 +4,11 @@ services:
     container_name: mosquitto
     restart: unless-stopped
     volumes:
+      # Both mounted read-only so the container never rewrites repo files.
+      # The image's entrypoint chowns /mosquitto/config to uid 1883 at start
+      # and that chown fails on a read-only mount, so passwd must already be
+      # owned by 1883 on the host or the broker cannot read its own password
+      # file: sudo chown 1883:1883 services/home/mosquitto/config/passwd
       - ./config/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
       - ./config/passwd:/mosquitto/config/passwd:ro
       - ./data:/mosquitto/data

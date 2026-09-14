@@ -52,7 +52,7 @@ services/
   media/           Immich, Jellyfin, Audiobookshelf
   productivity/    Nextcloud, Paperless-ngx
   ai/              Ollama, n8n, OpenClaw (+ workspace/ for agent config)
-  home/            Home Assistant
+  home/            Home Assistant, Mosquitto, PAI (Paradox alarm)
   apps/            landing, games hub, pages, trips
   observability/   Loki, Grafana, Alloy, Alertmanager (one stack)
 infrastructure/    Proxmox, network, Cloudflare, Tailscale docs

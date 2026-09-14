@@ -18,7 +18,7 @@ graph TB
     CF -->|15 public hostnames<br/>CF Access OTP on<br/>dash, n8n, openclaw, trips, draft| DVM
     NPM --> DVM
 
-    subgraph DVM[Docker VM · 192.168.0.11 — 25 stacks · 41 containers]
+    subgraph DVM[Docker VM · 192.168.0.11 — 27 stacks · 43 containers]
         direction LR
         Core["<b>Core</b><br/>Homepage · Vaultwarden<br/>Dockge · Uptime Kuma"]
         Media["<b>Media</b><br/>Immich · Jellyfin<br/>Audiobookshelf"]
@@ -186,7 +186,7 @@ All external traffic goes through Cloudflare Tunnel — zero ports open on the r
 ./scripts/mount-nfs-in-vm.sh          # 7. Mount NFS shares at /srv
 ./scripts/harden-docker-vm.sh         # 8. UFW firewall, fail2ban, SSH hardening
 ./scripts/setup-tailscale.sh          # 9. Install Tailscale as subnet router
-./scripts/deploy.sh up                # 10. Start all 25 stacks
+./scripts/deploy.sh up                # 10. Start all 27 stacks
 ```
 
 ## Day-to-day

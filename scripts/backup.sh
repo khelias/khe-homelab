@@ -185,6 +185,8 @@ BIND_MOUNTS=(
   "/srv/data/pages:pages-files"
   "/home/khe/homelab/services/core/adguard/config:adguard-config"
   "/home/khe/homelab/services/core/homepage/config:homepage-config"
+  "/home/khe/homelab/services/home/mosquitto/config:mosquitto-config"
+  "/home/khe/homelab/services/home/pai/config:pai-config"
   "/home/khe/.ssh:ssh-khe"
   "/var/lib/tailscale:tailscale-state"
 )
