@@ -209,6 +209,25 @@ template:
               {% set avg = (today | map(attribute='p') | sum) / (today | count) %}
               {{ ((m[0].p - avg) / avg * 100) | round(0) | int if avg > 0 else 0 }}
             {% endif %}
+          # the level word alone reads as a verdict ("Kallis" = do nothing), which is
+          # wrong when the hour is the cheap end of an expensive day. Absolute band
+          # and position within the day belong in one sentence, and "aga" carries
+          # the case where the two disagree.
+          hinnang: >
+            {%- set h = ((as_timestamp(now()) // 3600) * 3600) | int -%}
+            {%- set all = state_attr('sensor.elektri_hinna_prognoos', 'prices') -%}
+            {%- set m = all | selectattr('s', 'eq', h) | list -%}
+            {%- set paev = all | selectattr('s', 'ge', (today_at('00:00') | as_timestamp) | int)
+                               | selectattr('s', 'lt', (today_at('00:00') | as_timestamp) | int + 86400) | list -%}
+            {%- if m and paev | count > 0 -%}
+              {%- set avg = (paev | map(attribute='p') | sum) / (paev | count) -%}
+              {%- set c = m[0].p * 124 -%}
+              {%- set tase = 'väga odav' if c < 0.26 else 'odav' if c < 2.48 else 'keskmine' if c < 8.51 else 'kõrgevõitu' if c < 14.83 else 'kallis' if c < 27.51 else 'väga kallis' -%}
+              {%- set d = ((m[0].p - avg) / avg * 100) | round(0) | int if avg > 0 else 0 -%}
+              {%- set pos = 'tänase odavaim ots' if d <= -25 else 'alla päeva keskmise' if d <= -10 else 'tänane keskmine' if d < 10 else 'üle päeva keskmise' if d < 25 else 'tänase kalleim ots' -%}
+              {%- set vastuolu = (c >= 8.51 and d <= -10) or (c < 2.48 and d >= 10) -%}
+              {{ tase | capitalize }}{{ ', aga' if vastuolu else ' ja' }} {{ pos }}
+            {%- endif -%}
           tekst: >
             {% set h = ((as_timestamp(now()) // 3600) * 3600) | int %}
             {% set all = state_attr('sensor.elektri_hinna_prognoos', 'prices') %}
@@ -220,7 +239,7 @@ template:
               {% set d = ((m[0].p - avg) / avg * 100) | round(0) | int if avg > 0 else 0 %}
               {% set senti = ('%.1f' | format(m[0].p * 124)).replace('.', ',') %}
               {% set arvel = ('%.1f' | format(m[0].t * 100)).replace('.', ',') %}
-              Börs {{ senti }} s/kWh, {{ d | abs }}% {{ 'üle' if d > 0 else 'alla' }} tänase keskmise. Arvel {{ arvel }} s/kWh.
+              Börs {{ senti }} s/kWh ({{ '+' if d > 0 else '' }}{{ d }}%), arvel {{ arvel }} s/kWh.
             {% endif %}
 
       - name: "Odavaim aken, 2 h"
