@@ -32,6 +32,15 @@ services/home/homeassistant/config/*
 !services/home/homeassistant/config/configuration.yaml
 !services/home/homeassistant/config/packages/
 
+# Mosquitto password file - created on the VM with mosquitto_passwd, never
+# committed. The broker refuses to start without it.
+services/home/mosquitto/config/passwd
+
+# PAI config - holds the IP150+ module password, the panel PC password and the
+# MQTT credentials, i.e. everything needed to disarm the house. Baseline lives
+# in pai.conf.example; copy it on first deploy.
+services/home/pai/config/pai.conf
+
 # Private notes — current security gaps, threat model, anything that would tip off
 # an attacker while still unfixed. Public ROADMAP.md covers direction only.
 .private/

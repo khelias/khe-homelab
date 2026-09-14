@@ -1,0 +1,31 @@
+services:
+  pai:
+    image: paradoxalarminterface/pai:3.7.0@sha256:8e9e94f38b841dded71cadfa02de929b0f8170b1b98ad837ad111cdcf3379e48
+    container_name: pai
+    restart: unless-stopped
+    environment:
+      - TZ=Europe/Tallinn
+      - PAI_CONFIG_FILE=/etc/pai/pai.conf
+    volumes:
+      - ./config/pai.conf:/etc/pai/pai.conf:ro
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - proxy
+    # Process-level only: this catches a dead PAI, not a dropped panel or
+    # broker connection. PAI reconnects on its own, and the real signal is the
+    # alarm entities going unavailable in Home Assistant.
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f 'paradox' >/dev/null || exit 1"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+
+networks:
+  proxy:
+    external: true

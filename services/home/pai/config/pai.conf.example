@@ -1,0 +1,42 @@
+# PAI (Paradox Alarm Interface) - Paradox SP6000 through the IP150+ module.
+#
+# Copy to pai.conf on the VM and fill in the three secrets. pai.conf is
+# gitignored: this repo is public and these credentials disarm the house.
+#
+#   cp pai.conf.example pai.conf && chmod 600 pai.conf
+#
+# Secrets live here rather than in a .env because PAI's environment override
+# only coerces digits to int: booleans arrive as strings and fail the type
+# check, and a numeric password like 0000 would silently become the integer 0.
+
+LOGGING_LEVEL_CONSOLE = 20            # INFO; set 10 for DEBUG while diagnosing
+
+# -- Panel ------------------------------------------------------------------
+CONNECTION_TYPE = 'IP'
+IP_CONNECTION_HOST = '192.168.0.240'
+IP_CONNECTION_PORT = 10000
+IP_CONNECTION_PASSWORD = 'CHANGEME'   # IP150+ module password, factory 'paradox'
+PASSWORD = 'CHANGEME'                 # panel PC password, factory '0000'
+
+# Keep PASSWORD quoted. Verified 2026-09-14: the installer left both Paradox
+# passwords at factory defaults, which is also why they belong in SECURITY.md.
+#
+# The module holds one connection at a time. While PAI is up neither BabyWare
+# nor the BlueEye app can connect, and vice versa - stop PAI before using them.
+
+SYNC_TIME = False                     # writes to the panel; off until decided
+
+# -- MQTT -------------------------------------------------------------------
+MQTT_ENABLE = True
+MQTT_HOST = 'mosquitto'
+MQTT_PORT = 1883
+MQTT_USERNAME = 'pai'
+MQTT_PASSWORD = 'CHANGEME'            # must match services/home/mosquitto/config/passwd
+MQTT_RETAIN = True
+
+MQTT_HOMEASSISTANT_AUTODISCOVERY_ENABLE = True
+MQTT_HOMEASSISTANT_ENTITY_PREFIX = ''
+
+# Uncomment to make Home Assistant demand a code before arm/disarm. Worth it
+# while the panel still answers to factory passwords from anywhere on the LAN.
+# MQTT_HOMEASSISTANT_CODE = 'CHANGEME'

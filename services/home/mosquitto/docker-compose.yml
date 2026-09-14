@@ -1,0 +1,30 @@
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2.0.22@sha256:212f89e1eaeb2c322d6441b64396e3346026674db8fa9c27beac293405c32b3c
+    container_name: mosquitto
+    restart: unless-stopped
+    volumes:
+      - ./config/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./config/passwd:/mosquitto/config/passwd:ro
+      - ./data:/mosquitto/data
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - proxy
+    # Port-level probe only. A protocol-level check would need broker
+    # credentials inside this container; real end-to-end liveness is the
+    # Uptime Kuma MQTT monitor instead.
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 1883 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.25'
+
+networks:
+  proxy:
+    external: true
