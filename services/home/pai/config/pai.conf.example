@@ -37,6 +37,9 @@ MQTT_RETAIN = True
 MQTT_HOMEASSISTANT_AUTODISCOVERY_ENABLE = True
 MQTT_HOMEASSISTANT_ENTITY_PREFIX = ''
 
-# Uncomment to make Home Assistant demand a code before arm/disarm. Worth it
-# while the panel still answers to factory passwords from anywhere on the LAN.
-# MQTT_HOMEASSISTANT_CODE = 'CHANGEME'
+# Decided 2026-09-14: Home Assistant asks for a code before disarming. PAI
+# leaves code_arm_required false, so arming stays one tap and only disarming
+# prompts - the asymmetry is deliberate, arming is never the dangerous
+# direction. Pick something that is NOT the household's keypad PIN: this file
+# holds it in clear text, and the real alarm code should not live here.
+MQTT_HOMEASSISTANT_CODE = 'CHANGEME'
