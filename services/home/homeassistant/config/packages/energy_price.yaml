@@ -152,6 +152,358 @@ template:
           {% set m = state_attr('sensor.elektri_hinna_prognoos', 'prices') | selectattr('s', 'eq', h) | list %}
           {{ m[0].t if m else none }}
 
+  # Human-readable "is it expensive right now" and the cheapest window for a
+  # load you can move (laundry, sauna). Two different price bases on purpose:
+  #
+  # The LEVEL is classified on the bare spot price incl. VAT, because the band
+  # edges below are elektrikell.ee's published thresholds (Gridio derives them
+  # server-side from two years of EE spot history). We have no comparable
+  # history for the full tariffed price, so bands on that number would be
+  # invented. It also keeps the figure comparable with the site the household
+  # already reads.
+  #
+  # The WINDOW search runs on the full billed price `t`, because the grid
+  # tariff is time-of-use here: night is 1.6 c/kWh cheaper excl. VAT, which
+  # genuinely reorders the hours around 22:00 and 07:00. Optimising on spot
+  # alone would pick the wrong window there.
+  - triggers:
+      - trigger: time_pattern
+        minutes: "4"
+      - trigger: state
+        entity_id: sensor.elektri_hinna_prognoos
+      - trigger: homeassistant
+        event: start
+      - trigger: event
+        event_type: khe_price_refresh
+    sensor:
+      - name: "Elektri hinna tase"
+        unique_id: electricity_price_level
+        icon: mdi:gauge
+        availability: "{{ state_attr('sensor.elektri_hinna_prognoos', 'prices') is not none }}"
+        state: >
+          {% set h = ((as_timestamp(now()) // 3600) * 3600) | int %}
+          {% set m = state_attr('sensor.elektri_hinna_prognoos', 'prices') | selectattr('s', 'eq', h) | list %}
+          {% if m %}
+            {% set c = m[0].p * 124 %}
+            {{ 'väga odav' if c < 0.26 else 'odav' if c < 2.48 else 'keskmine' if c < 8.51 else 'kõrgevõitu' if c < 14.83 else 'kallis' if c < 27.51 else 'väga kallis' }}
+          {% endif %}
+        attributes:
+          # spot incl. VAT, the number elektrikell.ee shows
+          senti: >
+            {% set h = ((as_timestamp(now()) // 3600) * 3600) | int %}
+            {% set m = state_attr('sensor.elektri_hinna_prognoos', 'prices') | selectattr('s', 'eq', h) | list %}
+            {{ (m[0].p * 124) | round(2) if m else none }}
+          # what the invoice actually charges for this hour
+          arvel: >
+            {% set h = ((as_timestamp(now()) // 3600) * 3600) | int %}
+            {% set m = state_attr('sensor.elektri_hinna_prognoos', 'prices') | selectattr('s', 'eq', h) | list %}
+            {{ (m[0].t * 100) | round(1) if m else none }}
+          # position within today, so a cheap day does not read the same as a cheap hour
+          vordlus: >
+            {% set h = ((as_timestamp(now()) // 3600) * 3600) | int %}
+            {% set all = state_attr('sensor.elektri_hinna_prognoos', 'prices') %}
+            {% set today = all | selectattr('s', 'ge', (today_at('00:00') | as_timestamp) | int)
+                               | selectattr('s', 'lt', (today_at('00:00') | as_timestamp) | int + 86400) | list %}
+            {% set m = all | selectattr('s', 'eq', h) | list %}
+            {% if m and today | count > 0 %}
+              {% set avg = (today | map(attribute='p') | sum) / (today | count) %}
+              {{ ((m[0].p - avg) / avg * 100) | round(0) | int if avg > 0 else 0 }}
+            {% endif %}
+          tekst: >
+            {% set h = ((as_timestamp(now()) // 3600) * 3600) | int %}
+            {% set all = state_attr('sensor.elektri_hinna_prognoos', 'prices') %}
+            {% set m = all | selectattr('s', 'eq', h) | list %}
+            {% set today = all | selectattr('s', 'ge', (today_at('00:00') | as_timestamp) | int)
+                               | selectattr('s', 'lt', (today_at('00:00') | as_timestamp) | int + 86400) | list %}
+            {% if m and today | count > 0 %}
+              {% set avg = (today | map(attribute='p') | sum) / (today | count) %}
+              {% set d = ((m[0].p - avg) / avg * 100) | round(0) | int if avg > 0 else 0 %}
+              {% set senti = ('%.1f' | format(m[0].p * 124)).replace('.', ',') %}
+              {% set arvel = ('%.1f' | format(m[0].t * 100)).replace('.', ',') %}
+              Börs {{ senti }} s/kWh, {{ d | abs }}% {{ 'üle' if d > 0 else 'alla' }} tänase keskmise. Arvel {{ arvel }} s/kWh.
+            {% endif %}
+
+      - name: "Odavaim aken, 2 h"
+        unique_id: cheapest_window_2h
+        device_class: timestamp
+        icon: mdi:washing-machine
+        availability: "{{ state_attr('sensor.elektri_hinna_prognoos', 'prices') is not none }}"
+        state: >
+          {%- set n = 2 -%}
+          {%- set all = state_attr('sensor.elektri_hinna_prognoos', 'prices') or [] -%}
+          {%- set h = ((as_timestamp(now()) // 3600) * 3600) | int -%}
+          {%- set rows = all | selectattr('s', 'ge', h) | selectattr('s', 'lt', h + 86400) | list -%}
+          {%- set ns = namespace(best=none, avg=none) -%}
+          {%- for i in range(rows | count - n + 1) -%}
+            {%- set win = rows[i:i + n] -%}
+            {#- a window must be contiguous: n hours span exactly n-1 hours -#}
+            {%- if win[-1].s - win[0].s == (n - 1) * 3600 -%}
+              {%- set a = (win | map(attribute='t') | sum) / n -%}
+              {%- if ns.avg is none or a < ns.avg -%}{%- set ns.avg = a -%}{%- set ns.best = win[0].s -%}{%- endif -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- set nowwin = rows[0:n] -%}
+          {%- set base = (nowwin | map(attribute='t') | sum) / n if nowwin | count == n and nowwin[-1].s - nowwin[0].s == (n - 1) * 3600 else none -%}
+          {{ ns.best | timestamp_custom('%Y-%m-%dT%H:%M:%S%z', true) if ns.best else none }}
+        attributes:
+          lopp: >
+            {%- set n = 2 -%}
+            {%- set all = state_attr('sensor.elektri_hinna_prognoos', 'prices') or [] -%}
+            {%- set h = ((as_timestamp(now()) // 3600) * 3600) | int -%}
+            {%- set rows = all | selectattr('s', 'ge', h) | selectattr('s', 'lt', h + 86400) | list -%}
+            {%- set ns = namespace(best=none, avg=none) -%}
+            {%- for i in range(rows | count - n + 1) -%}
+              {%- set win = rows[i:i + n] -%}
+              {#- a window must be contiguous: n hours span exactly n-1 hours -#}
+              {%- if win[-1].s - win[0].s == (n - 1) * 3600 -%}
+                {%- set a = (win | map(attribute='t') | sum) / n -%}
+                {%- if ns.avg is none or a < ns.avg -%}{%- set ns.avg = a -%}{%- set ns.best = win[0].s -%}{%- endif -%}
+              {%- endif -%}
+            {%- endfor -%}
+            {%- set nowwin = rows[0:n] -%}
+            {%- set base = (nowwin | map(attribute='t') | sum) / n if nowwin | count == n and nowwin[-1].s - nowwin[0].s == (n - 1) * 3600 else none -%}
+            {{ (ns.best + n * 3600) | timestamp_custom('%H:%M', true) if ns.best else none }}
+          keskmine: >
+            {%- set n = 2 -%}
+            {%- set all = state_attr('sensor.elektri_hinna_prognoos', 'prices') or [] -%}
+            {%- set h = ((as_timestamp(now()) // 3600) * 3600) | int -%}
+            {%- set rows = all | selectattr('s', 'ge', h) | selectattr('s', 'lt', h + 86400) | list -%}
+            {%- set ns = namespace(best=none, avg=none) -%}
+            {%- for i in range(rows | count - n + 1) -%}
+              {%- set win = rows[i:i + n] -%}
+              {#- a window must be contiguous: n hours span exactly n-1 hours -#}
+              {%- if win[-1].s - win[0].s == (n - 1) * 3600 -%}
+                {%- set a = (win | map(attribute='t') | sum) / n -%}
+                {%- if ns.avg is none or a < ns.avg -%}{%- set ns.avg = a -%}{%- set ns.best = win[0].s -%}{%- endif -%}
+              {%- endif -%}
+            {%- endfor -%}
+            {%- set nowwin = rows[0:n] -%}
+            {%- set base = (nowwin | map(attribute='t') | sum) / n if nowwin | count == n and nowwin[-1].s - nowwin[0].s == (n - 1) * 3600 else none -%}
+            {{ (ns.avg * 100) | round(1) if ns.avg else none }}
+          vahe: >
+            {%- set n = 2 -%}
+            {%- set all = state_attr('sensor.elektri_hinna_prognoos', 'prices') or [] -%}
+            {%- set h = ((as_timestamp(now()) // 3600) * 3600) | int -%}
+            {%- set rows = all | selectattr('s', 'ge', h) | selectattr('s', 'lt', h + 86400) | list -%}
+            {%- set ns = namespace(best=none, avg=none) -%}
+            {%- for i in range(rows | count - n + 1) -%}
+              {%- set win = rows[i:i + n] -%}
+              {#- a window must be contiguous: n hours span exactly n-1 hours -#}
+              {%- if win[-1].s - win[0].s == (n - 1) * 3600 -%}
+                {%- set a = (win | map(attribute='t') | sum) / n -%}
+                {%- if ns.avg is none or a < ns.avg -%}{%- set ns.avg = a -%}{%- set ns.best = win[0].s -%}{%- endif -%}
+              {%- endif -%}
+            {%- endfor -%}
+            {%- set nowwin = rows[0:n] -%}
+            {%- set base = (nowwin | map(attribute='t') | sum) / n if nowwin | count == n and nowwin[-1].s - nowwin[0].s == (n - 1) * 3600 else none -%}
+            {{ ((base - ns.avg) / base * 100) | round(0) | int if base and ns.avg and base > 0 else none }}
+          tekst: >
+            {%- set n = 2 -%}
+            {%- set all = state_attr('sensor.elektri_hinna_prognoos', 'prices') or [] -%}
+            {%- set h = ((as_timestamp(now()) // 3600) * 3600) | int -%}
+            {%- set rows = all | selectattr('s', 'ge', h) | selectattr('s', 'lt', h + 86400) | list -%}
+            {%- set ns = namespace(best=none, avg=none) -%}
+            {%- for i in range(rows | count - n + 1) -%}
+              {%- set win = rows[i:i + n] -%}
+              {#- a window must be contiguous: n hours span exactly n-1 hours -#}
+              {%- if win[-1].s - win[0].s == (n - 1) * 3600 -%}
+                {%- set a = (win | map(attribute='t') | sum) / n -%}
+                {%- if ns.avg is none or a < ns.avg -%}{%- set ns.avg = a -%}{%- set ns.best = win[0].s -%}{%- endif -%}
+              {%- endif -%}
+            {%- endfor -%}
+            {%- set nowwin = rows[0:n] -%}
+            {%- set base = (nowwin | map(attribute='t') | sum) / n if nowwin | count == n and nowwin[-1].s - nowwin[0].s == (n - 1) * 3600 else none -%}
+            {%- if ns.best -%}
+              {%- set algus = ns.best | timestamp_custom('%H:%M', true) -%}
+              {%- set lopp = (ns.best + n * 3600) | timestamp_custom('%H:%M', true) -%}
+              {%- set homme = (ns.best | timestamp_custom('%Y-%m-%d', true)) != now().strftime('%Y-%m-%d') -%}
+              {%- set hind = ('%.1f' | format(ns.avg * 100)).replace('.', ',') -%}
+              {%- set d = ((base - ns.avg) / base * 100) | round(0) | int if base and base > 0 else 0 -%}
+              {%- if ns.best == h -%}
+                {#- "now is cheapest" reads as a recommendation; when it is the only candidate left it is not one -#}
+                {%- if rows | count - n + 1 > 1 -%}
+                  Praegu, keskmine {{ hind }} s/kWh.
+                {%- else -%}
+                  Paremat ei tule, keskmine {{ hind }} s/kWh.
+                {%- endif -%}
+              {%- else -%}
+                {{ 'Homme' if homme else 'Kell' }} {{ algus }}-{{ lopp }}, keskmine {{ hind }} s/kWh{% if d > 0 %}, {{ d }}% odavam kui praegu alustades{% endif %}.
+              {%- endif -%}
+            {%- else -%}
+              Homseid hindu veel ei ole.
+            {%- endif -%}
+      - name: "Odavaim aken, 3 h"
+        unique_id: cheapest_window_3h
+        device_class: timestamp
+        icon: mdi:hot-tub
+        availability: "{{ state_attr('sensor.elektri_hinna_prognoos', 'prices') is not none }}"
+        state: >
+          {%- set n = 3 -%}
+          {%- set all = state_attr('sensor.elektri_hinna_prognoos', 'prices') or [] -%}
+          {%- set h = ((as_timestamp(now()) // 3600) * 3600) | int -%}
+          {%- set dayend = ((today_at('00:00') | as_timestamp) | int) + 86400 -%}
+          {%- set rows = all | selectattr('s', 'ge', h) | selectattr('s', 'lt', dayend) | list -%}
+          {%- if rows | count < n -%}
+            {%- set rows = all | selectattr('s', 'ge', h) | selectattr('s', 'lt', h + 86400) | list -%}
+          {%- endif -%}
+          {%- set ns = namespace(best=none, avg=none) -%}
+          {%- for i in range(rows | count - n + 1) -%}
+            {%- set win = rows[i:i + n] -%}
+            {#- a window must be contiguous: n hours span exactly n-1 hours -#}
+            {%- if win[-1].s - win[0].s == (n - 1) * 3600 -%}
+              {%- set a = (win | map(attribute='t') | sum) / n -%}
+              {%- if ns.avg is none or a < ns.avg -%}{%- set ns.avg = a -%}{%- set ns.best = win[0].s -%}{%- endif -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- set nowwin = rows[0:n] -%}
+          {%- set base = (nowwin | map(attribute='t') | sum) / n if nowwin | count == n and nowwin[-1].s - nowwin[0].s == (n - 1) * 3600 else none -%}
+          {{ ns.best | timestamp_custom('%Y-%m-%dT%H:%M:%S%z', true) if ns.best else none }}
+        attributes:
+          lopp: >
+            {%- set n = 3 -%}
+            {%- set all = state_attr('sensor.elektri_hinna_prognoos', 'prices') or [] -%}
+            {%- set h = ((as_timestamp(now()) // 3600) * 3600) | int -%}
+            {%- set dayend = ((today_at('00:00') | as_timestamp) | int) + 86400 -%}
+            {%- set rows = all | selectattr('s', 'ge', h) | selectattr('s', 'lt', dayend) | list -%}
+            {%- if rows | count < n -%}
+              {%- set rows = all | selectattr('s', 'ge', h) | selectattr('s', 'lt', h + 86400) | list -%}
+            {%- endif -%}
+            {%- set ns = namespace(best=none, avg=none) -%}
+            {%- for i in range(rows | count - n + 1) -%}
+              {%- set win = rows[i:i + n] -%}
+              {#- a window must be contiguous: n hours span exactly n-1 hours -#}
+              {%- if win[-1].s - win[0].s == (n - 1) * 3600 -%}
+                {%- set a = (win | map(attribute='t') | sum) / n -%}
+                {%- if ns.avg is none or a < ns.avg -%}{%- set ns.avg = a -%}{%- set ns.best = win[0].s -%}{%- endif -%}
+              {%- endif -%}
+            {%- endfor -%}
+            {%- set nowwin = rows[0:n] -%}
+            {%- set base = (nowwin | map(attribute='t') | sum) / n if nowwin | count == n and nowwin[-1].s - nowwin[0].s == (n - 1) * 3600 else none -%}
+            {{ (ns.best + n * 3600) | timestamp_custom('%H:%M', true) if ns.best else none }}
+          keskmine: >
+            {%- set n = 3 -%}
+            {%- set all = state_attr('sensor.elektri_hinna_prognoos', 'prices') or [] -%}
+            {%- set h = ((as_timestamp(now()) // 3600) * 3600) | int -%}
+            {%- set dayend = ((today_at('00:00') | as_timestamp) | int) + 86400 -%}
+            {%- set rows = all | selectattr('s', 'ge', h) | selectattr('s', 'lt', dayend) | list -%}
+            {%- if rows | count < n -%}
+              {%- set rows = all | selectattr('s', 'ge', h) | selectattr('s', 'lt', h + 86400) | list -%}
+            {%- endif -%}
+            {%- set ns = namespace(best=none, avg=none) -%}
+            {%- for i in range(rows | count - n + 1) -%}
+              {%- set win = rows[i:i + n] -%}
+              {#- a window must be contiguous: n hours span exactly n-1 hours -#}
+              {%- if win[-1].s - win[0].s == (n - 1) * 3600 -%}
+                {%- set a = (win | map(attribute='t') | sum) / n -%}
+                {%- if ns.avg is none or a < ns.avg -%}{%- set ns.avg = a -%}{%- set ns.best = win[0].s -%}{%- endif -%}
+              {%- endif -%}
+            {%- endfor -%}
+            {%- set nowwin = rows[0:n] -%}
+            {%- set base = (nowwin | map(attribute='t') | sum) / n if nowwin | count == n and nowwin[-1].s - nowwin[0].s == (n - 1) * 3600 else none -%}
+            {{ (ns.avg * 100) | round(1) if ns.avg else none }}
+          vahe: >
+            {%- set n = 3 -%}
+            {%- set all = state_attr('sensor.elektri_hinna_prognoos', 'prices') or [] -%}
+            {%- set h = ((as_timestamp(now()) // 3600) * 3600) | int -%}
+            {%- set dayend = ((today_at('00:00') | as_timestamp) | int) + 86400 -%}
+            {%- set rows = all | selectattr('s', 'ge', h) | selectattr('s', 'lt', dayend) | list -%}
+            {%- if rows | count < n -%}
+              {%- set rows = all | selectattr('s', 'ge', h) | selectattr('s', 'lt', h + 86400) | list -%}
+            {%- endif -%}
+            {%- set ns = namespace(best=none, avg=none) -%}
+            {%- for i in range(rows | count - n + 1) -%}
+              {%- set win = rows[i:i + n] -%}
+              {#- a window must be contiguous: n hours span exactly n-1 hours -#}
+              {%- if win[-1].s - win[0].s == (n - 1) * 3600 -%}
+                {%- set a = (win | map(attribute='t') | sum) / n -%}
+                {%- if ns.avg is none or a < ns.avg -%}{%- set ns.avg = a -%}{%- set ns.best = win[0].s -%}{%- endif -%}
+              {%- endif -%}
+            {%- endfor -%}
+            {%- set nowwin = rows[0:n] -%}
+            {%- set base = (nowwin | map(attribute='t') | sum) / n if nowwin | count == n and nowwin[-1].s - nowwin[0].s == (n - 1) * 3600 else none -%}
+            {{ ((base - ns.avg) / base * 100) | round(0) | int if base and ns.avg and base > 0 else none }}
+          tekst: >
+            {%- set n = 3 -%}
+            {%- set all = state_attr('sensor.elektri_hinna_prognoos', 'prices') or [] -%}
+            {%- set h = ((as_timestamp(now()) // 3600) * 3600) | int -%}
+            {%- set dayend = ((today_at('00:00') | as_timestamp) | int) + 86400 -%}
+            {%- set rows = all | selectattr('s', 'ge', h) | selectattr('s', 'lt', dayend) | list -%}
+            {%- if rows | count < n -%}
+              {%- set rows = all | selectattr('s', 'ge', h) | selectattr('s', 'lt', h + 86400) | list -%}
+            {%- endif -%}
+            {%- set ns = namespace(best=none, avg=none) -%}
+            {%- for i in range(rows | count - n + 1) -%}
+              {%- set win = rows[i:i + n] -%}
+              {#- a window must be contiguous: n hours span exactly n-1 hours -#}
+              {%- if win[-1].s - win[0].s == (n - 1) * 3600 -%}
+                {%- set a = (win | map(attribute='t') | sum) / n -%}
+                {%- if ns.avg is none or a < ns.avg -%}{%- set ns.avg = a -%}{%- set ns.best = win[0].s -%}{%- endif -%}
+              {%- endif -%}
+            {%- endfor -%}
+            {%- set nowwin = rows[0:n] -%}
+            {%- set base = (nowwin | map(attribute='t') | sum) / n if nowwin | count == n and nowwin[-1].s - nowwin[0].s == (n - 1) * 3600 else none -%}
+            {%- if ns.best -%}
+              {%- set algus = ns.best | timestamp_custom('%H:%M', true) -%}
+              {%- set lopp = (ns.best + n * 3600) | timestamp_custom('%H:%M', true) -%}
+              {%- set homme = (ns.best | timestamp_custom('%Y-%m-%d', true)) != now().strftime('%Y-%m-%d') -%}
+              {%- set hind = ('%.1f' | format(ns.avg * 100)).replace('.', ',') -%}
+              {%- set d = ((base - ns.avg) / base * 100) | round(0) | int if base and base > 0 else 0 -%}
+              {%- if ns.best == h -%}
+                {#- "now is cheapest" reads as a recommendation; when it is the only candidate left it is not one -#}
+                {%- if rows | count - n + 1 > 1 -%}
+                  Praegu, keskmine {{ hind }} s/kWh.
+                {%- else -%}
+                  Paremat ei tule, keskmine {{ hind }} s/kWh.
+                {%- endif -%}
+              {%- else -%}
+                {{ 'Homme' if homme else 'Kell' }} {{ algus }}-{{ lopp }}, keskmine {{ hind }} s/kWh{% if d > 0 %}, {{ d }}% odavam kui praegu alustades{% endif %}.
+              {%- endif -%}
+            {%- else -%}
+              Homseid hindu veel ei ole.
+            {%- endif -%}
+
+# One digest a day, when tomorrow's prices land (~14:00 EET). Triggered off the
+# forecast sensor rather than the Nord Pool flag so the attribute is already
+# rebuilt when this reads it; `from` keeps a restart from re-sending it. The tag
+# makes each day's message replace the previous one instead of stacking.
+automation:
+  - alias: "Elekter: homsed hinnad"
+    id: khe_price_tomorrow_digest
+    description: "Homse päeva keskmine, odavaim 3 h aken ja kalleim tund."
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: sensor.elektri_hinna_prognoos
+        from: "ainult täna"
+        to: "täna ja homme"
+    actions:
+      - action: notify.notify
+        data:
+          title: "Homme elekter"
+          message: >
+            {%- set all = state_attr('sensor.elektri_hinna_prognoos', 'prices') or [] -%}
+            {%- set d0 = ((today_at('00:00') | as_timestamp) | int) + 86400 -%}
+            {%- set rows = all | selectattr('s', 'ge', d0) | selectattr('s', 'lt', d0 + 86400) | list -%}
+            {#- 20 is the DST-tolerant floor: a normal day has 24 rows, the spring day 23 -#}
+            {%- if rows | count >= 20 -%}
+              {%- set avg = (rows | map(attribute='t') | sum) / (rows | count) -%}
+              {%- set mx = rows | max(attribute='t') -%}
+              {%- set ns = namespace(best=none, avg=none) -%}
+              {%- for i in range(rows | count - 2) -%}
+                {%- set win = rows[i:i + 3] -%}
+                {%- if win[-1].s - win[0].s == 2 * 3600 -%}
+                  {%- set a = (win | map(attribute='t') | sum) / 3 -%}
+                  {%- if ns.avg is none or a < ns.avg -%}{%- set ns.avg = a -%}{%- set ns.best = win[0].s -%}{%- endif -%}
+                {%- endif -%}
+              {%- endfor -%}
+            Keskmine {{ ('%.1f' | format(avg * 100)).replace('.', ',') }} s/kWh.
+            {% if ns.best %}Odavaim 3 h kell {{ ns.best | timestamp_custom('%H:%M', true) }}-{{ (ns.best + 3 * 3600) | timestamp_custom('%H:%M', true) }}, keskmine {{ ('%.1f' | format(ns.avg * 100)).replace('.', ',') }} s/kWh.{% endif %}
+            Kalleim tund {{ mx.s | timestamp_custom('%H:%M', true) }}, {{ ('%.1f' | format(mx.t * 100)).replace('.', ',') }} s/kWh.
+            {%- endif -%}
+          data:
+            tag: elektri_hind
+
+
 recorder:
   exclude:
     entities:

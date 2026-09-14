@@ -56,6 +56,15 @@ def section(title, cards, column_span=1, **heading):
 def nav(path):
     return {"tap_action": {"action": "navigate", "navigation_path": path}}
 
+# The "what should I do now" answer, above the curve. Two price bases on purpose:
+# the level word is classified on the bare spot price (see energy_price.yaml), the
+# windows are searched on the billed price, so the text names both numbers.
+price_now = {"type": "markdown", "content": (
+    "**{{ states('sensor.elektri_hinna_tase') | capitalize }}.** "
+    "{{ state_attr('sensor.elektri_hinna_tase', 'tekst') }}\n\n"
+    "Pesumasin 2 h: {{ state_attr('sensor.odavaim_aken_2_h', 'tekst') }}\n\n"
+    "Saun 3 h: {{ state_attr('sensor.odavaim_aken_3_h', 'tekst') }}")}
+
 price_chart = {
     "type": "custom:apexcharts-card", "graph_span": "2d", "span": {"start": "day"},
     "header": {"show": True, "title": "Hind täna ja homme, €/kWh (tunni keskmine)", "show_states": False},
@@ -141,6 +150,7 @@ home = {"title": "Kodu", "path": "kodu", "icon": "mdi:home", "type": "sections",
  ],
  "sections": [
     section("Elekter", [
+        price_now,
         price_chart,
         {"type": "horizontal-stack", "cards": [
             nowrite("sensor.maja_tana", "Täna", state_content=["state", "kulu"], vertical=True),
