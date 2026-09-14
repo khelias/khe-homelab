@@ -131,14 +131,14 @@ def daikin_bars(title, entity, span, end_unit, js, fmt):
 
 
 MODE = "select.komfovent_operation_mode"
-def action_tile(entity, name, icon, color, perform_action, data, text):
+def action_tile(entity, name, icon, color, perform_action, data, text, **kw):
     """Quick-mode tile: same size as the other tiles, state hidden, tap runs an action after a confirmation."""
     act = {"action": "perform-action", "perform_action": perform_action, "target": {"entity_id": entity},
            "data": data, "confirmation": {"text": text}}
-    return tile(entity, name, icon=icon, color=color, hide_state=True, tap_action=act, icon_tap_action=act)
-def mode_button(name, icon, option, color=None):
+    return tile(entity, name, icon=icon, color=color, hide_state=True, tap_action=act, icon_tap_action=act, **kw)
+def mode_button(name, icon, option, color=None, **kw):
     return action_tile(MODE, name, icon, color, "select.select_option", {"option": option},
-                       f"Ventilatsioon režiimile {name}?")
+                       f"Ventilatsioon režiimile {name}?", **kw)
 
 def note(text):
     return {"type": "heading", "heading": text, "heading_style": "subtitle"}
@@ -197,8 +197,12 @@ home = {"title": "Kodu", "path": "kodu", "icon": "mdi:home", "type": "sections",
         when_on("binary_sensor.hot_water_tank_state", "Boileri viga"),
     ], **nav("/lovelace/soojuspump")),
     section("Ventilatsioon", [
-        mode_button("Köök", "mdi:stove", "kitchen", "orange"),
-        mode_button("Tavaline", "mdi:fan", "normal", "green"),
+        # Kitchen mode is 80/20 on purpose: it pressurises the kitchen so the cooker hood does the
+        # extraction. Boost is 100/100 and is the mode that clears the whole house, which is
+        # what a sauna or a smoking oven needs. Both belong here; they are not the same tool.
+        third(mode_button("Tavaline", "mdi:fan", "normal", "green", vertical=True)),
+        third(mode_button("Köök", "mdi:stove", "kitchen", "orange", vertical=True)),
+        third(mode_button("Boost", "mdi:fan-plus", "boost", "purple", vertical=True)),
         third(tile("sensor.komfovent_supply_temperature", "Sissepuhe", vertical=True)),
         third(tile("sensor.komfovent_extract_temperature", "Väljatõmme", vertical=True)),
         third(tile("sensor.komfovent_panel_1_humidity", "Niiskus", vertical=True)),
@@ -493,14 +497,18 @@ komfovent_seaded = {"title": "Ventilatsiooni seaded", "path": "komfovent-seaded"
         confirm("switch.komfovent_eco_free_heating_cooling", "Suvine vaba jahutus", "Sees: soojusvaheti seisab, kui välisõhk on toast jahedam. Talvel peab olema väljas. Kindel?"),
         tile("select.komfovent_eco_heat_recovery", "Soojustagastus"),  # reads back as unknown; tap opens more-info where the option can still be set
         tile("number.komfovent_eco_min_supply_temperature", "Min sissepuhe"),
+        # 30 C since 2026-09-14, was 25. The ceiling applies in every mode, and with the exchanger
+        # at 100 % the extract air alone pushes the supply past 25 C whenever the house is warm.
+        # ECO then had no lever left but to throttle the fans, down to 25 % during a sauna evening.
         tile("number.komfovent_eco_max_supply_temperature", "Max sissepuhe"),
     ]),
     section("Tavaline", [mode_row("normal")]),
     section("Köök", [mode_row("kitchen", timer=True)]),
+    section("Boost", [mode_row("boost")]),
     section("Kamin", [mode_row("fireplace", timer=True)]),
     section("Eemal", [mode_row("away")]),
     section("Harva kasutatavad režiimid",
-        [note("Intensiivne"), mode_row("intensive"), note("Boost"), mode_row("boost"), note("Override"), mode_row("override", timer=True),
+        [note("Intensiivne"), mode_row("intensive"), note("Override"), mode_row("override", timer=True),
         {"type": "horizontal-stack", "cards": [
             tile("number.komfovent_override_delay_start", "Viide start", vertical=True),
             tile("number.komfovent_override_delay_stop", "Viide stopp", vertical=True)]},
