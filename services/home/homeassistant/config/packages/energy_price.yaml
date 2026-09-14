@@ -476,6 +476,15 @@ automation:
         entity_id: sensor.elektri_hinna_prognoos
         from: "ainult täna"
         to: "täna ja homme"
+    # the trigger only says tomorrow exists, not that it is a whole day; without
+    # this a partial publication would push an empty message (the message body
+    # guards the same way, so a manual run renders nothing rather than garbage)
+    conditions:
+      - condition: template
+        value_template: >
+          {%- set d1 = ((today_at('00:00') | as_timestamp) | int) + 86400 -%}
+          {{ (state_attr('sensor.elektri_hinna_prognoos', 'prices') or [])
+             | selectattr('s', 'ge', d1) | selectattr('s', 'lt', d1 + 86400) | list | count >= 20 }}
     actions:
       - action: notify.notify
         data:
