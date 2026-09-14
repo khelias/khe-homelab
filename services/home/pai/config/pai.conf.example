@@ -37,9 +37,10 @@ MQTT_RETAIN = True
 MQTT_HOMEASSISTANT_AUTODISCOVERY_ENABLE = True
 MQTT_HOMEASSISTANT_ENTITY_PREFIX = ''
 
-# Decided 2026-09-14: Home Assistant asks for a code before disarming. PAI
-# leaves code_arm_required false, so arming stays one tap and only disarming
-# prompts - the asymmetry is deliberate, arming is never the dangerous
-# direction. Pick something that is NOT the household's keypad PIN: this file
-# holds it in clear text, and the real alarm code should not live here.
+# Decided 2026-09-14: Home Assistant asks for a code before arm and disarm.
+# The intent was a code on disarm only, since arming is never the dangerous
+# direction, but setting this makes PAI publish code_arm_required true as well
+# and it exposes no separate switch for that. Measured, not assumed.
+# Pick something that is NOT the household's keypad PIN: this file holds it in
+# clear text, and the real alarm code should not live here.
 MQTT_HOMEASSISTANT_CODE = 'CHANGEME'
