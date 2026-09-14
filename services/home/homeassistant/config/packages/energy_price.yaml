@@ -252,7 +252,7 @@ template:
           {%- set h = ((as_timestamp(now()) // 3600) * 3600) | int -%}
           {#- wash, then a person moving the load into the dryer, then the dryer. Only the
               handover needs a human, so the constraint is that start + 2 h lands between
-              07:00 and 23:00; the dryer may finish unattended at 01:00. A 05:00 start
+              08:00 and 23:00 (the household is up 08-23); the dryer finishes alone at 01:00. A 06:00 start
               assumes the washer's delay timer was set the evening before.
               The band constrains the START, not the whole block, and the window may run past
               it. The answer is the next day that still fits one, not the cheapest day in the
@@ -262,7 +262,7 @@ template:
           {%- set ns = namespace(best=none, avg=none, halvim=none, paev=none) -%}
           {%- for off in [0, 1] -%}
             {%- if ns.best is none -%}
-              {%- set esimene = ((today_at('05:00') | as_timestamp) | int) + off * 86400 -%}
+              {%- set esimene = ((today_at('06:00') | as_timestamp) | int) + off * 86400 -%}
               {%- set viimane = ((today_at('21:00') | as_timestamp) | int) + off * 86400 -%}
               {%- set rows = all | selectattr('s', 'ge', [h, esimene] | max) | selectattr('s', 'lt', viimane + n * 3600) | list -%}
               {%- for i in range(rows | count - n + 1) -%}
@@ -283,7 +283,7 @@ template:
             {%- set h = ((as_timestamp(now()) // 3600) * 3600) | int -%}
             {#- wash, then a person moving the load into the dryer, then the dryer. Only the
                 handover needs a human, so the constraint is that start + 2 h lands between
-                07:00 and 23:00; the dryer may finish unattended at 01:00. A 05:00 start
+                08:00 and 23:00 (the household is up 08-23); the dryer finishes alone at 01:00. A 06:00 start
                 assumes the washer's delay timer was set the evening before.
                 The band constrains the START, not the whole block, and the window may run past
                 it. The answer is the next day that still fits one, not the cheapest day in the
@@ -293,7 +293,7 @@ template:
             {%- set ns = namespace(best=none, avg=none, halvim=none, paev=none) -%}
             {%- for off in [0, 1] -%}
               {%- if ns.best is none -%}
-                {%- set esimene = ((today_at('05:00') | as_timestamp) | int) + off * 86400 -%}
+                {%- set esimene = ((today_at('06:00') | as_timestamp) | int) + off * 86400 -%}
                 {%- set viimane = ((today_at('21:00') | as_timestamp) | int) + off * 86400 -%}
                 {%- set rows = all | selectattr('s', 'ge', [h, esimene] | max) | selectattr('s', 'lt', viimane + n * 3600) | list -%}
                 {%- for i in range(rows | count - n + 1) -%}
@@ -313,7 +313,7 @@ template:
             {%- set h = ((as_timestamp(now()) // 3600) * 3600) | int -%}
             {#- wash, then a person moving the load into the dryer, then the dryer. Only the
                 handover needs a human, so the constraint is that start + 2 h lands between
-                07:00 and 23:00; the dryer may finish unattended at 01:00. A 05:00 start
+                08:00 and 23:00 (the household is up 08-23); the dryer finishes alone at 01:00. A 06:00 start
                 assumes the washer's delay timer was set the evening before.
                 The band constrains the START, not the whole block, and the window may run past
                 it. The answer is the next day that still fits one, not the cheapest day in the
@@ -323,7 +323,7 @@ template:
             {%- set ns = namespace(best=none, avg=none, halvim=none, paev=none) -%}
             {%- for off in [0, 1] -%}
               {%- if ns.best is none -%}
-                {%- set esimene = ((today_at('05:00') | as_timestamp) | int) + off * 86400 -%}
+                {%- set esimene = ((today_at('06:00') | as_timestamp) | int) + off * 86400 -%}
                 {%- set viimane = ((today_at('21:00') | as_timestamp) | int) + off * 86400 -%}
                 {%- set rows = all | selectattr('s', 'ge', [h, esimene] | max) | selectattr('s', 'lt', viimane + n * 3600) | list -%}
                 {%- for i in range(rows | count - n + 1) -%}
@@ -343,7 +343,7 @@ template:
             {%- set h = ((as_timestamp(now()) // 3600) * 3600) | int -%}
             {#- wash, then a person moving the load into the dryer, then the dryer. Only the
                 handover needs a human, so the constraint is that start + 2 h lands between
-                07:00 and 23:00; the dryer may finish unattended at 01:00. A 05:00 start
+                08:00 and 23:00 (the household is up 08-23); the dryer finishes alone at 01:00. A 06:00 start
                 assumes the washer's delay timer was set the evening before.
                 The band constrains the START, not the whole block, and the window may run past
                 it. The answer is the next day that still fits one, not the cheapest day in the
@@ -353,7 +353,7 @@ template:
             {%- set ns = namespace(best=none, avg=none, halvim=none, paev=none) -%}
             {%- for off in [0, 1] -%}
               {%- if ns.best is none -%}
-                {%- set esimene = ((today_at('05:00') | as_timestamp) | int) + off * 86400 -%}
+                {%- set esimene = ((today_at('06:00') | as_timestamp) | int) + off * 86400 -%}
                 {%- set viimane = ((today_at('21:00') | as_timestamp) | int) + off * 86400 -%}
                 {%- set rows = all | selectattr('s', 'ge', [h, esimene] | max) | selectattr('s', 'lt', viimane + n * 3600) | list -%}
                 {%- for i in range(rows | count - n + 1) -%}
@@ -373,7 +373,7 @@ template:
             {%- set h = ((as_timestamp(now()) // 3600) * 3600) | int -%}
             {#- wash, then a person moving the load into the dryer, then the dryer. Only the
                 handover needs a human, so the constraint is that start + 2 h lands between
-                07:00 and 23:00; the dryer may finish unattended at 01:00. A 05:00 start
+                08:00 and 23:00 (the household is up 08-23); the dryer finishes alone at 01:00. A 06:00 start
                 assumes the washer's delay timer was set the evening before.
                 The band constrains the START, not the whole block, and the window may run past
                 it. The answer is the next day that still fits one, not the cheapest day in the
@@ -383,7 +383,7 @@ template:
             {%- set ns = namespace(best=none, avg=none, halvim=none, paev=none) -%}
             {%- for off in [0, 1] -%}
               {%- if ns.best is none -%}
-                {%- set esimene = ((today_at('05:00') | as_timestamp) | int) + off * 86400 -%}
+                {%- set esimene = ((today_at('06:00') | as_timestamp) | int) + off * 86400 -%}
                 {%- set viimane = ((today_at('21:00') | as_timestamp) | int) + off * 86400 -%}
                 {%- set rows = all | selectattr('s', 'ge', [h, esimene] | max) | selectattr('s', 'lt', viimane + n * 3600) | list -%}
                 {%- for i in range(rows | count - n + 1) -%}
@@ -592,9 +592,9 @@ automation:
             {%- set h = ((as_timestamp(now()) // 3600) * 3600) | int -%}
             {%- set d0 = (today_at('00:00') | as_timestamp) | int -%}
             {%- set d1 = d0 + 86400 -%}
-            {#- only the handover needs a human: start + 2 h must land between 07:00 and
-                23:00, so the start itself runs from 05:00 to 21:00, same as the sensor -#}
-            {%- set argus = (today_at('05:00') | as_timestamp) | int -%}
+            {#- only the handover needs a human: start + 2 h must land between 08:00 and
+                23:00, so the start itself runs from 06:00 to 21:00, same as the sensor -#}
+            {%- set argus = (today_at('06:00') | as_timestamp) | int -%}
             {%- set ohtu = ((today_at('21:00') | as_timestamp) | int) + 4 * 3600 -%}
             {%- set jaanud = all | selectattr('s', 'ge', [h, argus] | max) | selectattr('s', 'lt', ohtu) | list -%}
             {%- set tana = all | selectattr('s', 'ge', d0) | selectattr('s', 'lt', d1) | list -%}
