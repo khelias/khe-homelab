@@ -52,7 +52,7 @@ template:
           {{ expand(
                'binary_sensor.suitsuandurid_rikkumine', 'binary_sensor.valissireen_rikkumine',
                'binary_sensor.peauks_rikkumine', 'binary_sensor.elutoa_uks_rikkumine',
-               'binary_sensor.sauna_uks_rikkumine',
+               'binary_sensor.vannitoa_uks_rikkumine',
                'binary_sensor.vanemate_tuba_rikkumine', 'binary_sensor.magamistuba_2_rikkumine',
                'binary_sensor.kontor_rikkumine', 'binary_sensor.magamistuba_4_rikkumine',
                'binary_sensor.kook_liikumine_rikkumine', 'binary_sensor.elutuba_liikumine_rikkumine',
@@ -69,5 +69,5 @@ template:
         unique_id: paradox_open_count
         state: >
           {{ expand(
-               'binary_sensor.peauks', 'binary_sensor.elutoa_uks', 'binary_sensor.sauna_uks'
+               'binary_sensor.peauks', 'binary_sensor.elutoa_uks', 'binary_sensor.vannitoa_uks'
              ) | selectattr('state', 'eq', 'on') | list | count }}

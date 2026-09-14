@@ -290,7 +290,7 @@ cameras = {"title": "Kaamerad", "path": "kaamerad", "icon": "mdi:cctv", "type": 
 # screen and change colour, motion appears only as history, and the two counts
 # that would otherwise need a growing list are template sensors.
 DOORS = [("binary_sensor.peauks", "Peauks"), ("binary_sensor.elutoa_uks", "Elutoa uks"),
-         ("binary_sensor.sauna_uks", "Sauna uks")]
+         ("binary_sensor.vannitoa_uks", "Vannitoa uks")]
 # Nine PIRs and three contacts. The four zones the installer called
 # MAGAMISTUBA turned out to be motion as well, settled by how often they
 # switch rather than by the label. Names come from the entity registry: two of
@@ -300,6 +300,19 @@ SHARED = ["binary_sensor.kook_liikumine", "binary_sensor.elutuba_liikumine",
           "binary_sensor.tehnoruum_liikumine"]
 PRIVATE = ["binary_sensor.vanemate_tuba_liikumine", "binary_sensor.magamistuba_2",
            "binary_sensor.magamistuba_4", "binary_sensor.kontor_liikumine"]
+
+# A history graph is the wrong instrument for motion. A PIR is on for seconds,
+# so on a 24 h axis every event is a sub-pixel hairline - the chart is legible
+# only for things with duration, like a heater running. The question people
+# actually ask a motion sensor is "when was anyone last in there", so the
+# answer is a timestamp per room: one row each, fixed height, and the row
+# changes text and colour without ever changing size.
+def motion_list(groups):
+    rows = []
+    for label, ents in groups:
+        rows.append({"type": "section", "label": label})
+        rows += [{"entity": e, "secondary_info": "last-changed"} for e in ents]
+    return {"type": "entities", "entities": rows, "state_color": True}
 
 def armed(entity, name):
     return {"type": "tile", "entity": entity, "name": name, "features": [
@@ -330,10 +343,7 @@ valve = {"title": "Valve", "path": "valve", "icon": "mdi:shield-home", "type": "
     section("Uksed", [
         {"type": "horizontal-stack", "cards": [tile(e, n, vertical=True) for e, n in DOORS]},
     ], column_span=2),
-    section("Liikumine", [
-        hist("Ühisruumid 24 h", [(e, None) for e in SHARED], 24),
-        hist("Toad 24 h", [(e, None) for e in PRIVATE], 24),
-    ], column_span=2),
+    section("Liikumine", [motion_list([("Ühisruumid", SHARED), ("Toad", PRIVATE)])], column_span=2),
     section("Süsteem", [
         {"type": "horizontal-stack", "cards": [
             nowrite("sensor.valve_aku", "Aku", vertical=True),
