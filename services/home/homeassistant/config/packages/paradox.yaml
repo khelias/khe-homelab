@@ -1,0 +1,40 @@
+# Paradox SP6000 through PAI. Zone 1 is the house smoke detectors, wired into
+# the panel. With the monitoring contract ended they sound locally and reach
+# nobody, so this automation is the only thing that carries a fire out of the
+# building.
+#
+# Standing rule from the HA plan: automations notify, they do not write. This
+# one deliberately does not disarm, unlock or call anything.
+#
+# The trigger is `to: "on"` without a `from`, so a zone coming back from
+# unavailable still fires. For fire that asymmetry is the right one: a
+# duplicate alert costs a glance, a missed one costs the house.
+
+automation:
+  - alias: "Valve: tulekahju"
+    id: paradox_alert_smoke
+    description: "Suitsuandurite tsoon läheb tööle."
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.suitsuandurid
+        to: "on"
+    actions:
+      - action: notify.notify
+        data:
+          title: "TULEKAHJU"
+          message: >
+            Suitsuandurid on tööle läinud.
+            Maja {{ states('alarm_control_panel.maja') }},
+            garaaž {{ states('alarm_control_panel.garaaz') }}.
+          data:
+            # iOS critical alert: rings through silent mode and a focus.
+            # Needs "Critical Alerts" allowed once per phone in the companion
+            # app, otherwise it arrives as an ordinary notification.
+            tag: tulekahju
+            push:
+              sound:
+                name: default
+                critical: 1
+                volume: 1.0
+            interruption-level: critical

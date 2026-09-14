@@ -152,7 +152,8 @@ def confirm(entity, name, text, **kw):
     act = {"action": "toggle", "confirmation": {"text": text}}
     return tile(entity, name, tap_action=act, icon_tap_action=act, **kw)
 
-FAULTS = [("binary_sensor.space_heating_unit_state", "Soojuspumba viga"), ("binary_sensor.hot_water_tank_state", "Boileri viga"),
+FAULTS = [("binary_sensor.suitsuandurid", "Tulekahju"),
+          ("binary_sensor.space_heating_unit_state", "Soojuspumba viga"), ("binary_sensor.hot_water_tank_state", "Boileri viga"),
           ("binary_sensor.komfovent_status_alarm_fault", "Ventilatsiooni viga"), ("binary_sensor.komfovent_status_alarm_warning", "Ventilatsiooni hoiatus")]
 
 home = {"title": "Kodu", "path": "kodu", "icon": "mdi:home", "type": "sections", "max_columns": 2,
@@ -253,10 +254,10 @@ energy = {"title": "Energia", "path": "energia", "icon": "mdi:lightning-bolt", "
     ], column_span=2),
 ]}
 
-cameras = {"title": "Valve", "path": "valve", "icon": "mdi:shield-home", "type": "sections", "max_columns": 2,
+cameras = {"title": "Kaamerad", "path": "kaamerad", "icon": "mdi:cctv", "type": "sections", "max_columns": 2,
  # Kodu shape: cameras as they were, NVR and per-camera motion switches in one section, no captions. The NVR disk
  # badge shows only when the disk is not OK. Motion is too noisy for a badge (fires on insects and rain).
- # Planned alarm and leak-sensor sections live in khe-meta's house/home-assistant-plan.md until the hardware exists.
+ # The alarm moved to its own Valve tab once PAI landed; the leak-sensor plan is still in khe-meta.
  "badges": [
     {"type": "entity", "entity": "sensor.nvr_ketas", "name": "NVR ketas", "color": "red", "show_name": True, "show_state": True,
      "visibility": [{"condition": "state", "entity": "sensor.nvr_ketas", "state_not": "OK"}]},
@@ -275,6 +276,58 @@ cameras = {"title": "Valve", "path": "valve", "icon": "mdi:shield-home", "type":
         # Per-camera motion detection. The camera integration switches these back on at every reload, so treat them as a temporary mute.
         {"type": "horizontal-stack", "cards": [tile("switch." + slug + "_liikumistuvastus", n, vertical=True) for slug, n in CAMS]},
     ], column_span=2),
+]}
+
+# Alarm zones grouped by what they are rather than by panel numbering. "Lahti"
+# answers one question - can I arm right now - so the whole section disappears
+# when the house is closed up, and the tamper row behaves the same way.
+DOORS = [("binary_sensor.peauks", "Peauks"), ("binary_sensor.elutoa_uks", "Elutoa uks"),
+         ("binary_sensor.sauna_uks", "Sauna uks")]
+ROOMS = [("binary_sensor.magamistuba_%d" % i, "Magamistuba %d" % i) for i in (1, 2, 3, 4)]
+MOTION = [("binary_sensor.kook_liikumine", "Köök"), ("binary_sensor.elutuba_liikumine", "Elutuba"),
+          ("binary_sensor.koridor_liikumine", "Koridor"), ("binary_sensor.garaaz_liikumine", "Garaaž"),
+          ("binary_sensor.tehnoruum_liikumine", "Tehnoruum")]
+ZONES = [e for e, _ in DOORS + ROOMS + MOTION]
+TAMPERS = [e + "_rikkumine" for e in ZONES + ["binary_sensor.suitsuandurid", "binary_sensor.valissireen"]]
+
+def open_only(title, entities):
+    return {"type": "entity-filter", "entities": entities, "state_filter": ["on"], "show_empty": False,
+            "card": {"type": "entities", "title": title}}
+def when_any(sec, entities):
+    sec["visibility"] = [{"condition": "or", "conditions":
+        [{"condition": "state", "entity": e, "state": "on"} for e in entities]}]
+    return sec
+
+valve = {"title": "Valve", "path": "valve", "icon": "mdi:shield-home", "type": "sections", "max_columns": 2,
+ "badges": [
+    {"type": "entity", "entity": "alarm_control_panel.maja", "name": "Maja", "show_name": True, "show_state": True},
+    {"type": "entity", "entity": "alarm_control_panel.garaaz", "name": "Garaaž", "show_name": True, "show_state": True},
+    {"type": "entity", "entity": "binary_sensor.suitsuandurid", "name": "Tulekahju", "color": "red", "show_name": True, "show_state": False,
+     "visibility": [{"condition": "state", "entity": "binary_sensor.suitsuandurid", "state": "on"}]},
+    {"type": "entity", "entity": "sensor.valve_uhendus", "name": "Ühendus katkes", "color": "red", "show_name": True, "show_state": False,
+     "visibility": [{"condition": "state", "entity": "sensor.valve_uhendus", "state_not": "online"}]},
+ ],
+ "sections": [
+    # Keypad cards rather than tiles: disarming asks for a code and a keypad is the honest way to type one.
+    section("Valve", [
+        {"type": "alarm-panel", "entity": "alarm_control_panel.maja", "name": "Maja",
+         "states": ["arm_away", "arm_home", "arm_night"]},
+        {"type": "alarm-panel", "entity": "alarm_control_panel.garaaz", "name": "Garaaž",
+         "states": ["arm_away", "arm_home", "arm_night"]},
+    ], column_span=2),
+    when_any(section("Lahti", [open_only("Avatud tsoonid", ZONES)]), ZONES),
+    section("Uksed", [{"type": "horizontal-stack", "cards": [nowrite(e, n, vertical=True) for e, n in DOORS]}]
+                     + [{"type": "horizontal-stack", "cards": [nowrite(e, n, vertical=True) for e, n in ROOMS[:2]]},
+                        {"type": "horizontal-stack", "cards": [nowrite(e, n, vertical=True) for e, n in ROOMS[2:]]}]),
+    section("Liikumine", [hist("Liikumine 12 h", MOTION, 12)]),
+    section("Süsteem", [
+        {"type": "horizontal-stack", "cards": [
+            nowrite("sensor.valve_aku", "Aku", vertical=True),
+            nowrite("sensor.valve_toide", "Toide", vertical=True),
+            nowrite("sensor.valve_uhendus", "Ühendus", vertical=True)]},
+        nowrite("binary_sensor.valissireen", "Välissireen"),
+        open_only("Rikutud andurid", TAMPERS),
+    ]),
 ]}
 
 soojuspump = {"title": "Soojuspump", "path": "soojuspump", "icon": "mdi:heat-pump", "type": "sections", "max_columns": 2,
@@ -451,7 +504,7 @@ soojuspump_seaded = {"title": "Soojuspumba seaded", "path": "soojuspump-seaded",
     ]),
 ]}
 
-config = {"title": "Kodu", "views": [home, energy, soojuspump, ventilatsioon, cameras, susteem, komfovent_seaded, soojuspump_seaded]}
+config = {"title": "Kodu", "views": [home, energy, soojuspump, ventilatsioon, valve, cameras, susteem, komfovent_seaded, soojuspump_seaded]}
 
 async def main():
     async with websockets.connect(f"ws://{HA}/api/websocket", max_size=2**24) as ws:
