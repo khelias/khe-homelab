@@ -507,7 +507,7 @@ automation:
     actions:
       - action: notify.notify
         data:
-          title: "Homme elekter"
+          title: "Elektri hinnad"
           message: >
             {%- set all = state_attr('sensor.elektri_hinna_prognoos', 'prices') or [] -%}
             {%- set h = ((as_timestamp(now()) // 3600) * 3600) | int -%}
