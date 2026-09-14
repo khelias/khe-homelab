@@ -1,6 +1,11 @@
 # Komfovent helpers on top of the HACS hass-komfovent integration.
 # The C6 only exposes lifetime energy counters; monthly meters make them
 # comparable with the Daikin "this month" DHW figure on the Energia tab.
+input_boolean:
+  komfovent_ohuhulk_vahendatud:
+    name: "Komfovent: õhuhulk vähendatud"
+    icon: mdi:fan-alert
+
 utility_meter:
   ventilatsioon_sel_kuul:
     name: "Ventilatsioon sel kuul"
@@ -57,27 +62,116 @@ automation:
             vaheti {{ states('sensor.komfovent_heat_exchanger_efficiency') | round(0) }} %.
             Valik: luba järelküte ajutiselt või lase ECO-l õhuhulka vähendada.
 
+  # Every mode has its own configured supply flow (Normal 50 %, Kitchen 80 %, Boost 100 %).
+  # Comparing the measured flow against that mode's own setpoint, instead of a fixed 50,
+  # means the alert also catches ECO throttling Boost, which is exactly the case where the
+  # throttling matters most and where a fixed threshold would never have fired. Modes with
+  # no flow setpoint (standby, holiday, air_quality, off) fall out via the target > 0 guard.
   - alias: "Ventilatsioon: ECO vähendab õhuhulka"
     id: komfovent_alert_flow_reduced
-    description: "Normal-režiimis on ventilaatorid 50 %; madalam väärtus tähendab ECO temperatuurikaitset."
+    description: "Mõõdetud õhuhulk on alla režiimi enda seadeväärtuse: ECO temperatuurikaitse on sekkunud."
     mode: single
     triggers:
-      - trigger: numeric_state
-        entity_id: sensor.komfovent_supply_flow
-        below: 50
+      - trigger: template
+        value_template: >
+          {% set m = states('select.komfovent_operation_mode') %}
+          {% set target = states('number.komfovent_' ~ m ~ '_supply_flow') | float(0) %}
+          {{ target > 0 and states('sensor.komfovent_supply_flow') | float(target) < target - 5 }}
         for: "00:30:00"
-    conditions:
-      - condition: state
-        entity_id: select.komfovent_operation_mode
-        state: normal
     actions:
+      - action: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.komfovent_ohuhulk_vahendatud
       - action: notify.notify
         data:
           title: "Komfovent: õhuhulk vähendatud"
           message: >
+            {% set m = states('select.komfovent_operation_mode') %}
+            {% set target = states('number.komfovent_' ~ m ~ '_supply_flow') | float(0) %}
+            {% set supply = states('sensor.komfovent_supply_temperature') | float(0) %}
+            {% set hi = states('number.komfovent_eco_max_supply_temperature') | float(99) %}
+            {% set lo = states('number.komfovent_eco_min_supply_temperature') | float(0) %}
+            Sissepuhe {{ states('sensor.komfovent_supply_flow') | round(0) }} %
+            (režiim nõuab {{ target | round(0) }} %),
+            temperatuur {{ supply | round(1) }} °C,
+            väljas {{ states('sensor.komfovent_outdoor_temperature') | round(1) }} °C.
+            {% if supply >= hi - 1 %}
+            Maja on soe ja ECO hoiab sissepuhet {{ hi | round(0) }} °C lae all, mistõttu ainus
+            järelejäänud hoob on ventilaatorid kinni keerata. Pane Boost (100 %), see tuulutab
+            maja läbi. Boostil EI OLE taimerit: see jääb pöörlema, kuni ise Tavalise tagasi
+            paned. Kui see kordub, tõsta ECO max sissepuhet.
+            {% elif supply <= lo + 1 %}
+            Sissepuhe on {{ lo | round(0) }} °C põranda lähedal: ECO kaitseb alumist piiri, sest
+            küte on blokeeritud. Boost teeb siin olukorra hullemaks, rohkem külma õhku sisse.
+            Valik on lubada järelküte ajutiselt või lasta õhuhulgal jääda väiksemaks.
+            {% else %}
+            Temperatuur on ECO piiride vahel, seega põhjus on mujal. Vaata režiimi ja
+            soojusvaheti olekut.
+            {% endif %}
+          data:
+            tag: komfovent_ohuhulk
+
+  # Recovery notice. The helper is what makes it a *recovery* and not a random "all fine"
+  # push: without it a brief dip that never held 30 min would still produce an all-clear.
+  # Same tag as the alert, so on the phone this replaces it instead of stacking under it.
+  - alias: "Ventilatsioon: õhuhulk taastus"
+    id: komfovent_alert_flow_restored
+    description: "Teatab, kui ECO lõpetab õhuhulga piiramise, aga ainult siis, kui piiramise teade oli enne väljas."
+    mode: single
+    triggers:
+      - trigger: template
+        value_template: >
+          {% set m = states('select.komfovent_operation_mode') %}
+          {% set target = states('number.komfovent_' ~ m ~ '_supply_flow') | float(0) %}
+          {{ target > 0 and states('sensor.komfovent_supply_flow') | float(0) >= target - 5 }}
+        for: "00:10:00"
+    conditions:
+      - condition: state
+        entity_id: input_boolean.komfovent_ohuhulk_vahendatud
+        state: "on"
+    actions:
+      - action: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.komfovent_ohuhulk_vahendatud
+      - action: notify.notify
+        data:
+          title: "Komfovent: õhuhulk taastus"
+          message: >
+            {% set m = states('select.komfovent_operation_mode') %}
             Sissepuhe {{ states('sensor.komfovent_supply_flow') | round(0) }} %,
             temperatuur {{ states('sensor.komfovent_supply_temperature') | round(1) }} °C,
-            väljas {{ states('sensor.komfovent_outdoor_temperature') | round(1) }} °C.
+            väljatõmme {{ states('sensor.komfovent_extract_temperature') | round(1) }} °C.
+            {% if m == 'boost' %}
+            Boost töötab. Taimerit sellel ei ole, pane Tavaline tagasi, kui maja on tuulutatud.
+            {% else %}
+            ECO enam õhuhulka ei piira.
+            {% endif %}
+          data:
+            tag: komfovent_ohuhulk
+
+  # Boost is the only everyday mode the C6 exposes without a timer entity (Kitchen 15 min,
+  # Kamin 60 min, Override its own). Left alone it runs at 100/100 until someone changes
+  # the mode, which at 8 C outdoors empties the house of heat. This is the timer.
+  - alias: "Ventilatsioon: Boost unustatud"
+    id: komfovent_alert_boost_running
+    description: "Boostil ei ole taimerit; tuletab meelde, et see ei lõpe ise."
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: select.komfovent_operation_mode
+        to: boost
+        for: "01:00:00"
+    actions:
+      - action: notify.notify
+        data:
+          title: "Komfovent: Boost käib juba tunni"
+          message: >
+            Ventilaatorid 100 %, väljas
+            {{ states('sensor.komfovent_outdoor_temperature') | round(1) }} °C,
+            väljatõmme {{ states('sensor.komfovent_extract_temperature') | round(1) }} °C.
+            Boost ei lõpe ise. Pane Tavaline tagasi, kui maja on tuulutatud.
+          data:
+            tag: komfovent_boost
 
   - alias: "Ventilatsioon: soojusvaheti seisab jahedas"
     id: komfovent_alert_exchanger_idle
