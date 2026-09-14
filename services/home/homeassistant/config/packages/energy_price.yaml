@@ -250,103 +250,138 @@ template:
           {%- set n = 4 -%}
           {%- set all = state_attr('sensor.elektri_hinna_prognoos', 'prices') or [] -%}
           {%- set h = ((as_timestamp(now()) // 3600) * 3600) | int -%}
-          {%- set rows = all | selectattr('s', 'ge', h) | selectattr('s', 'lt', h + 86400) | list -%}
-          {%- set ns = namespace(best=none, avg=none) -%}
-          {%- for i in range(rows | count - n + 1) -%}
-            {%- set win = rows[i:i + n] -%}
-            {#- a window must be contiguous: n hours span exactly n-1 hours -#}
-            {%- if win[-1].s - win[0].s == (n - 1) * 3600 -%}
-              {%- set a = (win | map(attribute='t') | sum) / n -%}
-              {%- if ns.avg is none or a < ns.avg -%}{%- set ns.avg = a -%}{%- set ns.best = win[0].s -%}{%- endif -%}
+          {#- washer, then a human moving the load, then the dryer: the block only works while
+              someone is awake, so it must fit inside 07:00-23:00. The answer is the next day that still fits a window, not the cheapest
+              day in the data, and the saving is measured against the other possible starts
+              in the same band: "now" is not an alternative for something the household only
+              does at certain hours. -#}
+          {%- set ns = namespace(best=none, avg=none, halvim=none, paev=none) -%}
+          {%- for off in [0, 1] -%}
+            {%- if ns.best is none -%}
+              {%- set algab = ((today_at('07:00') | as_timestamp) | int) + off * 86400 -%}
+              {%- set loppeb = algab + 16 * 3600 -%}
+              {%- set rows = all | selectattr('s', 'ge', [h, algab] | max) | selectattr('s', 'lt', loppeb) | list -%}
+              {%- for i in range(rows | count - n + 1) -%}
+                {%- set win = rows[i:i + n] -%}
+                {%- if win[-1].s - win[0].s == (n - 1) * 3600 -%}
+                  {%- set a = (win | map(attribute='t') | sum) / n -%}
+                  {%- if ns.avg is none or a < ns.avg -%}{%- set ns.avg = a -%}{%- set ns.best = win[0].s -%}{%- set ns.paev = off -%}{%- endif -%}
+                  {%- if ns.halvim is none or a > ns.halvim -%}{%- set ns.halvim = a -%}{%- endif -%}
+                {%- endif -%}
+              {%- endfor -%}
             {%- endif -%}
           {%- endfor -%}
-          {%- set nowwin = rows[0:n] -%}
-          {%- set base = (nowwin | map(attribute='t') | sum) / n if nowwin | count == n and nowwin[-1].s - nowwin[0].s == (n - 1) * 3600 else none -%}
           {{ ns.best | timestamp_custom('%Y-%m-%dT%H:%M:%S%z', true) if ns.best else none }}
         attributes:
           lopp: >
             {%- set n = 4 -%}
             {%- set all = state_attr('sensor.elektri_hinna_prognoos', 'prices') or [] -%}
             {%- set h = ((as_timestamp(now()) // 3600) * 3600) | int -%}
-            {%- set rows = all | selectattr('s', 'ge', h) | selectattr('s', 'lt', h + 86400) | list -%}
-            {%- set ns = namespace(best=none, avg=none) -%}
-            {%- for i in range(rows | count - n + 1) -%}
-              {%- set win = rows[i:i + n] -%}
-              {#- a window must be contiguous: n hours span exactly n-1 hours -#}
-              {%- if win[-1].s - win[0].s == (n - 1) * 3600 -%}
-                {%- set a = (win | map(attribute='t') | sum) / n -%}
-                {%- if ns.avg is none or a < ns.avg -%}{%- set ns.avg = a -%}{%- set ns.best = win[0].s -%}{%- endif -%}
+            {#- washer, then a human moving the load, then the dryer: the block only works while
+                someone is awake, so it must fit inside 07:00-23:00. The answer is the next day that still fits a window, not the cheapest
+                day in the data, and the saving is measured against the other possible starts
+                in the same band: "now" is not an alternative for something the household only
+                does at certain hours. -#}
+            {%- set ns = namespace(best=none, avg=none, halvim=none, paev=none) -%}
+            {%- for off in [0, 1] -%}
+              {%- if ns.best is none -%}
+                {%- set algab = ((today_at('07:00') | as_timestamp) | int) + off * 86400 -%}
+                {%- set loppeb = algab + 16 * 3600 -%}
+                {%- set rows = all | selectattr('s', 'ge', [h, algab] | max) | selectattr('s', 'lt', loppeb) | list -%}
+                {%- for i in range(rows | count - n + 1) -%}
+                  {%- set win = rows[i:i + n] -%}
+                  {%- if win[-1].s - win[0].s == (n - 1) * 3600 -%}
+                    {%- set a = (win | map(attribute='t') | sum) / n -%}
+                    {%- if ns.avg is none or a < ns.avg -%}{%- set ns.avg = a -%}{%- set ns.best = win[0].s -%}{%- set ns.paev = off -%}{%- endif -%}
+                    {%- if ns.halvim is none or a > ns.halvim -%}{%- set ns.halvim = a -%}{%- endif -%}
+                  {%- endif -%}
+                {%- endfor -%}
               {%- endif -%}
             {%- endfor -%}
-            {%- set nowwin = rows[0:n] -%}
-            {%- set base = (nowwin | map(attribute='t') | sum) / n if nowwin | count == n and nowwin[-1].s - nowwin[0].s == (n - 1) * 3600 else none -%}
             {{ (ns.best + n * 3600) | timestamp_custom('%H:%M', true) if ns.best else none }}
           keskmine: >
             {%- set n = 4 -%}
             {%- set all = state_attr('sensor.elektri_hinna_prognoos', 'prices') or [] -%}
             {%- set h = ((as_timestamp(now()) // 3600) * 3600) | int -%}
-            {%- set rows = all | selectattr('s', 'ge', h) | selectattr('s', 'lt', h + 86400) | list -%}
-            {%- set ns = namespace(best=none, avg=none) -%}
-            {%- for i in range(rows | count - n + 1) -%}
-              {%- set win = rows[i:i + n] -%}
-              {#- a window must be contiguous: n hours span exactly n-1 hours -#}
-              {%- if win[-1].s - win[0].s == (n - 1) * 3600 -%}
-                {%- set a = (win | map(attribute='t') | sum) / n -%}
-                {%- if ns.avg is none or a < ns.avg -%}{%- set ns.avg = a -%}{%- set ns.best = win[0].s -%}{%- endif -%}
+            {#- washer, then a human moving the load, then the dryer: the block only works while
+                someone is awake, so it must fit inside 07:00-23:00. The answer is the next day that still fits a window, not the cheapest
+                day in the data, and the saving is measured against the other possible starts
+                in the same band: "now" is not an alternative for something the household only
+                does at certain hours. -#}
+            {%- set ns = namespace(best=none, avg=none, halvim=none, paev=none) -%}
+            {%- for off in [0, 1] -%}
+              {%- if ns.best is none -%}
+                {%- set algab = ((today_at('07:00') | as_timestamp) | int) + off * 86400 -%}
+                {%- set loppeb = algab + 16 * 3600 -%}
+                {%- set rows = all | selectattr('s', 'ge', [h, algab] | max) | selectattr('s', 'lt', loppeb) | list -%}
+                {%- for i in range(rows | count - n + 1) -%}
+                  {%- set win = rows[i:i + n] -%}
+                  {%- if win[-1].s - win[0].s == (n - 1) * 3600 -%}
+                    {%- set a = (win | map(attribute='t') | sum) / n -%}
+                    {%- if ns.avg is none or a < ns.avg -%}{%- set ns.avg = a -%}{%- set ns.best = win[0].s -%}{%- set ns.paev = off -%}{%- endif -%}
+                    {%- if ns.halvim is none or a > ns.halvim -%}{%- set ns.halvim = a -%}{%- endif -%}
+                  {%- endif -%}
+                {%- endfor -%}
               {%- endif -%}
             {%- endfor -%}
-            {%- set nowwin = rows[0:n] -%}
-            {%- set base = (nowwin | map(attribute='t') | sum) / n if nowwin | count == n and nowwin[-1].s - nowwin[0].s == (n - 1) * 3600 else none -%}
             {{ (ns.avg * 100) | round(1) if ns.avg else none }}
           vahe: >
             {%- set n = 4 -%}
             {%- set all = state_attr('sensor.elektri_hinna_prognoos', 'prices') or [] -%}
             {%- set h = ((as_timestamp(now()) // 3600) * 3600) | int -%}
-            {%- set rows = all | selectattr('s', 'ge', h) | selectattr('s', 'lt', h + 86400) | list -%}
-            {%- set ns = namespace(best=none, avg=none) -%}
-            {%- for i in range(rows | count - n + 1) -%}
-              {%- set win = rows[i:i + n] -%}
-              {#- a window must be contiguous: n hours span exactly n-1 hours -#}
-              {%- if win[-1].s - win[0].s == (n - 1) * 3600 -%}
-                {%- set a = (win | map(attribute='t') | sum) / n -%}
-                {%- if ns.avg is none or a < ns.avg -%}{%- set ns.avg = a -%}{%- set ns.best = win[0].s -%}{%- endif -%}
+            {#- washer, then a human moving the load, then the dryer: the block only works while
+                someone is awake, so it must fit inside 07:00-23:00. The answer is the next day that still fits a window, not the cheapest
+                day in the data, and the saving is measured against the other possible starts
+                in the same band: "now" is not an alternative for something the household only
+                does at certain hours. -#}
+            {%- set ns = namespace(best=none, avg=none, halvim=none, paev=none) -%}
+            {%- for off in [0, 1] -%}
+              {%- if ns.best is none -%}
+                {%- set algab = ((today_at('07:00') | as_timestamp) | int) + off * 86400 -%}
+                {%- set loppeb = algab + 16 * 3600 -%}
+                {%- set rows = all | selectattr('s', 'ge', [h, algab] | max) | selectattr('s', 'lt', loppeb) | list -%}
+                {%- for i in range(rows | count - n + 1) -%}
+                  {%- set win = rows[i:i + n] -%}
+                  {%- if win[-1].s - win[0].s == (n - 1) * 3600 -%}
+                    {%- set a = (win | map(attribute='t') | sum) / n -%}
+                    {%- if ns.avg is none or a < ns.avg -%}{%- set ns.avg = a -%}{%- set ns.best = win[0].s -%}{%- set ns.paev = off -%}{%- endif -%}
+                    {%- if ns.halvim is none or a > ns.halvim -%}{%- set ns.halvim = a -%}{%- endif -%}
+                  {%- endif -%}
+                {%- endfor -%}
               {%- endif -%}
             {%- endfor -%}
-            {%- set nowwin = rows[0:n] -%}
-            {%- set base = (nowwin | map(attribute='t') | sum) / n if nowwin | count == n and nowwin[-1].s - nowwin[0].s == (n - 1) * 3600 else none -%}
-            {{ ((base - ns.avg) / base * 100) | round(0) | int if base and ns.avg and base > 0 else none }}
+            {{ ((ns.halvim - ns.avg) / ns.halvim * 100) | round(0) | int if ns.halvim and ns.halvim > 0 else none }}
           tekst: >
             {%- set n = 4 -%}
             {%- set all = state_attr('sensor.elektri_hinna_prognoos', 'prices') or [] -%}
             {%- set h = ((as_timestamp(now()) // 3600) * 3600) | int -%}
-            {%- set rows = all | selectattr('s', 'ge', h) | selectattr('s', 'lt', h + 86400) | list -%}
-            {%- set ns = namespace(best=none, avg=none) -%}
-            {%- for i in range(rows | count - n + 1) -%}
-              {%- set win = rows[i:i + n] -%}
-              {#- a window must be contiguous: n hours span exactly n-1 hours -#}
-              {%- if win[-1].s - win[0].s == (n - 1) * 3600 -%}
-                {%- set a = (win | map(attribute='t') | sum) / n -%}
-                {%- if ns.avg is none or a < ns.avg -%}{%- set ns.avg = a -%}{%- set ns.best = win[0].s -%}{%- endif -%}
+            {#- washer, then a human moving the load, then the dryer: the block only works while
+                someone is awake, so it must fit inside 07:00-23:00. The answer is the next day that still fits a window, not the cheapest
+                day in the data, and the saving is measured against the other possible starts
+                in the same band: "now" is not an alternative for something the household only
+                does at certain hours. -#}
+            {%- set ns = namespace(best=none, avg=none, halvim=none, paev=none) -%}
+            {%- for off in [0, 1] -%}
+              {%- if ns.best is none -%}
+                {%- set algab = ((today_at('07:00') | as_timestamp) | int) + off * 86400 -%}
+                {%- set loppeb = algab + 16 * 3600 -%}
+                {%- set rows = all | selectattr('s', 'ge', [h, algab] | max) | selectattr('s', 'lt', loppeb) | list -%}
+                {%- for i in range(rows | count - n + 1) -%}
+                  {%- set win = rows[i:i + n] -%}
+                  {%- if win[-1].s - win[0].s == (n - 1) * 3600 -%}
+                    {%- set a = (win | map(attribute='t') | sum) / n -%}
+                    {%- if ns.avg is none or a < ns.avg -%}{%- set ns.avg = a -%}{%- set ns.best = win[0].s -%}{%- set ns.paev = off -%}{%- endif -%}
+                    {%- if ns.halvim is none or a > ns.halvim -%}{%- set ns.halvim = a -%}{%- endif -%}
+                  {%- endif -%}
+                {%- endfor -%}
               {%- endif -%}
             {%- endfor -%}
-            {%- set nowwin = rows[0:n] -%}
-            {%- set base = (nowwin | map(attribute='t') | sum) / n if nowwin | count == n and nowwin[-1].s - nowwin[0].s == (n - 1) * 3600 else none -%}
             {%- if ns.best -%}
               {%- set algus = ns.best | timestamp_custom('%H:%M', true) -%}
               {%- set lopp = (ns.best + n * 3600) | timestamp_custom('%H:%M', true) -%}
-              {%- set homme = (ns.best | timestamp_custom('%Y-%m-%d', true)) != now().strftime('%Y-%m-%d') -%}
               {%- set hind = ('%.1f' | format(ns.avg * 100)).replace('.', ',') -%}
-              {%- set d = ((base - ns.avg) / base * 100) | round(0) | int if base and base > 0 else 0 -%}
-              {%- if ns.best == h -%}
-                {#- "now is cheapest" reads as a recommendation; when it is the only candidate left it is not one -#}
-                {%- if rows | count - n + 1 > 1 -%}
-                  Praegu, {{ hind }} s/kWh.
-                {%- else -%}
-                  Paremat ei tule, {{ hind }} s/kWh.
-                {%- endif -%}
-              {%- else -%}
-                {{ 'Homme' if homme else 'Täna' }} {{ algus }}-{{ lopp }}, {{ hind }} s/kWh{% if d > 0 %}, {{ d }}% odavam kui praegu{% endif %}.
-              {%- endif -%}
+              {%- set d = ((ns.halvim - ns.avg) / ns.halvim * 100) | round(0) | int if ns.halvim and ns.halvim > 0 else 0 -%}
+              {{ 'Homme' if ns.paev == 1 else 'Täna' }} {{ algus }}-{{ lopp }}, {{ hind }} s/kWh{% if d >= 3 %}, {{ d }}% odavam kui päeva kalleim algus{% endif %}.
             {%- else -%}
               Homseid hindu veel ei ole.
             {%- endif -%}
@@ -359,10 +394,10 @@ template:
           {%- set n = 2 -%}
           {%- set all = state_attr('sensor.elektri_hinna_prognoos', 'prices') or [] -%}
           {%- set h = ((as_timestamp(now()) // 3600) * 3600) | int -%}
-          {#- the sauna is an evening thing: only windows that fit inside 18:00-22:00 count,
-              and the answer is the next such evening, not the cheapest evening in the data.
-              The comparison is against the other evening starts, because "now" is not an
-              alternative for something nobody runs at noon. -#}
+          {#- the sauna is an evening thing: the window must fit inside 18:00-22:00. The answer is the next day that still fits a window, not the cheapest
+              day in the data, and the saving is measured against the other possible starts
+              in the same band: "now" is not an alternative for something the household only
+              does at certain hours. -#}
           {%- set ns = namespace(best=none, avg=none, halvim=none, paev=none) -%}
           {%- for off in [0, 1] -%}
             {%- if ns.best is none -%}
@@ -385,10 +420,10 @@ template:
             {%- set n = 2 -%}
             {%- set all = state_attr('sensor.elektri_hinna_prognoos', 'prices') or [] -%}
             {%- set h = ((as_timestamp(now()) // 3600) * 3600) | int -%}
-            {#- the sauna is an evening thing: only windows that fit inside 18:00-22:00 count,
-                and the answer is the next such evening, not the cheapest evening in the data.
-                The comparison is against the other evening starts, because "now" is not an
-                alternative for something nobody runs at noon. -#}
+            {#- the sauna is an evening thing: the window must fit inside 18:00-22:00. The answer is the next day that still fits a window, not the cheapest
+                day in the data, and the saving is measured against the other possible starts
+                in the same band: "now" is not an alternative for something the household only
+                does at certain hours. -#}
             {%- set ns = namespace(best=none, avg=none, halvim=none, paev=none) -%}
             {%- for off in [0, 1] -%}
               {%- if ns.best is none -%}
@@ -410,10 +445,10 @@ template:
             {%- set n = 2 -%}
             {%- set all = state_attr('sensor.elektri_hinna_prognoos', 'prices') or [] -%}
             {%- set h = ((as_timestamp(now()) // 3600) * 3600) | int -%}
-            {#- the sauna is an evening thing: only windows that fit inside 18:00-22:00 count,
-                and the answer is the next such evening, not the cheapest evening in the data.
-                The comparison is against the other evening starts, because "now" is not an
-                alternative for something nobody runs at noon. -#}
+            {#- the sauna is an evening thing: the window must fit inside 18:00-22:00. The answer is the next day that still fits a window, not the cheapest
+                day in the data, and the saving is measured against the other possible starts
+                in the same band: "now" is not an alternative for something the household only
+                does at certain hours. -#}
             {%- set ns = namespace(best=none, avg=none, halvim=none, paev=none) -%}
             {%- for off in [0, 1] -%}
               {%- if ns.best is none -%}
@@ -435,10 +470,10 @@ template:
             {%- set n = 2 -%}
             {%- set all = state_attr('sensor.elektri_hinna_prognoos', 'prices') or [] -%}
             {%- set h = ((as_timestamp(now()) // 3600) * 3600) | int -%}
-            {#- the sauna is an evening thing: only windows that fit inside 18:00-22:00 count,
-                and the answer is the next such evening, not the cheapest evening in the data.
-                The comparison is against the other evening starts, because "now" is not an
-                alternative for something nobody runs at noon. -#}
+            {#- the sauna is an evening thing: the window must fit inside 18:00-22:00. The answer is the next day that still fits a window, not the cheapest
+                day in the data, and the saving is measured against the other possible starts
+                in the same band: "now" is not an alternative for something the household only
+                does at certain hours. -#}
             {%- set ns = namespace(best=none, avg=none, halvim=none, paev=none) -%}
             {%- for off in [0, 1] -%}
               {%- if ns.best is none -%}
@@ -460,10 +495,10 @@ template:
             {%- set n = 2 -%}
             {%- set all = state_attr('sensor.elektri_hinna_prognoos', 'prices') or [] -%}
             {%- set h = ((as_timestamp(now()) // 3600) * 3600) | int -%}
-            {#- the sauna is an evening thing: only windows that fit inside 18:00-22:00 count,
-                and the answer is the next such evening, not the cheapest evening in the data.
-                The comparison is against the other evening starts, because "now" is not an
-                alternative for something nobody runs at noon. -#}
+            {#- the sauna is an evening thing: the window must fit inside 18:00-22:00. The answer is the next day that still fits a window, not the cheapest
+                day in the data, and the saving is measured against the other possible starts
+                in the same band: "now" is not an alternative for something the household only
+                does at certain hours. -#}
             {%- set ns = namespace(best=none, avg=none, halvim=none, paev=none) -%}
             {%- for off in [0, 1] -%}
               {%- if ns.best is none -%}
@@ -522,14 +557,18 @@ automation:
             {%- set h = ((as_timestamp(now()) // 3600) * 3600) | int -%}
             {%- set d0 = (today_at('00:00') | as_timestamp) | int -%}
             {%- set d1 = d0 + 86400 -%}
-            {%- set jaanud = all | selectattr('s', 'ge', h) | selectattr('s', 'lt', d1) | list -%}
+            {#- the 4 h block needs someone awake at the handover, same band as the sensor -#}
+            {%- set argus = (today_at('07:00') | as_timestamp) | int -%}
+            {%- set ohtu = (today_at('23:00') | as_timestamp) | int -%}
+            {%- set jaanud = all | selectattr('s', 'ge', [h, argus] | max) | selectattr('s', 'lt', ohtu) | list -%}
             {%- set tana = all | selectattr('s', 'ge', d0) | selectattr('s', 'lt', d1) | list -%}
             {%- set homme = all | selectattr('s', 'ge', d1) | selectattr('s', 'lt', d1 + 86400) | list -%}
+            {%- set homme_aken = all | selectattr('s', 'ge', argus + 86400) | selectattr('s', 'lt', ohtu + 86400) | list -%}
             {#- 20 is the DST-tolerant floor: a normal day has 24 rows, the spring day 23 -#}
             {%- if homme | count >= 20 -%}
             {%- set ns = namespace(res=[]) -%}
             {#- one window search, run over both day parts -#}
-            {%- for rows in [jaanud, homme] -%}
+            {%- for rows in [jaanud, homme_aken] -%}
               {%- set w = namespace(best=none, avg=none) -%}
               {%- for i in range(rows | count - 3) -%}
                 {%- set win = rows[i:i + 4] -%}
