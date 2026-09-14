@@ -4,7 +4,8 @@
 The dashboard is storage-mode config in HA's .storage (backed up nightly by
 backup.sh); this script is its source of truth. Edit here, run, and HA picks
 the new config up live. Layout and the reasoning behind it are described in
-docs/home-assistant-plan.md ("Dashboard").
+khe-meta's house/home-assistant-plan.md ("Dashboard"); that repo is private
+because the plan names the house's devices and addresses.
 
 Usage:  ha-dashboard.py            (saves to the "lovelace" Overview)
 Needs:  python3 with `websockets`, the HA long-lived token in
@@ -14,14 +15,26 @@ import asyncio, json, os, websockets
 HA = "192.168.0.11:8123"
 TOKEN = open(os.path.expanduser("~/.config/khe/ha-token")).read().strip()
 URL = "lovelace"  # the Overview, a dashboard entry since the 2026.9 migration
-CAMS = [tuple(c) for c in _house.get("cams", [])]
 FORECAST = "sensor.elektri_hinna_prognoos"
 DHW = "water_heater.hot_water_tank_domestic_hot_water_tank"
-# Presence badges render "<name> <state>", so the verb rides in the name ("Kaido on" -> "Kaido on Kodus").
-# Family members are read from an untracked local file (this repo is public): a JSON list of [entity_id, label].
-_people_file = os.path.expanduser("~/.config/khe/ha-people.json")
-PEOPLE = json.load(open(_people_file)) if os.path.exists(_people_file) else [("person.owner", "Kaido on")]  # badge renders "<name> <state>"
-UPDATES = ["update.hacs_update", "update.komfovent_update", "update.daikin_altherma_update", "update.estfeed_update", "update.nvr_camera_update", "update.apexcharts_card_update"]
+# This repo is public, so nothing that identifies the house or the family is hard-coded here.
+# Two untracked local files carry that, and every consumer below degrades to "leave the card out"
+# when they are missing:
+#   ~/.config/khe/ha-house.json   {"cams": [[slug, label], ...], "phone": "sensor.<device>",
+#                                  "nvr_app_url": "<scheme>://", "updates": ["update.<x>"]}
+#   ~/.config/khe/ha-people.json  [[entity_id, label], ...]
+# Presence badges render "<name> <state>", so the verb rides in the name ("X on" -> "X on Kodus").
+def _local(name, default):
+    path = os.path.expanduser("~/.config/khe/" + name)
+    return json.load(open(path)) if os.path.exists(path) else default
+
+_house = _local("ha-house.json", {})
+CAMS = [tuple(c) for c in _house.get("cams", [])]
+PHONE = _house.get("phone")
+NVR_APP = _house.get("nvr_app_url")
+PEOPLE = [tuple(p) for p in _local("ha-people.json", [])]
+UPDATES = ["update.hacs_update", "update.komfovent_update", "update.daikin_altherma_update",
+           "update.estfeed_update", "update.apexcharts_card_update"] + _house.get("updates", [])
 
 def tile(entity, name=None, **kw):
     c = {"type": "tile", "entity": entity}
@@ -167,8 +180,8 @@ home = {"title": "Kodu", "path": "kodu", "icon": "mdi:home", "type": "sections",
         {"type": "entities", "title": "Uuendused", "entities": UPDATES,
          "visibility": [{"condition": "or", "conditions": [{"condition": "state", "entity": u, "state": "on"} for u in UPDATES]}]},
         tile("sensor.nvr_ketas", "NVR ketas", color="red", visibility=[{"condition": "state", "entity": "sensor.nvr_ketas", "state_not": "OK"}]),
-        tile("sensor.phone_battery_level", "Telefoni aku", color="red",
-             visibility=[{"condition": "numeric_state", "entity": "sensor.phone_battery_level", "below": 30}]),
+        *([tile(PHONE + "_battery_level", "Telefoni aku", color="red",
+                visibility=[{"condition": "numeric_state", "entity": PHONE + "_battery_level", "below": 30}])] if PHONE else []),
         {"type": "markdown", "content": "Kõik korras.",
          "visibility": [{"condition": "and", "conditions": [{"condition": "state", "entity": "sensor.nvr_ketas", "state": "OK"}] +
                          [{"condition": "state", "entity": u, "state_not": "on"} for u in UPDATES]}]},
@@ -219,7 +232,7 @@ energy = {"title": "Energia", "path": "energia", "icon": "mdi:lightning-bolt", "
 cameras = {"title": "Valve", "path": "valve", "icon": "mdi:shield-home", "type": "sections", "max_columns": 2,
  # Kodu shape: cameras as they were, NVR and per-camera motion switches in one section, no captions. The NVR disk
  # badge shows only when the disk is not OK. Motion is too noisy for a badge (fires on insects and rain).
- # Planned alarm panel and leak-sensor sections live in docs/home-assistant-plan.md until the hardware exists.
+ # Planned alarm and leak-sensor sections live in khe-meta's house/home-assistant-plan.md until the hardware exists.
  "badges": [
     {"type": "entity", "entity": "sensor.nvr_ketas", "name": "NVR ketas", "color": "red", "show_name": True, "show_state": True,
      "visibility": [{"condition": "state", "entity": "sensor.nvr_ketas", "state_not": "OK"}]},
@@ -232,10 +245,10 @@ cameras = {"title": "Valve", "path": "valve", "icon": "mdi:shield-home", "type":
     section("NVR", [
         {"type": "horizontal-stack", "cards": [
             nowrite("sensor.nvr_ketas", "Ketas", vertical=True),
-            # Opens the the NVR vendor app app on the phone (its URL scheme); the NVR web UI at .129 is too slow to be worth a button.
-            {"type": "tile", "entity": "sensor.nvr_ketas", "name": "Ava NVR", "icon": "mdi:cellphone-play", "hide_state": True, "vertical": True,
-             "tap_action": {"action": "url", "url_path": "nvr-app://"}, "icon_tap_action": {"action": "url", "url_path": "nvr-app://"}}]},
-        # Per-camera motion detection. the camera integration switches these back on at every reload, so treat them as a temporary mute.
+            # Opens the NVR vendor's phone app via its URL scheme (from the local house file); the NVR web UI is too slow to be worth a button.
+            *([{"type": "tile", "entity": "sensor.nvr_ketas", "name": "Ava NVR", "icon": "mdi:cellphone-play", "hide_state": True, "vertical": True,
+                "tap_action": {"action": "url", "url_path": NVR_APP}, "icon_tap_action": {"action": "url", "url_path": NVR_APP}}] if NVR_APP else [])]},
+        # Per-camera motion detection. The camera integration switches these back on at every reload, so treat them as a temporary mute.
         {"type": "horizontal-stack", "cards": [tile("switch." + slug + "_liikumistuvastus", n, vertical=True) for slug, n in CAMS]},
     ], column_span=2),
 ]}
@@ -318,17 +331,17 @@ ventilatsioon = {"title": "Ventilatsioon", "path": "ventilatsioon", "icon": "mdi
 
 susteem = {"title": "Süsteem", "path": "susteem", "icon": "mdi:home-assistant", "type": "sections", "subview": True, "max_columns": 2, "sections": [
     # Kodu shape, no captions. Operational notes that used to sit here (backup.sh, companion-app sensors, recorder
-    # retention) live in docs/home-assistant-plan.md. The NVR disk is on Valve and Kodu, not repeated here.
+    # retention) live in khe-meta's house/home-assistant-plan.md. The NVR disk is on Valve and Kodu, not repeated here.
     section("Uuendused", [
         {"type": "entities", "entities": UPDATES},
     ]),
     section("Telefon", [
         # SSID is left out: iOS only reports it with precise-location permission, so the tile sat on "unavailable".
         {"type": "horizontal-stack", "cards": [
-            nowrite("person.owner", "Kaido", vertical=True),
-            nowrite("sensor.phone_battery_level", "Aku", vertical=True),
-            nowrite("sensor.phone_battery_state", "Laadimine", vertical=True),
-            nowrite("sensor.phone_connection_type", "Ühendus", vertical=True)]},
+            *[nowrite(e, n.removesuffix(" on"), vertical=True) for e, n in PEOPLE[:1]],
+            *([nowrite(PHONE + "_battery_level", "Aku", vertical=True),
+               nowrite(PHONE + "_battery_state", "Laadimine", vertical=True),
+               nowrite(PHONE + "_connection_type", "Ühendus", vertical=True)] if PHONE else [])]},
     ]),
     section("Kaamerate põhivood", [
         # Full-resolution live streams, slow to start; the everyday substreams are on Valve.

@@ -5,8 +5,8 @@ Direction and priorities for the homelab — what it should become, beyond curre
 ## Near-term (next few sessions)
 
 - **House automation** — the active work since 2026-09-08 and the only area
-  with its own plan: phases, dashboard and the energy work are in
-  [docs/home-assistant-plan.md](docs/home-assistant-plan.md). Everything is
+  with its own plan: phases, dashboard and the energy work are in the private
+  `khe-meta` repo under `house/`. Everything is
   read-only today. The next step that changes the house is phase 6
   (spot-price-aware heating), which also forces a `SECURITY.md` update because
   it gives this host write access to the heat pump and ventilation.

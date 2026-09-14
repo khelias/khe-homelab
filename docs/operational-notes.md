@@ -442,7 +442,7 @@ public shareable link. Two containers in `services/apps/pages/` sharing
 Runs as HA **Container**, not HAOS, so there is no Supervisor and no add-ons.
 Add-on equivalents (Mosquitto, Zigbee2MQTT, ESPHome) run as ordinary
 containers in the same group. See
-[home-assistant-plan.md](home-assistant-plan.md) for the phased rollout.
+khe-meta's `house/home-assistant-plan.md` for the phased rollout.
 
 **Trusted proxies live in the UI, not in YAML.** Since HA 2026.8 the `http:`
 block is imported once and then ignored, and on this install the import did
@@ -493,7 +493,8 @@ tariff, cost sensors, the resume-point fix and the hourly price statistic
 flow and lives in `.storage`, nowhere else. Tariff options are on the config
 entry (Settings -> Devices -> Estfeed -> Configure); the values and the
 reasoning are in
-[home-assistant-plan.md](home-assistant-plan.md#house-meter-without-hardware-estfeed-via-hacs-2026-09-13).
+khe-meta's `house/home-assistant-plan.md`, section "House meter without
+hardware".
 If the cost history looks like spot-only after an options change, or the
 cumulative sums jump (check monthly totals against the self-service), run
 the `estfeed.backfill_history` service (months: 2): it rewrites both series
@@ -503,32 +504,12 @@ registry to `sensor.maja_*`, `binary_sensor.maja_andmed_varsked` and
 `button.maja_*` so the dashboard generator can reference them in this public
 repo. A fresh install of the integration would recreate the EIC-based ids.
 
-### Komfovent Modbus
+### HVAC integrations
 
-Read by the HACS integration `lnagel/hass-komfovent` against 192.168.0.x:502
-(decision and register map in home-assistant-plan.md, phase 3). Whatever
-client talks to the C6, these hold:
-
-- **Exactly one Modbus client at a time.** The native `modbus:` platform and
-  the HACS integration must never poll the unit together.
-- **Read aligned uint32 pairs.** A single-register read of one half of a pair
-  returns Modbus exception 3, which makes a live register look absent.
-- **The controller drops fast consecutive connections.** Probing
-  register-by-register in a loop fails; read blocks over one connection.
-- Flow control register 11 = 3 (OFF), so the "flow" fields are fan
-  **percentages** and registers 905-908 (m3/h) are meaningless.
-- Reg 904 reads 0x8000, the sensor-absent marker, not a temperature.
-
-### Daikin Altherma
-
-WebSocket oneM2M on `ws://192.168.0.x/mca`. The stock `daikin` integration
-does not speak this unit; the path is the `daikin_altherma` custom integration,
-which is the first dependency outside Renovate's reach.
-
-**The space-heating electricity channel on this unit is broken** and must not
-feed any dashboard or automation. Proven against meter data: 5.42 kWh billed
-against 0 written, while the DHW channel on the same device agrees with the
-meter. Produced-heat figures are usable.
+The Komfovent and Daikin integration quirks (Modbus client rules, register
+gotchas, the broken space-heating energy channel) name the units and their LAN
+addresses, so they live in the private `khe-meta` repo under
+`house/house-hvac.md`.
 
 ## Healthchecks
 

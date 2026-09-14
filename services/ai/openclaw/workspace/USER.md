@@ -8,7 +8,7 @@ Docker Compose stacks on a single VM. The git repo for all configs is at
 
 | Component       | Details                                              |
 |-----------------|------------------------------------------------------|
-| Proxmox host    | 192.168.0.10 / pve.khe.ee, i7-12700K, 64GB RAM      |
+| Proxmox host    | 192.168.0.10 / pve.khe.ee, i7-12700K, 32GB RAM       |
 | Docker VM       | 192.168.0.11, user: khe, SSH key auth only           |
 | Domain          | khe.ee via Cloudflare                                |
 | Boot disk       | 2TB Kingston KC3000 NVMe (OS + VM disks)             |
@@ -39,16 +39,27 @@ Docker Compose stacks on a single VM. The git repo for all configs is at
 - **n8n** — workflow automation
 - **OpenClaw** — this agent
 
+### Home
+- **Home Assistant** — house automation, LAN + Tailscale only, never on the tunnel
+
+### Observability
+- **Loki + Grafana + Alloy + Alertmanager** — container logs, Telegram alerting
+
+### Apps
+- **landing, games hub, pages, trips** — static sites deployed by self-hosted runners
+
 ## Docker Networks
 - `proxy` — all services that go through NPM
 - `ai-internal` — Ollama, n8n, OpenClaw (isolated)
 - `socket-proxy` — OpenClaw to docker-socket-proxy only
 
 ## Access policies (Cloudflare)
-OTP via email protects: khe.ee (homepage), openclaw.khe.ee, n8n.khe.ee
+CF Access email OTP protects: dash, n8n, openclaw, trips, draft. `khe.ee`,
+`games.khe.ee` and `pages.khe.ee` are public. Home Assistant is not on the
+tunnel at all.
 
 ## Pending work
-- Immich Google Takeout import (821GB)
-- Nextcloud iPhone CalDAV/CardDAV
+See ROADMAP.md in the repo; it is the current list. Long-running items:
 - Proxmox 2FA
 - Bootstrap script for full rebuild from scratch
+- Disaster recovery: restore a Postgres dump and verify it

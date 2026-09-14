@@ -18,12 +18,11 @@ Don't duplicate that content here. AGENTS.md only holds rules and pointers.
 - [docs/service-choices.md](docs/service-choices.md) - why we run the
   software we do (AdGuard vs Pi-hole, Immich vs Photoprism, etc.) and
   what would force a re-evaluation
-- [docs/house-hvac.md](docs/house-hvac.md) - heat pump, ventilation and
-  underfloor heating: local protocols, register/path maps, and which of
-  their readings are known-bad. The protocol layer under the live HA
-  integrations
-- [docs/home-assistant-plan.md](docs/home-assistant-plan.md) - HA rollout
-  phases, the dashboard generator's layout, and the house energy work
+- **House documentation is not in this repo.** The HA rollout phases, the
+  dashboard layout, the HVAC protocol and register maps and the energy work
+  live in the private `khe-meta` repo under `house/`. They name the house's
+  devices, LAN addresses and metering data, which has no place in a public
+  repo. What stays here is the container and ops layer
 - [SECURITY.md](SECURITY.md) - security model
 - [ROADMAP.md](ROADMAP.md) - planned changes
 - [infrastructure/cloudflare.md](infrastructure/cloudflare.md) - CF Tunnel + Access
@@ -59,8 +58,8 @@ services/
 infrastructure/    Proxmox, network, Cloudflare, Tailscale docs
 scripts/           setup, deploy.sh, backup.sh, hardening,
                    ha-dashboard.py (HA Overview generator)
-docs/              runbook, operational notes, service choices, HVAC
-                   protocols, HA plan - see the pointer list above
+docs/              runbook, operational notes, service choices
+                   (house docs live in khe-meta/house/)
 ```
 
 ## Conventions (HARD)
