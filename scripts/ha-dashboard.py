@@ -62,8 +62,8 @@ def nav(path):
 price_now = {"type": "markdown", "content": (
     "**{{ state_attr('sensor.elektri_hinna_tase', 'hinnang') }}.** "
     "{{ state_attr('sensor.elektri_hinna_tase', 'tekst') }}\n\n"
-    "Pesumasin 2 h: {{ state_attr('sensor.odavaim_aken_2_h', 'tekst') }}\n\n"
-    "Saun 3 h: {{ state_attr('sensor.odavaim_aken_3_h', 'tekst') }}"),
+    "Pesu 4 h: {{ state_attr('sensor.odavaim_aken_pesu', 'tekst') }}\n\n"
+    "Saun 2 h: {{ state_attr('sensor.odavaim_aken_saun', 'tekst') }}"),
     # three lines of text: a band above the curve, not a column beside it,
     # or the desktop grid stretches it to the chart's height
     "grid_options": {"columns": "full"}}
