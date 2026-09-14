@@ -323,19 +323,16 @@ valve = {"title": "Valve", "path": "valve", "icon": "mdi:shield-home", "type": "
     section("Valve", [armed("alarm_control_panel.maja", "Maja"),
                       armed("alarm_control_panel.garaaz", "Garaaž")], column_span=2),
     section("Uksed ja aknad", [
-        note("Punane on lahti. Need peavad kinni olema, enne kui valvesse paned."),
         {"type": "horizontal-stack", "cards": [tile(e, n, vertical=True) for e, n in DOORS]},
         {"type": "horizontal-stack", "cards": [tile(e, n, vertical=True) for e, n in ROOMS[:2]]},
         {"type": "horizontal-stack", "cards": [tile(e, n, vertical=True) for e, n in ROOMS[2:]]},
     ], column_span=2),
     section("Liikumine", [
-        note("Ainult ajalugu. Hetkeseis vahetub liiga tihti, et seda vaadata."),
         hist("Liikumine 24 h", MOTION, 24),
     ], column_span=2),
     section("Süsteem", [
         {"type": "horizontal-stack", "cards": [
             nowrite("sensor.valve_aku", "Aku", vertical=True),
-            nowrite("sensor.valve_toide", "Toide", vertical=True),
             nowrite("sensor.valve_uhendus", "Ühendus", vertical=True)]},
         {"type": "horizontal-stack", "cards": [
             tile("binary_sensor.valve_rikkumine", "Rikkumine", vertical=True),
