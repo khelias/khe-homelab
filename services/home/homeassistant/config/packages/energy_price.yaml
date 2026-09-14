@@ -224,7 +224,7 @@ template:
               {%- set c = avg * 124 -%}
               {%- set tase = 'väga odav' if c < 0.26 else 'odav' if c < 2.48 else 'tavaline' if c < 8.51 else 'kõrgevõitu' if c < 14.83 else 'kallis' if c < 27.51 else 'väga kallis' -%}
               {%- set d = ((m[0].p - avg) / avg * 100) | round(0) | int if avg > 0 else 0 -%}
-              {%- set pos = 'selle odavaim ots' if d <= -25 else 'alla keskmise' if d <= -10 else 'keskmise juures' if d < 10 else 'üle keskmise' if d < 25 else 'selle kalleim ots' -%}
+              {%- set pos = 'selle odavamas otsas' if d <= -25 else 'alla keskmise' if d <= -10 else 'keskmise lähedal' if d < 10 else 'üle keskmise' if d < 25 else 'selle kallimas otsas' -%}
               {{ tase | capitalize }} päev, praegu {{ pos }}
             {%- endif -%}
           tekst: >
@@ -345,7 +345,7 @@ template:
                   Paremat ei tule, {{ hind }} s/kWh.
                 {%- endif -%}
               {%- else -%}
-                {{ 'Homme' if homme else 'Kell' }} {{ algus }}-{{ lopp }}, {{ hind }} s/kWh{% if d > 0 %}, {{ d }}% odavam kui praegu{% endif %}.
+                {{ 'Homme' if homme else 'Täna' }} {{ algus }}-{{ lopp }}, {{ hind }} s/kWh{% if d > 0 %}, {{ d }}% odavam kui praegu{% endif %}.
               {%- endif -%}
             {%- else -%}
               Homseid hindu veel ei ole.
@@ -474,7 +474,7 @@ template:
                   Paremat ei tule, {{ hind }} s/kWh.
                 {%- endif -%}
               {%- else -%}
-                {{ 'Homme' if homme else 'Kell' }} {{ algus }}-{{ lopp }}, {{ hind }} s/kWh{% if d > 0 %}, {{ d }}% odavam kui praegu{% endif %}.
+                {{ 'Homme' if homme else 'Täna' }} {{ algus }}-{{ lopp }}, {{ hind }} s/kWh{% if d > 0 %}, {{ d }}% odavam kui praegu{% endif %}.
               {%- endif -%}
             {%- else -%}
               Homseid hindu veel ei ole.
@@ -538,9 +538,9 @@ automation:
             {%- set mx = homme | max(attribute='t') -%}
             {%- macro eur(v) -%}{{ ('%.1f' | format(v * 100)).replace('.', ',') }}{%- endmacro -%}
             {%- macro kell(s) -%}{{ s | timestamp_custom('%H:%M', true) }}{%- endmacro -%}
-            {% if ta.best %}Täna veel odavaim 3 h kell {{ kell(ta.best) }}-{{ kell(ta.best + 10800) }}, keskmine {{ eur(ta.avg) }} s/kWh.{% else %}Täna 3 h akent enam ei mahu.{% endif %}
+            {% if ta.best %}Täna veel parim 3 h aken {{ kell(ta.best) }}-{{ kell(ta.best + 10800) }}, keskmine {{ eur(ta.avg) }} s/kWh.{% else %}Täna 3 h akent enam ei mahu.{% endif %}
             Homme keskmiselt {{ eur(havg) }} s/kWh, {{ vahe | abs }}% {{ 'kallim' if vahe > 0 else 'odavam' }} kui täna.
-            {% if ho.best %}Odavaim 3 h kell {{ kell(ho.best) }}-{{ kell(ho.best + 10800) }}, keskmine {{ eur(ho.avg) }} s/kWh.{% endif %}
+            {% if ho.best %}Parim 3 h aken {{ kell(ho.best) }}-{{ kell(ho.best + 10800) }}, keskmine {{ eur(ho.avg) }} s/kWh.{% endif %}
             Kalleim tund {{ kell(mx.s) }}, {{ eur(mx.t) }} s/kWh.
             {%- endif -%}
           data:
