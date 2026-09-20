@@ -532,13 +532,26 @@ Device ids, local keys and LAN addresses are not in this repo; the local keys
 live in `.storage` and the addresses in khe-meta's
 `house/home-assistant-plan.md`.
 
-**These units report no roof position.** The cloud declares dp1 (opened /
-closed) but it never arrives over the LAN, not after a full open and close
-cycle, and dp2 holds the last command only until the motor stops and then
-resets itself to `stop` (both measured 2026-09-20). So the cover entities are
-command-only and sit at `unknown`, which is honest rather than broken. Any
-state shown in Home Assistant would have to be remembered on the HA side, and
-would be wrong whenever the RF remote is used.
+**These units report no roof position, and that is settled.** Measured three
+ways on 2026-09-20:
+
+- Over the LAN, dp1 does not exist. A tinytuya `updatedps([1,14,24,101,102,110])`
+  returns nothing and the following `status()` is unchanged, so tuya-local's
+  `force` flag has nobody to ask.
+- dp2 holds the last command only until the motor stops, then the device
+  resets it to `stop` by itself, seen passively with no movement at all.
+- In the cloud dp1 exists but is frozen at its pairing value. Driving the roof
+  fully open and fully closed while polling the built-in Tuya integration's
+  diagnostics showed `control` tracking live (stop -> open -> close, within
+  15 s) while `status` never moved off `opened` - with the louvres physically
+  shut the whole time. The cloud link is alive; the datapoint is not.
+
+So the cover entities are command-only and sit at `unknown`, which is honest
+rather than broken, and the built-in Tuya integration adds nothing that
+tuya-local does not already have locally. Any state shown in Home Assistant
+would have to be remembered on the HA side, and would be wrong whenever the
+RF remote is used. If the manufacturer's rain sensor is ever fitted, re-check
+dp24 (`switch_sensor`): it reads false and never moves today.
 
 **Helpers start at their minimum, not at a sensible value.** An `input_number`
 or `input_datetime` created in a package comes up at the bottom of its range
