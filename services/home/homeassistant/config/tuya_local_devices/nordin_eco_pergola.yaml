@@ -12,26 +12,16 @@ products:
     model: YZ21006-02A/03A/04A
 
 entities:
-  # dp1 (status) is declared in the cloud data model but these units never
-  # send it over the LAN, not even after a full open and close cycle
-  # (measured 2026-09-20), so the state is derived from the last command in
-  # dp2 instead: open and close are conclusive, stop leaves it mid travel.
+  # There is no position to report. dp1 (status) is in the cloud data model but
+  # never arrives over the LAN, not even after a full open and close cycle, and
+  # dp2 holds the command only until the motor stops and then resets itself to
+  # "stop" (both measured 2026-09-20). Deriving state from dp2 produced a
+  # permanent "50 %", which is worse than no number, so the cover is
+  # command-only. No class either: the generic up/stop/down arrows read better
+  # on a louvre roof than the awning icons, and they match the group entity,
+  # which has no class of its own.
   - entity: cover
-    class: awning
     dps:
-      - id: 2
-        type: string
-        name: action
-        readonly: true
-        mapping:
-          - dps_val: "open"
-            value: opened
-          - dps_val: "close"
-            value: closed
-          - dps_val: "stop"
-            value: stopped
-          - dps_val: "continue"
-            value: stopped
       - id: 2
         type: string
         name: control
