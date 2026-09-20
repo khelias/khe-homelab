@@ -508,15 +508,16 @@ pergola = {"title": "Pergola", "path": "pergola", "icon": "mdi:awning-outline", 
             tile("light.pergola_valgustus", "Valgustus", features=[{"type": "light-brightness"}]),
             tile("input_select.pergola_valguse_toon", "Toon", features=[{"type": "select-options"}])]},
     ]),
+    # Every number once. "Sajab now" is the badge, so the section carries what
+    # comes next and how warm it is out; the forecast card drops its current
+    # block, which repeated both. The outdoor temperature is the Komfovent's
+    # own sensor on the house, not the grid forecast's value for the area.
     section("Ilm", [
-        # met.no is the picture; the Open-Meteo nowcast is the number the roof
-        # rule runs on, because met.no missed a shower over the house.
         {"type": "horizontal-stack", "cards": [
-            nowrite("sensor.sademed_praegu", "Sajab praegu", vertical=True),
-            nowrite("sensor.sademed_kahe_tunniga", "Kahe tunniga", vertical=True),
+            nowrite("sensor.sademed_kahe_tunniga", "Sademed kahe tunniga", vertical=True),
             nowrite("sensor.komfovent_outdoor_temperature", "Välisõhk", vertical=True)]},
         {"type": "weather-forecast", "entity": "weather.forecast_kodu", "forecast_type": "hourly",
-         "show_current": True, "show_forecast": True},
+         "show_current": False, "show_forecast": True},
     ]),
 ]}
 
