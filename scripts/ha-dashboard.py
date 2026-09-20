@@ -399,7 +399,7 @@ soojuspump = {"title": "Soojuspump", "path": "soojuspump", "icon": "mdi:heat-pum
  "badges": [
     {"type": "entity", "entity": "switch.space_heating_climate_control", "name": "Küte", "show_name": True, "show_state": True},
     {"type": "entity", "entity": DHW, "name": "Boiler", "show_name": True, "show_state": True, "state_content": "current_temperature"},
-    {"type": "entity", "entity": "switch.space_heating_climate_control", "name": "Seaded", "icon": "mdi:tune", "show_name": True, "show_state": False,
+    {"type": "entity", "entity": "switch.space_heating_climate_control", "name": "Seaded", "icon": "mdi:tune", "color": "grey", "show_name": True, "show_state": False,
      "tap_action": {"action": "navigate", "navigation_path": "/lovelace/soojuspump-seaded"}},
  ],
  "sections": [
@@ -434,7 +434,7 @@ ventilatsioon = {"title": "Ventilatsioon", "path": "ventilatsioon", "icon": "mdi
  "badges": [
     {"type": "entity", "entity": MODE, "name": "Režiim", "show_name": True, "show_state": True},
     {"type": "entity", "entity": "switch.komfovent_eco_mode", "name": "ECO", "show_name": True, "show_state": True},
-    {"type": "entity", "entity": MODE, "name": "Seaded", "icon": "mdi:tune", "show_name": True, "show_state": False,
+    {"type": "entity", "entity": MODE, "name": "Seaded", "icon": "mdi:tune", "color": "grey", "show_name": True, "show_state": False,
      "tap_action": {"action": "navigate", "navigation_path": "/lovelace/komfovent-seaded"}},
  ],
  "sections": [
@@ -493,7 +493,7 @@ pergola = {"title": "Pergola", "path": "pergola", "icon": "mdi:awning-outline", 
     {"type": "entity", "entity": "sensor.sademed_praegu", "name": "Sajab", "show_name": True, "show_state": True},
     {"type": "entity", "entity": "input_boolean.pergola_katuse_automaatika", "name": "Katuse reegel", "show_name": True, "show_state": True},
     {"type": "entity", "entity": "input_boolean.pergola_valguse_automaatika", "name": "Valguse reegel", "show_name": True, "show_state": True},
-    {"type": "entity", "entity": "input_boolean.pergola_katuse_automaatika", "name": "Seaded", "icon": "mdi:tune", "show_name": True, "show_state": False,
+    {"type": "entity", "entity": "input_boolean.pergola_katuse_automaatika", "name": "Seaded", "icon": "mdi:tune", "color": "grey", "show_name": True, "show_state": False,
      "tap_action": {"action": "navigate", "navigation_path": "/lovelace/pergola-seaded"}},
  ],
  "sections": [

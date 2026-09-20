@@ -540,6 +540,12 @@ command-only and sit at `unknown`, which is honest rather than broken. Any
 state shown in Home Assistant would have to be remembered on the HA side, and
 would be wrong whenever the RF remote is used.
 
+**Helpers start at their minimum, not at a sensible value.** An `input_number`
+or `input_datetime` created in a package comes up at the bottom of its range
+(the pergola evening brightness landed at 5 %, the off time at 00:00). `initial:`
+is not the fix, because it overwrites whatever the household chose on every
+restart. Set the value once through the API after first deploy instead.
+
 **Editing a tuya-local device config renames its entities.** The unique id is
 derived from the entity's type plus its name or class, so dropping
 `class: awning` from the cover made tuya-local register brand new entities
