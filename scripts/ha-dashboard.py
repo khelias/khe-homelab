@@ -506,7 +506,7 @@ pergola = {"title": "Pergola", "path": "pergola", "icon": "mdi:awning-outline", 
     section("Valgus", [
         {"type": "horizontal-stack", "cards": [
             tile("light.pergola_valgustus", "Valgustus", features=[{"type": "light-brightness"}]),
-            tile("input_select.pergola_valguse_toon", "Toon", features=[{"type": "select-options"}])]},
+            tile("input_select.pergola_valguse_toon", "Toon", hide_state=True, features=[{"type": "select-options"}])]},
     ]),
     # Every number once. "Sajab now" is the badge, so the section carries what
     # comes next and how warm it is out; the forecast card drops its current
@@ -543,7 +543,7 @@ pergola_seaded = {"title": "Pergola seaded", "path": "pergola-seaded", "icon": "
             tile("input_boolean.pergola_katuse_automaatika", "Reegel", vertical=True),
             tile("input_boolean.pergola_vihma_teavitus", "Teavitus", vertical=True)]},
         {"type": "horizontal-stack", "cards": [
-            tile("input_number.pergola_teavituse_vaikus", "Vaikus", vertical=True,
+            tile("input_number.pergola_teavituse_vaikus", "Vaikus", vertical=True, hide_state=True,
                  features=[{"type": "numeric-input", "style": "buttons"}]),
             nowrite("input_datetime.pergola_vihmateade", "Viimane teade", vertical=True)]},
     ]),
@@ -552,13 +552,13 @@ pergola_seaded = {"title": "Pergola seaded", "path": "pergola-seaded", "icon": "
             tile("input_boolean.pergola_valguse_automaatika", "Reegel", vertical=True),
             tile("input_boolean.pergola_valgus_ainult_kodus", "Ainult kui kodus", vertical=True)]},
         {"type": "horizontal-stack", "cards": [
-            tile("input_number.pergola_valgus_nihe", "Enne loojangut", vertical=True,
+            tile("input_number.pergola_valgus_nihe", "Enne loojangut", vertical=True, hide_state=True,
                  features=[{"type": "numeric-input", "style": "buttons"}]),
             tile("input_datetime.pergola_valgus_kustub", "Kustub", vertical=True)]},
         {"type": "horizontal-stack", "cards": [
-            tile("input_number.pergola_valguse_heledus", "Heledus", vertical=True,
+            tile("input_number.pergola_valguse_heledus", "Heledus", vertical=True, hide_state=True,
                  features=[{"type": "numeric-input", "style": "buttons"}]),
-            tile("input_select.pergola_ohtune_toon", "Õhtune toon", vertical=True,
+            tile("input_select.pergola_ohtune_toon", "Õhtune toon", vertical=True, hide_state=True,
                  features=[{"type": "select-options"}])]},
     ]),
 ]}
