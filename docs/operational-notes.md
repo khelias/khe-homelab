@@ -532,6 +532,29 @@ Device ids, local keys and LAN addresses are not in this repo; the local keys
 live in `.storage` and the addresses in khe-meta's
 `house/home-assistant-plan.md`.
 
+**These units report no roof position.** The cloud declares dp1 (opened /
+closed) but it never arrives over the LAN, not after a full open and close
+cycle, and dp2 holds the last command only until the motor stops and then
+resets itself to `stop` (both measured 2026-09-20). So the cover entities are
+command-only and sit at `unknown`, which is honest rather than broken. Any
+state shown in Home Assistant would have to be remembered on the HA side, and
+would be wrong whenever the RF remote is used.
+
+**The roof rain rule runs on Open-Meteo, not on met.no.** met.no reported
+`partlycloudy` and 0.0 mm for six hours while it was raining on the terrace
+(2026-09-20), because it is a grid forecast and a local shower fits between
+the grid points. `config/packages/pergola.yaml` has a `rest:` sensor pair
+(`sensor.sademed_praegu`, `sensor.sademed_kahe_tunniga`) reading Open-Meteo's
+15 minute nowcast; the URL is a `resource_template` so the house coordinates
+come from `zone.home` and stay out of this repo. Whether the nowcast catches
+a shower this one missed is not proven yet.
+
+**New devices drift the generated dashboard.** Home Assistant adds a section
+for a newly discovered device to the stored Overview config by itself, so
+`scripts/ha-dashboard.py` and the live dashboard diverge after every new
+integration. That is what the generator is for; diff before assuming the
+drift is someone's deliberate edit.
+
 ### HVAC integrations
 
 The Komfovent and Daikin integration quirks (Modbus client rules, register
