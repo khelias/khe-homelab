@@ -540,6 +540,15 @@ command-only and sit at `unknown`, which is honest rather than broken. Any
 state shown in Home Assistant would have to be remembered on the HA side, and
 would be wrong whenever the RF remote is used.
 
+**Editing a tuya-local device config renames its entities.** The unique id is
+derived from the entity's type plus its name or class, so dropping
+`class: awning` from the cover made tuya-local register brand new entities
+(`cover.aed_pergola_parem`, area-prefixed because the old id was taken) and
+left the originals behind as unavailable orphans, which also broke the group
+that referenced them. After such an edit, delete the orphans from the entity
+registry and rename the new entities back, or the dashboard quietly points at
+nothing.
+
 **The roof rain rule runs on Open-Meteo, not on met.no.** met.no reported
 `partlycloudy` and 0.0 mm for six hours while it was raining on the terrace
 (2026-09-20), because it is a grid forecast and a local shower fits between
