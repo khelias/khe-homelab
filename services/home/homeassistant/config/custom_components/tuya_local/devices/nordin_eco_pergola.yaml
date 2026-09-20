@@ -1,0 +1,139 @@
+# NORDIN bioclimatic pergola (Tuya "ECO Pergola M+LED", category mc).
+# Based on the tested datapoint map in make-all/tuya-local issue #5349.
+# Cloud only declares dp 1/2/24, so the LED datapoints are reachable
+# over LAN only - the official Tuya integration cannot see them.
+name: ECO Pergola
+products:
+  - id: funiq7g6qoy9xvtn
+    name: ECO Pergola M+LED
+    manufacturer: NORDIN
+  - id: jvfh9amnnulisbiu
+    name: ECO Pergola
+    model: YZ21006-02A/03A/04A
+
+entities:
+  - entity: cover
+    class: awning
+    dps:
+      - id: 1
+        type: string
+        name: status
+        readonly: true
+        mapping:
+          - dps_val: "opened"
+            value: open
+          - dps_val: "closed"
+            value: closed
+      - id: 2
+        type: string
+        name: control
+        mapping:
+          - dps_val: "open"
+            value: open
+          - dps_val: "close"
+            value: close
+          - dps_val: "stop"
+            value: stop
+          - dps_val: "continue"
+            value: open
+            hidden: true
+      - id: 14
+        type: bitfield
+        name: fault
+        readonly: true
+        optional: true
+      - id: 24
+        type: boolean
+        name: switch_sensor
+        optional: true
+      - id: 101
+        type: string
+        name: control_back
+        optional: true
+
+  - entity: sensor
+    name: Last command
+    class: enum
+    icon: "mdi:gesture-tap-button"
+    category: diagnostic
+    dps:
+      - id: 2
+        type: string
+        name: sensor
+        readonly: true
+        mapping:
+          - dps_val: "open"
+            value: "Open"
+          - dps_val: "close"
+            value: "Close"
+          - dps_val: "stop"
+            value: "Stop"
+          - dps_val: "continue"
+            value: "Continue"
+
+  - entity: select
+    name: Remote channel
+    icon: "mdi:remote"
+    category: config
+    dps:
+      - id: 102
+        type: string
+        name: option
+        mapping:
+          - dps_val: "01"
+            value: "Channel 1"
+          - dps_val: "02"
+            value: "Channel 2"
+          - dps_val: "03"
+            value: "Channel 3"
+          - dps_val: "04"
+            value: "Channel 4"
+          - dps_val: "05"
+            value: "Channel 5"
+          - dps_val: "06"
+            value: "Channel 6"
+          - dps_val: "07"
+            value: "Channel 7"
+          - dps_val: "08"
+            value: "Channel 8"
+          - dps_val: "C1"
+            value: "All pergolas"
+
+  - entity: light
+    name: Lighting
+    dps:
+      - id: 104
+        type: boolean
+        name: switch
+      - id: 103
+        type: integer
+        name: brightness
+        range:
+          min: 6
+          max: 1000
+
+  - entity: select
+    name: Lighting colour
+    icon: "mdi:theme-light-dark"
+    dps:
+      - id: 108
+        type: string
+        name: option
+        mapping:
+          - dps_val: "White_Light"
+            value: "White"
+          - dps_val: "Warm_Light"
+            value: "Warm"
+
+  - entity: light
+    name: Atmosphere
+    dps:
+      - id: 111
+        type: boolean
+        name: switch
+      - id: 109
+        type: integer
+        name: brightness
+        range:
+          min: 6
+          max: 1000

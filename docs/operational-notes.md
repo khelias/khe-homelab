@@ -504,6 +504,30 @@ registry to `sensor.maja_*`, `binary_sensor.maja_andmed_varsked` and
 `button.maja_*` so the dashboard generator can reference them in this public
 repo. A fresh install of the integration would recreate the EIC-based ids.
 
+**Pergola via Tuya Local (since 2026-09-20).** The two motorised pergolas are
+Tuya WiFi devices (protocol 3.5). Tuya's cloud only declares three datapoints
+for them, so the built-in Tuya integration can offer nothing but a door
+binary sensor: the roof control and both LED circuits are custom datapoints
+that are reachable over the LAN only. They run on HACS custom repository
+`make-all/tuya-local`, which is a *custom* repository, not in the HACS default
+store.
+
+That integration ships its device definitions inside its own folder and has no
+user config directory (the PR that would have added one, make-all/tuya-local#5141,
+was rejected), so this repo makes one narrow exception to the "custom_components
+is untracked" rule and tracks a single file:
+`config/custom_components/tuya_local/devices/nordin_eco_pergola.yaml`.
+**A tuya-local update deletes it.** After every update of that integration:
+
+```bash
+cd /home/khe/homelab && git restore services/home/homeassistant/config/custom_components/tuya_local/devices/nordin_eco_pergola.yaml && docker restart homeassistant
+```
+
+Without the file the pergola entities come back as `unavailable` and the
+devices no longer match any config. Device ids, local keys and LAN addresses
+are not in this repo; the local keys live in `.storage` and the addresses in
+khe-meta's `house/home-assistant-plan.md`.
+
 ### HVAC integrations
 
 The Komfovent and Daikin integration quirks (Modbus client rules, register
