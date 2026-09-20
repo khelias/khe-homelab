@@ -534,26 +534,32 @@ pergola_seaded = {"title": "Pergola seaded", "path": "pergola-seaded", "icon": "
         {"type": "horizontal-stack", "cards": [
             tile("select.pergola_parem_valguse_toon", "Toon parem", vertical=True),
             tile("select.pergola_vasak_valguse_toon", "Toon vasak", vertical=True)]},
-        note("Tavaliselt seab mõlemad korraga Toon põhilehel."),
     ]),
-    # Grouped by rule, not by control type, and every knob is a switch or a
-    # number: with each rule's parts visible there is nothing left to explain
-    # in prose.
+    # Grouped by rule, and every part of a rule is a control. Nothing here
+    # needs a sentence explaining it, which is just as well: a subtitle
+    # heading truncates to one line and a markdown card was too much page.
     section("Katuse automaatika", [
-        third(tile("input_boolean.pergola_katuse_automaatika", "Reegel", vertical=True)),
-        third(tile("input_boolean.pergola_vihma_teavitus", "Teavitus", vertical=True)),
-        third(nowrite("input_datetime.pergola_vihmateade", "Viimane teade", vertical=True)),
-        note("Vihm, lumi või äike sulgeb katuse. Teade kõige rohkem kord kuue tunni jooksul."),
+        {"type": "horizontal-stack", "cards": [
+            tile("input_boolean.pergola_katuse_automaatika", "Reegel", vertical=True),
+            tile("input_boolean.pergola_vihma_teavitus", "Teavitus", vertical=True)]},
+        {"type": "horizontal-stack", "cards": [
+            tile("input_number.pergola_teavituse_vaikus", "Vaikus", vertical=True,
+                 features=[{"type": "numeric-input", "style": "buttons"}]),
+            nowrite("input_datetime.pergola_vihmateade", "Viimane teade", vertical=True)]},
     ]),
     section("Valguse automaatika", [
         {"type": "horizontal-stack", "cards": [
             tile("input_boolean.pergola_valguse_automaatika", "Reegel", vertical=True),
             tile("input_boolean.pergola_valgus_ainult_kodus", "Ainult kui kodus", vertical=True)]},
         {"type": "horizontal-stack", "cards": [
-            tile("input_number.pergola_valguse_heledus", "Heledus", vertical=True,
+            tile("input_number.pergola_valgus_nihe", "Enne loojangut", vertical=True,
                  features=[{"type": "numeric-input", "style": "buttons"}]),
             tile("input_datetime.pergola_valgus_kustub", "Kustub", vertical=True)]},
-        note("Süttib 15 min enne loojangut Soe toonis."),
+        {"type": "horizontal-stack", "cards": [
+            tile("input_number.pergola_valguse_heledus", "Heledus", vertical=True,
+                 features=[{"type": "numeric-input", "style": "buttons"}]),
+            tile("input_select.pergola_ohtune_toon", "Õhtune toon", vertical=True,
+                 features=[{"type": "select-options"}])]},
     ]),
 ]}
 
