@@ -491,8 +491,9 @@ def roof(name, icon, service, color=None):
 pergola = {"title": "Pergola", "path": "pergola", "icon": "mdi:awning-outline", "type": "sections", "max_columns": 2,
  "badges": [
     {"type": "entity", "entity": "sensor.sademed_praegu", "name": "Sajab", "show_name": True, "show_state": True},
-    {"type": "entity", "entity": "input_boolean.pergola_automaatika", "name": "Automaatika", "show_name": True, "show_state": True},
-    {"type": "entity", "entity": "input_boolean.pergola_automaatika", "name": "Seaded", "icon": "mdi:tune", "show_name": True, "show_state": False,
+    {"type": "entity", "entity": "input_boolean.pergola_katuse_automaatika", "name": "Katuse automaatika", "show_name": True, "show_state": True},
+    {"type": "entity", "entity": "input_boolean.pergola_valguse_automaatika", "name": "Valguse automaatika", "show_name": True, "show_state": True},
+    {"type": "entity", "entity": "input_boolean.pergola_katuse_automaatika", "name": "Seaded", "icon": "mdi:tune", "show_name": True, "show_state": False,
      "tap_action": {"action": "navigate", "navigation_path": "/lovelace/pergola-seaded"}},
  ],
  "sections": [
@@ -535,10 +536,12 @@ pergola_seaded = {"title": "Pergola seaded", "path": "pergola-seaded", "icon": "
         note("Tavaliselt seab mõlemad korraga Toon põhilehel."),
     ]),
     section("Automaatika", [
-        tile("input_boolean.pergola_automaatika", "Automaatika"),
-        note("Vihm, lumi või äike sulgeb katuse ja saadab teate."),
-        note("Valgus süttib 15 min enne loojangut, kui keegi on kodus."),
-        note("Valgus kustub 23:00 või kui viimane inimene lahkub."),
+        {"type": "horizontal-stack", "cards": [
+            tile("input_boolean.pergola_katuse_automaatika", "Katus", vertical=True),
+            tile("input_boolean.pergola_valguse_automaatika", "Valgus", vertical=True)]},
+        note("Katus: vihm, lumi või äike sulgeb ja saadab teate."),
+        note("Valgus: süttib 15 min enne loojangut Soe toonis 60%, kui keegi on kodus."),
+        note("Valgus: kustub 23:00 või kui viimane inimene lahkub."),
     ]),
 ]}
 

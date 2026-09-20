@@ -37,10 +37,16 @@ rest:
         device_class: precipitation
         state_class: measurement
 
+# Two switches, not one: the roof rule is weather protection and the light
+# rule is comfort. Turning the lights off for an evening should not also leave
+# the roof open in the rain.
 input_boolean:
-  pergola_automaatika:
-    name: "Pergola automaatika"
+  pergola_katuse_automaatika:
+    name: "Pergola katuse automaatika"
     icon: mdi:awning-outline
+  pergola_valguse_automaatika:
+    name: "Pergola valguse automaatika"
+    icon: mdi:lightbulb-auto
 
 # The two units each have their own White/Warm select and they should always
 # agree, so the dashboard offers one control and this mirrors it onto both.
@@ -78,7 +84,7 @@ automation:
           - hail
     conditions:
       - condition: state
-        entity_id: input_boolean.pergola_automaatika
+        entity_id: input_boolean.pergola_katuse_automaatika
         state: "on"
       - condition: not
         conditions:
@@ -110,12 +116,25 @@ automation:
         offset: "-00:15:00"
     conditions:
       - condition: state
-        entity_id: input_boolean.pergola_automaatika
+        entity_id: input_boolean.pergola_valguse_automaatika
         state: "on"
       - condition: numeric_state
         entity_id: zone.home
         above: 0
     actions:
+      - action: select.select_option
+        target:
+          entity_id:
+            - select.pergola_parem_valguse_toon
+            - select.pergola_vasak_valguse_toon
+        data:
+          option: Warm
+      # keep the dashboard control showing what the lights are actually doing
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.pergola_valguse_toon
+        data:
+          option: Soe
       - action: light.turn_on
         target:
           entity_id: light.pergola_valgustus
@@ -153,7 +172,7 @@ automation:
         below: 1
     conditions:
       - condition: state
-        entity_id: input_boolean.pergola_automaatika
+        entity_id: input_boolean.pergola_valguse_automaatika
         state: "on"
     actions:
       - action: light.turn_off
