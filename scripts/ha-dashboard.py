@@ -470,45 +470,34 @@ ventilatsioon = {"title": "Ventilatsioon", "path": "ventilatsioon", "icon": "mdi
     ]),
 ]}
 
-# Pergola. The two units are one terrace, so every section leads with the group
-# and keeps the per-unit tiles under it: the split only matters when one side
-# needs moving on its own. The roof has no tilt datapoint, only open/stop/close,
-# so there is nothing to put a slider on.
-pergola = {"title": "Pergola", "path": "pergola", "icon": "mdi:pergola", "type": "sections", "max_columns": 2,
+# Pergola. One section per job, not one section per entity group: the roof, the
+# light, the number the roof rule runs on, and the switch that arms it. Anything
+# that is used once a season - the mood light per unit, the RF channel, the raw
+# datapoints - lives in the subview. The roof reports no position (see
+# nordin_eco_pergola.yaml), so nothing here pretends to show one.
+pergola = {"title": "Pergola", "path": "pergola", "icon": "mdi:awning-outline", "type": "sections", "max_columns": 2,
  "badges": [
-    {"type": "entity", "entity": "cover.pergola_katus", "name": "Katus", "show_name": True, "show_state": True},
+    {"type": "entity", "entity": "sensor.sademed_praegu", "name": "Sajab", "show_name": True, "show_state": True},
     {"type": "entity", "entity": "input_boolean.pergola_automaatika", "name": "Automaatika", "show_name": True, "show_state": True},
+    {"type": "entity", "entity": "input_boolean.pergola_automaatika", "name": "Seaded", "icon": "mdi:tune", "show_name": True, "show_state": False,
+     "tap_action": {"action": "navigate", "navigation_path": "/lovelace/pergola-seaded"}},
  ],
  "sections": [
     section("Katus", [
-        tile("cover.pergola_katus", "Mõlemad", features=[{"type": "cover-open-close"}]),
+        tile("cover.pergola_katus", "Mõlemad pergolad", features=[{"type": "cover-open-close"}]),
         {"type": "horizontal-stack", "cards": [
-            tile("cover.pergola_parem", "Parem", vertical=True, features=[{"type": "cover-open-close"}]),
-            tile("cover.pergola_vasak", "Vasak", vertical=True, features=[{"type": "cover-open-close"}])]},
-        # dp1 never arrives over the LAN, so the state is the last command. Until a
-        # side has been commanded once it reads unknown, and that is honest.
-        {"type": "horizontal-stack", "cards": [
-            nowrite("sensor.pergola_parem_viimane_kask", "Parem, viimane käsk", vertical=True),
-            nowrite("sensor.pergola_vasak_viimane_kask", "Vasak, viimane käsk", vertical=True)]},
+            tile("cover.pergola_parem", "Ainult parem", vertical=True, features=[{"type": "cover-open-close"}]),
+            tile("cover.pergola_vasak", "Ainult vasak", vertical=True, features=[{"type": "cover-open-close"}])]},
+        note("Seade ei ütle asendit. Poolenurk: Stopp keset liikumist."),
     ]),
-    section("Valgustus", [
-        tile("light.pergola_valgustus", "Mõlemad", features=[{"type": "light-brightness"}]),
-        {"type": "horizontal-stack", "cards": [
-            tile("light.pergola_parem_valgustus", "Parem", vertical=True),
-            tile("light.pergola_vasak_valgustus", "Vasak", vertical=True)]},
-        tile("select.pergola_parem_valguse_toon", "Toon, parem", features=[{"type": "select-options"}]),
-        tile("select.pergola_vasak_valguse_toon", "Toon, vasak", features=[{"type": "select-options"}]),
-    ]),
-    section("Meeleolutuli", [
-        tile("light.pergola_meeleolutuled", "Mõlemad", features=[{"type": "light-brightness"}]),
-        {"type": "horizontal-stack", "cards": [
-            tile("light.pergola_parem_meeleolu", "Parem", vertical=True),
-            tile("light.pergola_vasak_meeleolu", "Vasak", vertical=True)]},
+    section("Valgus", [
+        tile("light.pergola_valgustus", "Valgustus", features=[{"type": "light-brightness"}]),
+        tile("input_select.pergola_valguse_toon", "Toon", features=[{"type": "select-options"}]),
+        tile("light.pergola_meeleolutuled", "Meeleolutuli", features=[{"type": "light-brightness"}]),
     ]),
     section("Ilm", [
-        # met.no is the picture; Open-Meteo's 15 minute nowcast is the number the
-        # roof rule actually runs on, because met.no missed a shower over the
-        # house on the day this was built.
+        # met.no is the picture; the Open-Meteo nowcast is the number the roof
+        # rule runs on, because met.no missed a shower over the house.
         {"type": "horizontal-stack", "cards": [
             nowrite("sensor.sademed_praegu", "Sajab praegu", vertical=True),
             nowrite("sensor.sademed_kahe_tunniga", "Kahe tunniga", vertical=True),
@@ -518,9 +507,32 @@ pergola = {"title": "Pergola", "path": "pergola", "icon": "mdi:pergola", "type":
     ]),
     section("Automaatika", [
         tile("input_boolean.pergola_automaatika", "Automaatika"),
-        note("Vihm, lumi või äike sulgeb katuse ise. Valgustus süttib 15 min enne loojangut, "
-             "kui keegi on kodus, ja kustub 23:00 või kui viimane lahkub. Päikesevarju reeglit ei ole: "
-             "selleks peaks lamellid jääma poolde nurka ja seda oskab see seade ainult ajastatud stopiga."),
+        note("Vihm sulgeb katuse. Valgus loojangul, kui keegi kodus, kustub 23:00."),
+    ]),
+]}
+
+pergola_seaded = {"title": "Pergola seaded", "path": "pergola-seaded", "icon": "mdi:tune", "type": "sections", "subview": True, "max_columns": 2, "sections": [
+    section("Meeleolutuli poolte kaupa", [
+        {"type": "horizontal-stack", "cards": [
+            tile("light.pergola_parem_meeleolu", "Parem", vertical=True),
+            tile("light.pergola_vasak_meeleolu", "Vasak", vertical=True)]},
+    ]),
+    section("Toon poolte kaupa", [
+        note("Tavaliselt seab mõlemad korraga Valgus-sektsiooni Toon."),
+        tile("select.pergola_parem_valguse_toon", "Parem", features=[{"type": "select-options"}]),
+        tile("select.pergola_vasak_valguse_toon", "Vasak", features=[{"type": "select-options"}]),
+    ]),
+    section("Puldikanal", [
+        note("C1 juhib pultidelt kõiki pergolaid korraga."),
+        tile("select.pergola_parem_puldikanal", "Parem", features=[{"type": "select-options"}]),
+        tile("select.pergola_vasak_puldikanal", "Vasak", features=[{"type": "select-options"}]),
+    ]),
+    section("Diagnostika", [
+        # dp2 resets itself to Stop a few minutes after a command, so this reads
+        # Stop almost always. It is here to see that the LAN link is alive.
+        {"type": "horizontal-stack", "cards": [
+            nowrite("sensor.pergola_parem_viimane_kask", "Parem", vertical=True),
+            nowrite("sensor.pergola_vasak_viimane_kask", "Vasak", vertical=True)]},
     ]),
 ]}
 
@@ -627,7 +639,7 @@ soojuspump_seaded = {"title": "Soojuspumba seaded", "path": "soojuspump-seaded",
 ]}
 
 config = {"title": "Kodu", "views": [home, energy, soojuspump, ventilatsioon, pergola, valve, cameras, susteem,
-                                    komfovent_seaded, soojuspump_seaded] + [cam_view(s, n) for s, n in CAMS]}
+                                    komfovent_seaded, soojuspump_seaded, pergola_seaded] + [cam_view(s, n) for s, n in CAMS]}
 
 async def main():
     async with websockets.connect(f"ws://{HA}/api/websocket", max_size=2**24) as ws:

@@ -40,7 +40,17 @@ rest:
 input_boolean:
   pergola_automaatika:
     name: "Pergola automaatika"
-    icon: mdi:pergola
+    icon: mdi:awning-outline
+
+# The two units each have their own White/Warm select and they should always
+# agree, so the dashboard offers one control and this mirrors it onto both.
+input_select:
+  pergola_valguse_toon:
+    name: "Pergola valguse toon"
+    icon: mdi:theme-light-dark
+    options:
+      - Soe
+      - Valge
 
 automation:
   # Rain closes the roof. The louvres shut watertight, so this is the only
@@ -111,6 +121,24 @@ automation:
           entity_id: light.pergola_valgustus
         data:
           brightness_pct: 60
+
+  - alias: "Pergola: valguse toon mõlemale"
+    id: pergola_light_tone_both
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: input_select.pergola_valguse_toon
+        to:
+          - Soe
+          - Valge
+    actions:
+      - action: select.select_option
+        target:
+          entity_id:
+            - select.pergola_parem_valguse_toon
+            - select.pergola_vasak_valguse_toon
+        data:
+          option: "{{ 'Warm' if trigger.to_state.state == 'Soe' else 'White' }}"
 
   - alias: "Pergola: valgustus välja"
     id: pergola_lights_off
