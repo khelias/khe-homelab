@@ -48,6 +48,18 @@ input_boolean:
     name: "Pergola valguse automaatika"
     icon: mdi:lightbulb-auto
 
+# What the evening light rule uses. Kept as helpers rather than numbers in the
+# automation so they can be changed from the dashboard without a deploy.
+input_number:
+  pergola_valguse_heledus:
+    name: "Pergola õhtuse valguse heledus"
+    icon: mdi:brightness-percent
+    min: 5
+    max: 100
+    step: 5
+    unit_of_measurement: "%"
+    mode: box
+
 # Marks when the rain rule last said anything, so it can keep quiet without
 # also skipping the close command. See the rule for why the two differ.
 input_datetime:
@@ -55,6 +67,11 @@ input_datetime:
     name: "Pergola: viimane vihmateade"
     icon: mdi:message-alert
     has_date: true
+    has_time: true
+  pergola_valgus_kustub:
+    name: "Pergola valgus kustub"
+    icon: mdi:clock-outline
+    has_date: false
     has_time: true
 
 # The two units each have their own White/Warm select and they should always
@@ -163,7 +180,7 @@ automation:
         target:
           entity_id: light.pergola_valgustus
         data:
-          brightness_pct: 60
+          brightness_pct: "{{ states('input_number.pergola_valguse_heledus') | int(60) }}"
 
   - alias: "Pergola: valguse toon mõlemale"
     id: pergola_light_tone_both
@@ -190,7 +207,7 @@ automation:
     mode: single
     triggers:
       - trigger: time
-        at: "23:00:00"
+        at: input_datetime.pergola_valgus_kustub
       - trigger: numeric_state
         entity_id: zone.home
         below: 1

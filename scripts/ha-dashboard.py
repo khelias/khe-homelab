@@ -491,8 +491,6 @@ def roof(name, icon, service, color=None):
 pergola = {"title": "Pergola", "path": "pergola", "icon": "mdi:awning-outline", "type": "sections", "max_columns": 2,
  "badges": [
     {"type": "entity", "entity": "sensor.sademed_praegu", "name": "Sajab", "show_name": True, "show_state": True},
-    {"type": "entity", "entity": "input_boolean.pergola_katuse_automaatika", "name": "Katuse automaatika", "show_name": True, "show_state": True},
-    {"type": "entity", "entity": "input_boolean.pergola_valguse_automaatika", "name": "Valguse automaatika", "show_name": True, "show_state": True},
     {"type": "entity", "entity": "input_boolean.pergola_katuse_automaatika", "name": "Seaded", "icon": "mdi:tune", "show_name": True, "show_state": False,
      "tap_action": {"action": "navigate", "navigation_path": "/lovelace/pergola-seaded"}},
  ],
@@ -535,13 +533,19 @@ pergola_seaded = {"title": "Pergola seaded", "path": "pergola-seaded", "icon": "
             tile("select.pergola_vasak_valguse_toon", "Toon vasak", vertical=True)]},
         note("Tavaliselt seab mõlemad korraga Toon põhilehel."),
     ]),
-    section("Automaatika", [
+    section("Automaatika sees", [
         {"type": "horizontal-stack", "cards": [
             tile("input_boolean.pergola_katuse_automaatika", "Katus", vertical=True),
             tile("input_boolean.pergola_valguse_automaatika", "Valgus", vertical=True)]},
-        note("Katus: vihm, lumi või äike sulgeb ja saadab teate."),
-        note("Valgus: süttib 15 min enne loojangut Soe toonis 60%, kui keegi on kodus."),
-        note("Valgus: kustub 23:00 või kui viimane inimene lahkub."),
+        note("Katus: vihm, lumi või äike sulgeb ja saadab teate, kõige rohkem kord kuue tunni jooksul."),
+        note("Valgus: süttib 15 min enne loojangut Soe toonis, kui keegi on kodus. Kustub allpool valitud ajal või kui viimane lahkub."),
+    ]),
+    section("Õhtuse valguse seaded", [
+        {"type": "horizontal-stack", "cards": [
+            tile("input_number.pergola_valguse_heledus", "Heledus", vertical=True,
+                 features=[{"type": "numeric-input", "style": "buttons"}]),
+            tile("input_datetime.pergola_valgus_kustub", "Kustub", vertical=True)]},
+        nowrite("input_datetime.pergola_vihmateade", "Viimane vihmateade"),
     ]),
 ]}
 
