@@ -513,20 +513,24 @@ that are reachable over the LAN only. They run on HACS custom repository
 store.
 
 That integration ships its device definitions inside its own folder and has no
-user config directory (the PR that would have added one, make-all/tuya-local#5141,
-was rejected), so this repo makes one narrow exception to the "custom_components
-is untracked" rule and tracks a single file:
-`config/custom_components/tuya_local/devices/nordin_eco_pergola.yaml`.
-**A tuya-local update deletes it.** After every update of that integration:
+user config directory (the PR that would have added one,
+make-all/tuya-local#5141, was rejected), **and a tuya-local update deletes
+anything extra in there.** The folder is also owned by root, because the
+container runs as root, so the deploy runner cannot write into it and a
+tracked file at that path breaks `git pull --ff-only` with "Permission
+denied" (hit on 2026-09-20).
 
-```bash
-cd /home/khe/homelab && git restore services/home/homeassistant/config/custom_components/tuya_local/devices/nordin_eco_pergola.yaml && docker restart homeassistant
-```
+So the device definition is tracked at
+`config/tuya_local_devices/nordin_eco_pergola.yaml` and copied into place from
+inside the container by `shell_command.sync_tuya_local_devices`
+(`config/packages/pergola.yaml`), which an automation runs on every Home
+Assistant start. After updating tuya-local, restart HA twice, or call that
+action by hand and then restart: the first copy lands too late for the config
+entries of that boot.
 
-Without the file the pergola entities come back as `unavailable` and the
-devices no longer match any config. Device ids, local keys and LAN addresses
-are not in this repo; the local keys live in `.storage` and the addresses in
-khe-meta's `house/home-assistant-plan.md`.
+Device ids, local keys and LAN addresses are not in this repo; the local keys
+live in `.storage` and the addresses in khe-meta's
+`house/home-assistant-plan.md`.
 
 ### HVAC integrations
 

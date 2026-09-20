@@ -1,0 +1,27 @@
+# The two NORDIN pergolas run on the HACS integration tuya-local, because
+# Tuya's cloud declares only three of their datapoints and the roof and LED
+# controls are not among them. tuya-local keeps device definitions inside its
+# own folder and has no user config directory, so every update of it deletes
+# the pergola definition and the entities go unavailable.
+#
+# The tracked copy lives in /config/tuya_local_devices. It has to be put back
+# from inside the container: the HACS folder is owned by root and the deploy
+# runner is not.
+shell_command:
+  sync_tuya_local_devices: >-
+    /bin/sh -c "cp -f /config/tuya_local_devices/*.yaml
+    /config/custom_components/tuya_local/devices/ &&
+    ls -l /config/custom_components/tuya_local/devices/"
+
+automation:
+  - alias: "Pergola: taasta tuya-local seadmefail"
+    id: pergola_restore_tuya_local_device_config
+    description: >-
+      tuya-local uuendus kustutab pergola seadmefaili ja entityd kaovad.
+      Kopeeri fail igal käivitusel tagasi, et järgmine restart oleks terve.
+    mode: single
+    triggers:
+      - trigger: homeassistant
+        event: start
+    actions:
+      - action: shell_command.sync_tuya_local_devices

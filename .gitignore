@@ -33,16 +33,11 @@ services/home/homeassistant/config/*
 !services/home/homeassistant/config/packages/
 
 # tuya-local has no user config directory (make-all/tuya-local#5141 was
-# rejected), so the NORDIN pergola device config has to live inside the
-# HACS-managed integration folder. Track just that one file; a tuya-local
-# update wipes it, restore with `git restore <path>` + restart HA.
-!services/home/homeassistant/config/custom_components/
-services/home/homeassistant/config/custom_components/*
-!services/home/homeassistant/config/custom_components/tuya_local/
-services/home/homeassistant/config/custom_components/tuya_local/*
-!services/home/homeassistant/config/custom_components/tuya_local/devices/
-services/home/homeassistant/config/custom_components/tuya_local/devices/*
-!services/home/homeassistant/config/custom_components/tuya_local/devices/nordin_eco_pergola.yaml
+# rejected) and its folder under custom_components/ is root-owned by the
+# container, so the deploy runner cannot write there. The pergola device
+# config is kept here instead; HA copies it into place from inside the
+# container. See docs/operational-notes.md.
+!services/home/homeassistant/config/tuya_local_devices/
 
 # Mosquitto password file - created on the VM with mosquitto_passwd, never
 # committed. The broker refuses to start without it.
