@@ -133,15 +133,8 @@ entities:
           - dps_val: "Warm_Light"
             value: "Warm"
 
-  - entity: light
-    name: Atmosphere
-    dps:
-      - id: 111
-        type: boolean
-        name: switch
-      - id: 109
-        type: integer
-        name: brightness
-        range:
-          min: 6
-          max: 1000
+  # dp109 and dp111 drive a second "atmosphere" light circuit. The datapoints
+  # work on these units - setting dp111 reports back true - but nothing lights
+  # up, so this hardware has no second circuit and the entities were only
+  # confusing. They are confirmed real on other ECO Pergolas (see
+  # make-all/tuya-local#5349); put them back before upstreaming this config.

@@ -493,7 +493,6 @@ pergola = {"title": "Pergola", "path": "pergola", "icon": "mdi:awning-outline", 
     section("Valgus", [
         tile("light.pergola_valgustus", "Valgustus", features=[{"type": "light-brightness"}]),
         tile("input_select.pergola_valguse_toon", "Toon", features=[{"type": "select-options"}]),
-        tile("light.pergola_meeleolutuled", "Meeleolutuli", features=[{"type": "light-brightness"}]),
     ]),
     section("Ilm", [
         # met.no is the picture; the Open-Meteo nowcast is the number the roof
@@ -512,11 +511,6 @@ pergola = {"title": "Pergola", "path": "pergola", "icon": "mdi:awning-outline", 
 ]}
 
 pergola_seaded = {"title": "Pergola seaded", "path": "pergola-seaded", "icon": "mdi:tune", "type": "sections", "subview": True, "max_columns": 2, "sections": [
-    section("Meeleolutuli poolte kaupa", [
-        {"type": "horizontal-stack", "cards": [
-            tile("light.pergola_parem_meeleolu", "Parem", vertical=True),
-            tile("light.pergola_vasak_meeleolu", "Vasak", vertical=True)]},
-    ]),
     section("Toon poolte kaupa", [
         note("Tavaliselt seab mõlemad korraga Valgus-sektsiooni Toon."),
         tile("select.pergola_parem_valguse_toon", "Parem", features=[{"type": "select-options"}]),

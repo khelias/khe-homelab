@@ -158,9 +158,7 @@ automation:
     actions:
       - action: light.turn_off
         target:
-          entity_id:
-            - light.pergola_valgustus
-            - light.pergola_meeleolutuled
+          entity_id: light.pergola_valgustus
 
   - alias: "Pergola: taasta tuya-local seadmefail"
     id: pergola_restore_tuya_local_device_config
@@ -201,9 +199,3 @@ light:
     entities:
       - light.pergola_parem_valgustus
       - light.pergola_vasak_valgustus
-  - platform: group
-    name: "Pergola meeleolutuled"
-    unique_id: pergola_meeleolutuled
-    entities:
-      - light.pergola_parem_meeleolu
-      - light.pergola_vasak_meeleolu
