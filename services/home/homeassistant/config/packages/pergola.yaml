@@ -12,7 +12,94 @@ shell_command:
     /bin/sh -c "cp -v -f /config/tuya_local_devices/*.yaml
     /config/custom_components/tuya_local/devices/"
 
+input_boolean:
+  pergola_automaatika:
+    name: "Pergola automaatika"
+    icon: mdi:pergola
+
 automation:
+  # Rain closes the roof. The louvres shut watertight, so this is the only
+  # weather rule that does not need the tilt angle, which these units do not
+  # expose. An unknown roof state counts as not closed: closing a closed roof
+  # costs nothing, leaving it open in the rain does.
+  - alias: "Pergola: vihm sulgeb katuse"
+    id: pergola_rain_closes_roof
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: weather.forecast_kodu
+        to:
+          - rainy
+          - pouring
+          - lightning
+          - lightning-rainy
+          - snowy
+          - snowy-rainy
+          - hail
+    conditions:
+      - condition: state
+        entity_id: input_boolean.pergola_automaatika
+        state: "on"
+      - condition: not
+        conditions:
+          - condition: state
+            entity_id: cover.pergola_katus
+            state: closed
+    actions:
+      - action: cover.close_cover
+        target:
+          entity_id: cover.pergola_katus
+      - action: notify.notify
+        data:
+          title: "Pergola"
+          message: >-
+            Ilm läks "{{ states('weather.forecast_kodu') }}", katus suleti.
+
+  - alias: "Pergola: valgustus loojangul"
+    id: pergola_lights_at_sunset
+    description: >-
+      Ainult siis, kui keegi on kodus. zone.home olek on kodusolijate arv.
+    mode: single
+    triggers:
+      - trigger: sun
+        event: sunset
+        offset: "-00:15:00"
+    conditions:
+      - condition: state
+        entity_id: input_boolean.pergola_automaatika
+        state: "on"
+      - condition: numeric_state
+        entity_id: zone.home
+        above: 0
+    actions:
+      - action: light.turn_on
+        target:
+          entity_id: light.pergola_valgustus
+        data:
+          brightness_pct: 60
+
+  - alias: "Pergola: valgustus välja"
+    id: pergola_lights_off
+    description: >-
+      Kell 23:00 või kohe, kui viimane inimene kodust lahkub.
+    mode: single
+    triggers:
+      - trigger: time
+        at: "23:00:00"
+      - trigger: numeric_state
+        entity_id: zone.home
+        below: 1
+    conditions:
+      - condition: state
+        entity_id: input_boolean.pergola_automaatika
+        state: "on"
+    actions:
+      - action: light.turn_off
+        target:
+          entity_id:
+            - light.pergola_valgustus
+            - light.pergola_meeleolutuled
+
   - alias: "Pergola: taasta tuya-local seadmefail"
     id: pergola_restore_tuya_local_device_config
     description: >-
@@ -33,3 +120,28 @@ automation:
           entity_id:
             - cover.pergola_parem
             - cover.pergola_vasak
+
+# The two pergolas are one roof and one run of lighting as far as the terrace
+# is concerned, so the groups are what the dashboard and the automations use;
+# the per-unit entities stay for the cases where only one side needs moving.
+cover:
+  - platform: group
+    name: "Pergola katus"
+    unique_id: pergola_katus
+    entities:
+      - cover.pergola_parem
+      - cover.pergola_vasak
+
+light:
+  - platform: group
+    name: "Pergola valgustus"
+    unique_id: pergola_valgustus
+    entities:
+      - light.pergola_parem_valgustus
+      - light.pergola_vasak_valgustus
+  - platform: group
+    name: "Pergola meeleolutuled"
+    unique_id: pergola_meeleolutuled
+    entities:
+      - light.pergola_parem_meeleolu
+      - light.pergola_vasak_meeleolu

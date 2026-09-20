@@ -210,6 +210,10 @@ home = {"title": "Kodu", "path": "kodu", "icon": "mdi:home", "type": "sections",
         when_on("binary_sensor.komfovent_status_alarm_fault", "Ventilatsiooni viga"),
         when_on("binary_sensor.komfovent_status_alarm_warning", "Ventilatsiooni hoiatus"),
     ], badges=[{"type": "entity", "entity": MODE, "name": "Režiim", "show_state": True}], **nav("/lovelace/ventilatsioon")),
+    section("Pergola", [
+        tile("cover.pergola_katus", "Katus", features=[{"type": "cover-open-close"}]),
+        tile("light.pergola_valgustus", "Valgustus", features=[{"type": "light-brightness"}]),
+    ], **nav("/lovelace/pergola")),
     section("Süsteem", [
         {"type": "entities", "title": "Uuendused", "entities": UPDATES,
          "visibility": [{"condition": "or", "conditions": [{"condition": "state", "entity": u, "state": "on"} for u in UPDATES]}]},
@@ -466,6 +470,54 @@ ventilatsioon = {"title": "Ventilatsioon", "path": "ventilatsioon", "icon": "mdi
     ]),
 ]}
 
+# Pergola. The two units are one terrace, so every section leads with the group
+# and keeps the per-unit tiles under it: the split only matters when one side
+# needs moving on its own. The roof has no tilt datapoint, only open/stop/close,
+# so there is nothing to put a slider on.
+pergola = {"title": "Pergola", "path": "pergola", "icon": "mdi:pergola", "type": "sections", "max_columns": 2,
+ "badges": [
+    {"type": "entity", "entity": "cover.pergola_katus", "name": "Katus", "show_name": True, "show_state": True},
+    {"type": "entity", "entity": "input_boolean.pergola_automaatika", "name": "Automaatika", "show_name": True, "show_state": True},
+ ],
+ "sections": [
+    section("Katus", [
+        tile("cover.pergola_katus", "Mõlemad", features=[{"type": "cover-open-close"}]),
+        {"type": "horizontal-stack", "cards": [
+            tile("cover.pergola_parem", "Parem", vertical=True, features=[{"type": "cover-open-close"}]),
+            tile("cover.pergola_vasak", "Vasak", vertical=True, features=[{"type": "cover-open-close"}])]},
+        # dp1 never arrives over the LAN, so the state is the last command. Until a
+        # side has been commanded once it reads unknown, and that is honest.
+        {"type": "horizontal-stack", "cards": [
+            nowrite("sensor.pergola_parem_viimane_kask", "Parem, viimane käsk", vertical=True),
+            nowrite("sensor.pergola_vasak_viimane_kask", "Vasak, viimane käsk", vertical=True)]},
+    ]),
+    section("Valgustus", [
+        tile("light.pergola_valgustus", "Mõlemad", features=[{"type": "light-brightness"}]),
+        {"type": "horizontal-stack", "cards": [
+            tile("light.pergola_parem_valgustus", "Parem", vertical=True),
+            tile("light.pergola_vasak_valgustus", "Vasak", vertical=True)]},
+        tile("select.pergola_parem_valguse_toon", "Toon, parem", features=[{"type": "select-options"}]),
+        tile("select.pergola_vasak_valguse_toon", "Toon, vasak", features=[{"type": "select-options"}]),
+    ]),
+    section("Meeleolutuli", [
+        tile("light.pergola_meeleolutuled", "Mõlemad", features=[{"type": "light-brightness"}]),
+        {"type": "horizontal-stack", "cards": [
+            tile("light.pergola_parem_meeleolu", "Parem", vertical=True),
+            tile("light.pergola_vasak_meeleolu", "Vasak", vertical=True)]},
+    ]),
+    section("Ilm", [
+        {"type": "weather-forecast", "entity": "weather.forecast_kodu", "forecast_type": "hourly",
+         "show_current": True, "show_forecast": True},
+        nowrite("sensor.komfovent_outdoor_temperature", "Välisõhk"),
+    ]),
+    section("Automaatika", [
+        tile("input_boolean.pergola_automaatika", "Automaatika"),
+        note("Vihm, lumi või äike sulgeb katuse ise. Valgustus süttib 15 min enne loojangut, "
+             "kui keegi on kodus, ja kustub 23:00 või kui viimane lahkub. Päikesevarju reeglit ei ole: "
+             "selleks peaks lamellid jääma poolde nurka ja seda oskab see seade ainult ajastatud stopiga."),
+    ]),
+]}
+
 susteem = {"title": "Süsteem", "path": "susteem", "icon": "mdi:home-assistant", "type": "sections", "subview": True, "max_columns": 2, "sections": [
     # Kodu shape, no captions. Operational notes that used to sit here (backup.sh, companion-app sensors, recorder
     # retention) live in khe-meta's house/home-assistant-plan.md. The NVR disk is on Valve and Kodu, not repeated here.
@@ -568,7 +620,7 @@ soojuspump_seaded = {"title": "Soojuspumba seaded", "path": "soojuspump-seaded",
     ]),
 ]}
 
-config = {"title": "Kodu", "views": [home, energy, soojuspump, ventilatsioon, valve, cameras, susteem,
+config = {"title": "Kodu", "views": [home, energy, soojuspump, ventilatsioon, pergola, valve, cameras, susteem,
                                     komfovent_seaded, soojuspump_seaded] + [cam_view(s, n) for s, n in CAMS]}
 
 async def main():
