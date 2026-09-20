@@ -491,8 +491,8 @@ def roof(name, icon, service, color=None):
 pergola = {"title": "Pergola", "path": "pergola", "icon": "mdi:awning-outline", "type": "sections", "max_columns": 2,
  "badges": [
     {"type": "entity", "entity": "sensor.sademed_praegu", "name": "Sajab", "show_name": True, "show_state": True},
-    {"type": "entity", "entity": "input_boolean.pergola_katuse_automaatika", "name": "Auto", "show_name": True, "show_state": True},
-    {"type": "entity", "entity": "input_boolean.pergola_valguse_automaatika", "name": "Auto", "show_name": True, "show_state": True},
+    {"type": "entity", "entity": "input_boolean.pergola_katuse_automaatika", "name": "Autom.", "show_name": True, "show_state": True},
+    {"type": "entity", "entity": "input_boolean.pergola_valguse_automaatika", "name": "Autom.", "show_name": True, "show_state": True},
     {"type": "entity", "entity": "input_boolean.pergola_katuse_automaatika", "name": "Seaded", "icon": "mdi:tune", "color": "grey", "show_name": True, "show_state": False,
      "tap_action": {"action": "navigate", "navigation_path": "/lovelace/pergola-seaded"}},
  ],
