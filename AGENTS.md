@@ -108,6 +108,37 @@ docs/              runbook, operational notes, service choices
 
 Per-service: `cd services/<group>/<service> && docker compose up -d`.
 
+## Working on Home Assistant
+
+HA is operated through its own API. Not through the UI, not over SSH.
+
+- **Token:** a long-lived token in `~/.config/khe/ha-token` on the operator's
+  machine, mode 600. Read it inside scripts, never print it, never commit it.
+- **REST** for states, service calls, `POST /api/template`, diagnostics and
+  `POST /api/services/homeassistant/restart` (HA is back in ~10 s; give it
+  another ~40 s before trusting a state read). **WebSocket**
+  (`/api/websocket`) for the entity and device registries, config entries,
+  dashboards and HACS. Host and port are in `scripts/ha-dashboard.py`.
+- **Config lives in git, not on the VM.** Edit
+  `services/home/homeassistant/config/packages/*.yaml`, commit, the operator
+  pushes, CI pulls on the VM, then restart HA through the API. Never scp into
+  the VM checkout: deploy runs `git pull --ff-only` and one drifted file stops
+  every deploy after it.
+- **YAML platforms need a restart, not a reload.** `input_*`, `rest:`,
+  `shell_command:` and the group `cover:`/`light:` platforms only appear after
+  a restart. Automations and templates do reload.
+- **Helpers come up at their minimum**, not at a sensible value. Set the first
+  value through the API; `initial:` would overwrite the household's own choice
+  on every restart.
+- **The dashboard is generated** by `scripts/ha-dashboard.py`, and HA adds
+  sections to the stored config by itself whenever a new device appears. Diff
+  the generator's output against the live config before rerunning it: exec the
+  script up to `async def main`, dump `config`, compare with a WebSocket
+  `lovelace/config` read.
+- Measured integration behaviour and every trap worth knowing is in
+  [docs/operational-notes.md](docs/operational-notes.md). Read the relevant
+  section before touching an integration.
+
 ## Update discipline
 
 When you change deployment surface (new service, removed service, network

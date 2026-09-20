@@ -471,6 +471,14 @@ be added to `.gitignore` explicitly or it silently stays untracked. HACS and
 its integrations (`custom_components/`) are deliberately untracked and
 reinstalled by hand; they are covered by the config-dir backup.
 
+**Every `template/reload` must be followed at once by
+`POST /api/events/khe_price_refresh`.** Trigger-based template sensors do not
+re-run on reload, so the whole price stack (`elektri_hinna_prognoos`, `_tase`,
+`odavaim_aken_*`) goes blank and the Kodu Elekter card renders `None. None`
+until the hourly tick. A restart is safe, the package has a `start` trigger;
+only reload breaks it. An `event_template_reloaded` trigger does not fix it,
+the reload races the entities listening for it (core issues #65832, #101835).
+
 **Config changes need a restart.** The config dir is a bind mount, so editing
 YAML and running `deploy-stacks.sh` changes nothing in the running container.
 Validate, then restart:
