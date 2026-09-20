@@ -506,9 +506,15 @@ pergola = {"title": "Pergola", "path": "pergola", "icon": "mdi:pergola", "type":
             tile("light.pergola_vasak_meeleolu", "Vasak", vertical=True)]},
     ]),
     section("Ilm", [
+        # met.no is the picture; Open-Meteo's 15 minute nowcast is the number the
+        # roof rule actually runs on, because met.no missed a shower over the
+        # house on the day this was built.
+        {"type": "horizontal-stack", "cards": [
+            nowrite("sensor.sademed_praegu", "Sajab praegu", vertical=True),
+            nowrite("sensor.sademed_kahe_tunniga", "Kahe tunniga", vertical=True),
+            nowrite("sensor.komfovent_outdoor_temperature", "Välisõhk", vertical=True)]},
         {"type": "weather-forecast", "entity": "weather.forecast_kodu", "forecast_type": "hourly",
          "show_current": True, "show_forecast": True},
-        nowrite("sensor.komfovent_outdoor_temperature", "Välisõhk"),
     ]),
     section("Automaatika", [
         tile("input_boolean.pergola_automaatika", "Automaatika"),
