@@ -470,11 +470,24 @@ ventilatsioon = {"title": "Ventilatsioon", "path": "ventilatsioon", "icon": "mdi
     ]),
 ]}
 
-# Pergola. One section per job, not one section per entity group: the roof, the
-# light, the number the roof rule runs on, and the switch that arms it. Anything
-# that is used once a season - the mood light per unit, the RF channel, the raw
-# datapoints - lives in the subview. The roof reports no position (see
-# nordin_eco_pergola.yaml), so nothing here pretends to show one.
+# Pergola. The front page does only what gets done every day, and does it to
+# both units at once: the roof, the light, and the number that tells you
+# whether to bother. One side at a time, the automation switch and everything
+# seasonal live in the subview. House shape otherwise: a row of tiles per
+# section, the common action as a row of three like the ventilation modes,
+# nothing full width but the forecast card.
+#
+# Two things are deliberately on neither page. The RF channel (dp102) is
+# write-only in practice - the device never reports it - and rewriting it can
+# leave a handheld remote unpaired, so it stays on the device page. The
+# last-command sensors read Stop almost always, because dp2 resets itself.
+# The roof reports no position at all, so no tile pretends to show one.
+def roof(name, icon, service, color=None):
+    act = {"action": "perform-action", "perform_action": service,
+           "target": {"entity_id": "cover.pergola_katus"}}
+    return third(tile("cover.pergola_katus", name, icon=icon, color=color, hide_state=True,
+                      vertical=True, tap_action=act, icon_tap_action=act))
+
 pergola = {"title": "Pergola", "path": "pergola", "icon": "mdi:awning-outline", "type": "sections", "max_columns": 2,
  "badges": [
     {"type": "entity", "entity": "sensor.sademed_praegu", "name": "Sajab", "show_name": True, "show_state": True},
@@ -484,15 +497,15 @@ pergola = {"title": "Pergola", "path": "pergola", "icon": "mdi:awning-outline", 
  ],
  "sections": [
     section("Katus", [
-        tile("cover.pergola_katus", "Mõlemad pergolad", features=[{"type": "cover-open-close"}]),
-        {"type": "horizontal-stack", "cards": [
-            tile("cover.pergola_parem", "Ainult parem", vertical=True, features=[{"type": "cover-open-close"}]),
-            tile("cover.pergola_vasak", "Ainult vasak", vertical=True, features=[{"type": "cover-open-close"}])]},
-        note("Seade ei ütle asendit. Poolenurk: Stopp keset liikumist."),
+        roof("Ava", "mdi:arrow-up", "cover.open_cover", "green"),
+        roof("Stopp", "mdi:stop", "cover.stop_cover"),
+        roof("Sulge", "mdi:arrow-down", "cover.close_cover", "blue"),
+        note("Mõlemad korraga. Poolenurk: Stopp keset liikumist."),
     ]),
     section("Valgus", [
-        tile("light.pergola_valgustus", "Valgustus", features=[{"type": "light-brightness"}]),
-        tile("input_select.pergola_valguse_toon", "Toon", features=[{"type": "select-options"}]),
+        {"type": "horizontal-stack", "cards": [
+            tile("light.pergola_valgustus", "Valgustus", features=[{"type": "light-brightness"}]),
+            tile("input_select.pergola_valguse_toon", "Toon", features=[{"type": "select-options"}])]},
     ]),
     section("Ilm", [
         # met.no is the picture; the Open-Meteo nowcast is the number the roof
@@ -504,29 +517,28 @@ pergola = {"title": "Pergola", "path": "pergola", "icon": "mdi:awning-outline", 
         {"type": "weather-forecast", "entity": "weather.forecast_kodu", "forecast_type": "hourly",
          "show_current": True, "show_forecast": True},
     ]),
-    section("Automaatika", [
-        tile("input_boolean.pergola_automaatika", "Automaatika"),
-        note("Vihm sulgeb katuse. Valgus loojangul, kui keegi kodus, kustub 23:00."),
-    ]),
 ]}
 
 pergola_seaded = {"title": "Pergola seaded", "path": "pergola-seaded", "icon": "mdi:tune", "type": "sections", "subview": True, "max_columns": 2, "sections": [
-    section("Toon poolte kaupa", [
-        note("Tavaliselt seab mõlemad korraga Valgus-sektsiooni Toon."),
-        tile("select.pergola_parem_valguse_toon", "Parem", features=[{"type": "select-options"}]),
-        tile("select.pergola_vasak_valguse_toon", "Vasak", features=[{"type": "select-options"}]),
-    ]),
-    section("Puldikanal", [
-        note("C1 juhib pultidelt kõiki pergolaid korraga."),
-        tile("select.pergola_parem_puldikanal", "Parem", features=[{"type": "select-options"}]),
-        tile("select.pergola_vasak_puldikanal", "Vasak", features=[{"type": "select-options"}]),
-    ]),
-    section("Diagnostika", [
-        # dp2 resets itself to Stop a few minutes after a command, so this reads
-        # Stop almost always. It is here to see that the LAN link is alive.
+    section("Katus poolte kaupa", [
         {"type": "horizontal-stack", "cards": [
-            nowrite("sensor.pergola_parem_viimane_kask", "Parem", vertical=True),
-            nowrite("sensor.pergola_vasak_viimane_kask", "Vasak", vertical=True)]},
+            tile("cover.pergola_parem", "Parem", vertical=True, features=[{"type": "cover-open-close"}]),
+            tile("cover.pergola_vasak", "Vasak", vertical=True, features=[{"type": "cover-open-close"}])]},
+    ]),
+    section("Valgus poolte kaupa", [
+        {"type": "horizontal-stack", "cards": [
+            tile("light.pergola_parem_valgustus", "Parem", vertical=True, features=[{"type": "light-brightness"}]),
+            tile("light.pergola_vasak_valgustus", "Vasak", vertical=True, features=[{"type": "light-brightness"}])]},
+        {"type": "horizontal-stack", "cards": [
+            tile("select.pergola_parem_valguse_toon", "Toon parem", vertical=True),
+            tile("select.pergola_vasak_valguse_toon", "Toon vasak", vertical=True)]},
+        note("Tavaliselt seab mõlemad korraga Toon põhilehel."),
+    ]),
+    section("Automaatika", [
+        tile("input_boolean.pergola_automaatika", "Automaatika"),
+        note("Vihm, lumi või äike sulgeb katuse ja saadab teate."),
+        note("Valgus süttib 15 min enne loojangut, kui keegi on kodus."),
+        note("Valgus kustub 23:00 või kui viimane inimene lahkub."),
     ]),
 ]}
 
