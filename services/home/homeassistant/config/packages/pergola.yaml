@@ -48,6 +48,15 @@ input_boolean:
     name: "Pergola valguse automaatika"
     icon: mdi:lightbulb-auto
 
+# Marks when the rain rule last said anything, so it can keep quiet without
+# also skipping the close command. See the rule for why the two differ.
+input_datetime:
+  pergola_vihmateade:
+    name: "Pergola: viimane vihmateade"
+    icon: mdi:message-alert
+    has_date: true
+    has_time: true
+
 # The two units each have their own White/Warm select and they should always
 # agree, so the dashboard offers one control and this mirrors it onto both.
 input_select:
@@ -91,19 +100,34 @@ automation:
           - condition: state
             entity_id: cover.pergola_katus
             state: closed
+    # The roof never reports its position, so "is it already closed" cannot be
+    # asked and the close command goes out on every shower. That costs nothing,
+    # a closed roof simply does not move. The notification would cost attention,
+    # so it is capped at one per six hours.
     actions:
       - action: cover.close_cover
         target:
           entity_id: cover.pergola_katus
-      - action: notify.notify
-        data:
-          title: "Pergola"
-          message: >-
-            {% if trigger.id == 'sademed' %}
-              Sajab ({{ states('sensor.sademed_praegu') }} mm), katus suleti.
-            {% else %}
-              Ilm läks "{{ states('weather.forecast_kodu') }}", katus suleti.
-            {% endif %}
+      - if:
+          - condition: template
+            value_template: >-
+              {{ as_timestamp(now())
+                 - as_timestamp(states('input_datetime.pergola_vihmateade'), 0) > 21600 }}
+        then:
+          - action: notify.notify
+            data:
+              title: "Pergola"
+              message: >-
+                {% if trigger.id == 'sademed' %}
+                  Sajab ({{ states('sensor.sademed_praegu') }} mm), katus suleti.
+                {% else %}
+                  Ilm läks "{{ states('weather.forecast_kodu') }}", katus suleti.
+                {% endif %}
+          - action: input_datetime.set_datetime
+            target:
+              entity_id: input_datetime.pergola_vihmateade
+            data:
+              timestamp: "{{ as_timestamp(now()) }}"
 
   - alias: "Pergola: valgustus loojangul"
     id: pergola_lights_at_sunset
