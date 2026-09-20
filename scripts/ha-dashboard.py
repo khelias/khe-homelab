@@ -539,8 +539,12 @@ pergola_seaded = {"title": "Pergola seaded", "path": "pergola-seaded", "icon": "
         {"type": "horizontal-stack", "cards": [
             tile("input_boolean.pergola_katuse_automaatika", "Katus", vertical=True),
             tile("input_boolean.pergola_valguse_automaatika", "Valgus", vertical=True)]},
-        note("Katus: vihm, lumi või äike sulgeb ja saadab teate, kõige rohkem kord kuue tunni jooksul."),
-        note("Valgus: süttib 15 min enne loojangut Soe toonis, kui keegi on kodus. Kustub allpool valitud ajal või kui viimane lahkub."),
+        # A subtitle heading truncates to one line, so these go in a markdown card.
+        {"type": "markdown", "content":
+            "**Katus.** Vihm, lumi või äike sulgeb katuse. Teade tuleb kõige rohkem "
+            "kord kuue tunni jooksul, sest seade ei ütle, kas katus oli juba kinni.\n\n"
+            "**Valgus.** Süttib 15 min enne loojangut Soe toonis, kui keegi on kodus. "
+            "Kustub allpool valitud ajal või kohe, kui viimane inimene lahkub."},
     ]),
     section("Õhtuse valguse seaded", [
         {"type": "horizontal-stack", "cards": [

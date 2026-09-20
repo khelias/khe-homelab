@@ -110,6 +110,8 @@ entities:
           min: 6
           max: 1000
 
+  # Estonian option values, because they show up in the UI next to the shared
+  # Soe/Valge control. Revert to White/Warm before upstreaming this config.
   - entity: select
     name: Lighting colour
     icon: "mdi:theme-light-dark"
@@ -119,9 +121,9 @@ entities:
         name: option
         mapping:
           - dps_val: "White_Light"
-            value: "White"
+            value: "Valge"
           - dps_val: "Warm_Light"
-            value: "Warm"
+            value: "Soe"
 
   # dp109 and dp111 drive a second "atmosphere" light circuit. The datapoints
   # work on these units - setting dp111 reports back true - but nothing lights

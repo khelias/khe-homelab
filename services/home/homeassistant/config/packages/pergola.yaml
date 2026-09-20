@@ -169,7 +169,7 @@ automation:
             - select.pergola_parem_valguse_toon
             - select.pergola_vasak_valguse_toon
         data:
-          option: Warm
+          option: Soe
       # keep the dashboard control showing what the lights are actually doing
       - action: input_select.select_option
         target:
@@ -198,7 +198,7 @@ automation:
             - select.pergola_parem_valguse_toon
             - select.pergola_vasak_valguse_toon
         data:
-          option: "{{ 'Warm' if trigger.to_state.state == 'Soe' else 'White' }}"
+          option: "{{ trigger.to_state.state }}"
 
   - alias: "Pergola: valgustus välja"
     id: pergola_lights_off
