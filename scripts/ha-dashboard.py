@@ -536,7 +536,7 @@ pergola_seaded = {"title": "Pergola seaded", "path": "pergola-seaded", "icon": "
             tile("select.pergola_vasak_valguse_toon", "Toon vasak", vertical=True)]},
         note("Tavaliselt seab mõlemad korraga Toon põhilehel."),
     ]),
-    section("Automaatika sees", [
+    section("Automaatika", [
         {"type": "horizontal-stack", "cards": [
             tile("input_boolean.pergola_katuse_automaatika", "Katus", vertical=True),
             tile("input_boolean.pergola_valguse_automaatika", "Valgus", vertical=True)]},
