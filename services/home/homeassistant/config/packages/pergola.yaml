@@ -148,7 +148,7 @@ automation:
     # The roof never reports its position, so "is it already closed" cannot be
     # asked and the close command goes out on every shower. That costs nothing,
     # a closed roof simply does not move. The notification would cost attention,
-    # so it is capped at one per six hours.
+    # so it waits out input_number.pergola_teavituse_vaikus.
     actions:
       - action: cover.close_cover
         target:
@@ -181,7 +181,10 @@ automation:
   - alias: "Pergola: valgustus loojangul"
     id: pergola_lights_at_sunset
     description: >-
-      Ainult siis, kui keegi on kodus. zone.home olek on kodusolijate arv.
+      Käivitub input_number.pergola_valgus_nihe minutit enne loojangut. Sun
+      käivitaja nihet ei saa templategi anda, sellepärast on see template.
+      Kohalolekut arvestatakse ainult siis, kui vastav lüliti on sees;
+      zone.home olek on kodusolijate arv.
     mode: single
     triggers:
       - trigger: template
@@ -245,7 +248,8 @@ automation:
   - alias: "Pergola: valgustus välja"
     id: pergola_lights_off
     description: >-
-      Kell 23:00 või kohe, kui viimane inimene kodust lahkub.
+      input_datetime.pergola_valgus_kustub ajal, või kohe kui viimane inimene
+      lahkub, kui kohalolekut üldse arvestatakse.
     mode: single
     triggers:
       - trigger: time
