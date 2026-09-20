@@ -9,9 +9,8 @@
 # runner is not.
 shell_command:
   sync_tuya_local_devices: >-
-    /bin/sh -c "cp -f /config/tuya_local_devices/*.yaml
-    /config/custom_components/tuya_local/devices/ &&
-    ls -l /config/custom_components/tuya_local/devices/"
+    /bin/sh -c "cp -v -f /config/tuya_local_devices/*.yaml
+    /config/custom_components/tuya_local/devices/"
 
 automation:
   - alias: "Pergola: taasta tuya-local seadmefail"
