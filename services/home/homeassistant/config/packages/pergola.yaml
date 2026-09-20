@@ -47,6 +47,12 @@ input_boolean:
   pergola_valguse_automaatika:
     name: "Pergola valguse automaatika"
     icon: mdi:lightbulb-auto
+  pergola_vihma_teavitus:
+    name: "Pergola vihmateavitus"
+    icon: mdi:cellphone-message
+  pergola_valgus_ainult_kodus:
+    name: "Pergola valgus ainult kui keegi kodus"
+    icon: mdi:home-account
 
 # What the evening light rule uses. Kept as helpers rather than numbers in the
 # automation so they can be changed from the dashboard without a deploy.
@@ -126,6 +132,9 @@ automation:
         target:
           entity_id: cover.pergola_katus
       - if:
+          - condition: state
+            entity_id: input_boolean.pergola_vihma_teavitus
+            state: "on"
           - condition: template
             value_template: >-
               {{ as_timestamp(now())
@@ -159,9 +168,14 @@ automation:
       - condition: state
         entity_id: input_boolean.pergola_valguse_automaatika
         state: "on"
-      - condition: numeric_state
-        entity_id: zone.home
-        above: 0
+      - condition: or
+        conditions:
+          - condition: state
+            entity_id: input_boolean.pergola_valgus_ainult_kodus
+            state: "off"
+          - condition: numeric_state
+            entity_id: zone.home
+            above: 0
     actions:
       - action: select.select_option
         target:
@@ -208,13 +222,22 @@ automation:
     triggers:
       - trigger: time
         at: input_datetime.pergola_valgus_kustub
+        id: aeg
       - trigger: numeric_state
         entity_id: zone.home
         below: 1
+        id: lahkuti
     conditions:
       - condition: state
         entity_id: input_boolean.pergola_valguse_automaatika
         state: "on"
+      - condition: or
+        conditions:
+          - condition: trigger
+            id: aeg
+          - condition: state
+            entity_id: input_boolean.pergola_valgus_ainult_kodus
+            state: "on"
     actions:
       - action: light.turn_off
         target:

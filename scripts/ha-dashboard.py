@@ -536,23 +536,24 @@ pergola_seaded = {"title": "Pergola seaded", "path": "pergola-seaded", "icon": "
             tile("select.pergola_vasak_valguse_toon", "Toon vasak", vertical=True)]},
         note("Tavaliselt seab mõlemad korraga Toon põhilehel."),
     ]),
-    section("Automaatika", [
-        {"type": "horizontal-stack", "cards": [
-            tile("input_boolean.pergola_katuse_automaatika", "Katus", vertical=True),
-            tile("input_boolean.pergola_valguse_automaatika", "Valgus", vertical=True)]},
-        # A subtitle heading truncates to one line, so these go in a markdown card.
-        {"type": "markdown", "content":
-            "**Katus.** Vihm, lumi või äike sulgeb katuse. Teade tuleb kõige rohkem "
-            "kord kuue tunni jooksul, sest seade ei ütle, kas katus oli juba kinni.\n\n"
-            "**Valgus.** Süttib 15 min enne loojangut Soe toonis, kui keegi on kodus. "
-            "Kustub allpool valitud ajal või kohe, kui viimane inimene lahkub."},
+    # Grouped by rule, not by control type, and every knob is a switch or a
+    # number: with each rule's parts visible there is nothing left to explain
+    # in prose.
+    section("Katuse automaatika", [
+        third(tile("input_boolean.pergola_katuse_automaatika", "Reegel", vertical=True)),
+        third(tile("input_boolean.pergola_vihma_teavitus", "Teavitus", vertical=True)),
+        third(nowrite("input_datetime.pergola_vihmateade", "Viimane teade", vertical=True)),
+        note("Vihm, lumi või äike sulgeb katuse. Teade kõige rohkem kord kuue tunni jooksul."),
     ]),
-    section("Õhtuse valguse seaded", [
+    section("Valguse automaatika", [
+        {"type": "horizontal-stack", "cards": [
+            tile("input_boolean.pergola_valguse_automaatika", "Reegel", vertical=True),
+            tile("input_boolean.pergola_valgus_ainult_kodus", "Ainult kui kodus", vertical=True)]},
         {"type": "horizontal-stack", "cards": [
             tile("input_number.pergola_valguse_heledus", "Heledus", vertical=True,
                  features=[{"type": "numeric-input", "style": "buttons"}]),
             tile("input_datetime.pergola_valgus_kustub", "Kustub", vertical=True)]},
-        nowrite("input_datetime.pergola_vihmateade", "Viimane vihmateade"),
+        note("Süttib 15 min enne loojangut Soe toonis."),
     ]),
 ]}
 
