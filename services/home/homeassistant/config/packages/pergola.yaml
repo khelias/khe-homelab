@@ -24,3 +24,12 @@ automation:
         event: start
     actions:
       - action: shell_command.sync_tuya_local_devices
+      # The copy lands after the config entries have already read the old
+      # folder, so reload them or the repair only takes effect one restart
+      # later.
+      - delay: "00:00:05"
+      - action: homeassistant.reload_config_entry
+        target:
+          entity_id:
+            - cover.pergola_parem
+            - cover.pergola_vasak

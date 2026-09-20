@@ -12,18 +12,26 @@ products:
     model: YZ21006-02A/03A/04A
 
 entities:
+  # dp1 (status) is declared in the cloud data model but these units never
+  # send it over the LAN, not even after a full open and close cycle
+  # (measured 2026-09-20), so the state is derived from the last command in
+  # dp2 instead: open and close are conclusive, stop leaves it mid travel.
   - entity: cover
     class: awning
     dps:
-      - id: 1
+      - id: 2
         type: string
-        name: status
+        name: action
         readonly: true
         mapping:
-          - dps_val: "opened"
-            value: open
-          - dps_val: "closed"
+          - dps_val: "open"
+            value: opened
+          - dps_val: "close"
             value: closed
+          - dps_val: "stop"
+            value: stopped
+          - dps_val: "continue"
+            value: stopped
       - id: 2
         type: string
         name: control
