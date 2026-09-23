@@ -21,7 +21,8 @@ DHW = "water_heater.hot_water_tank_domestic_hot_water_tank"
 # Two untracked local files carry that, and every consumer below degrades to "leave the card out"
 # when they are missing:
 #   ~/.config/khe/ha-house.json   {"cams": [[slug, label], ...], "phone": "sensor.<device>",
-#                                  "nvr_app_url": "<scheme>://", "updates": [["update.<x>", "<name>"]]}
+#                                  "nvr_app_url": "<scheme>://", "updates": [["update.<x>", "<name>"]],
+#                                  "tv_profiles": [[<picker position>, "<name>"], ...]}  (Google TV)
 #   ~/.config/khe/ha-people.json  [[entity_id, label], ...]
 # Presence badges render "<name> <state>", so the verb rides in the name ("X on" -> "X on Kodus").
 def _local(name, default):
@@ -32,6 +33,7 @@ _house = _local("ha-house.json", {})
 CAMS = [tuple(c) for c in _house.get("cams", [])]
 PHONE = _house.get("phone")
 NVR_APP = _house.get("nvr_app_url")
+TV_PROFILES = [tuple(p) for p in _house.get("tv_profiles", [])]
 PEOPLE = [tuple(p) for p in _local("ha-people.json", [])]
 # Rows are named after the thing being updated: the entity's own name is "Update", so the
 # default reads "HACS Update" seven times over. House-file entries are [entity_id, name].
@@ -274,6 +276,13 @@ teler = {"title": "Teler", "path": "teler", "icon": "mdi:television", "type": "s
      "tap_action": {"action": "perform-action", "perform_action": "media_player.turn_off", "target": {"entity_id": TV},
                     "confirmation": {"text": "Lülitad teleri välja?"}},
      "visibility": [{"condition": "state", "entity": TV, "state_not": ["off", "unavailable", "unknown"]}]},
+    # One per Google TV profile, by key presses (packages/google_tv.yaml); Google TV itself
+    # has no log-out. Positions and names are the house file's. Position 1 stops at its PIN.
+    *[{"type": "entity", "entity": TV, "name": n, "icon": "mdi:account-switch", "show_name": True, "show_state": False,
+       "tap_action": {"action": "perform-action", "perform_action": f"script.teler_profiil_{i}",
+                      "confirmation": {"text": f"Vahetad teleri profiilile {n}?" + (" PIN tuleb sisestada teleris." if i == 1 else "")}},
+       "visibility": [{"condition": "state", "entity": TV, "state_not": ["off", "unavailable", "unknown"]}]}
+      for i, n in TV_PROFILES],
  ],
  "sections": [
     section("Täna", [tv_today], column_span=2),

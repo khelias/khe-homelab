@@ -110,3 +110,47 @@ sensor:
     type: time
     start: "{{ today_at() }}"
     end: "{{ now() }}"
+
+
+# Profile buttons on the Teler tab. Google TV has no log-out and the streamer ignores
+# KEYCODE_PROFILE_SWITCH, so each script walks the home screen's profile menu: Home, left
+# twice to the avatar, OK opens the picker, then the keys to that profile. The sequences
+# are the ones worked out at the TV; they are blind (HA sees only the launcher package,
+# not the focus) and a Google TV home screen change breaks them silently. 0.25 s between
+# keys is the tested gap. Scripts are numbered by picker position; the names are in the
+# local house file, not here. Position 1 is the owner's profile, which asks for a PIN: its
+# script stops at the PIN screen, because a key sequence would spell the PIN out.
+script:
+  teler_profiil_1:
+    alias: "Teleri profiil 1"
+    icon: mdi:account-switch
+    mode: single
+    sequence:
+      - action: remote.send_command
+        target:
+          entity_id: remote.google_tv_streamer
+        data:
+          command: [HOME, DPAD_LEFT, DPAD_LEFT, DPAD_CENTER, DPAD_CENTER]
+          delay_secs: 0.25
+  teler_profiil_2:
+    alias: "Teleri profiil 2"
+    icon: mdi:account-switch
+    mode: single
+    sequence:
+      - action: remote.send_command
+        target:
+          entity_id: remote.google_tv_streamer
+        data:
+          command: [HOME, DPAD_LEFT, DPAD_LEFT, DPAD_CENTER, DPAD_RIGHT, DPAD_CENTER]
+          delay_secs: 0.25
+  teler_profiil_3:
+    alias: "Teleri profiil 3"
+    icon: mdi:account-switch
+    mode: single
+    sequence:
+      - action: remote.send_command
+        target:
+          entity_id: remote.google_tv_streamer
+        data:
+          command: [HOME, DPAD_LEFT, DPAD_LEFT, DPAD_CENTER, DPAD_RIGHT, DPAD_RIGHT, DPAD_CENTER]
+          delay_secs: 0.25
