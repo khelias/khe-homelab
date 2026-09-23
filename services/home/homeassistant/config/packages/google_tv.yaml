@@ -5,6 +5,14 @@
 # packages were not known when this was written; anything else falls back to the
 # last part of the name. Add apps as they show up in the streamer's history.
 template:
+  # Watching means on and not the screensaver: the streamer goes to ambient mode
+  # (dreamx) by itself after a few idle minutes, and that is not watch time.
+  - binary_sensor:
+      - name: "Teleri vaatamine"
+        unique_id: google_tv_watching
+        state: >
+          {{ states('media_player.google_tv_streamer') not in ['off', 'unavailable', 'unknown']
+             and state_attr('media_player.google_tv_streamer', 'app_id') != 'com.google.android.apps.tv.dreamx' }}
   - sensor:
       - name: "Teleri äpp"
         unique_id: google_tv_app_label
@@ -14,6 +22,7 @@ template:
           {% if is_state('media_player.google_tv_streamer', 'off') %}Väljas{% else %}
           {% set exact = {
                'com.google.android.apps.tv.launcherx': 'Avaleht',
+               'com.google.android.apps.tv.dreamx': 'Ekraanisäästja',
                'com.google.android.apps.mediashell': 'Cast',
                'com.google.android.youtube.tv': 'YouTube',
                'com.google.android.youtube.tvkids': 'YouTube Kids',
@@ -24,32 +33,32 @@ template:
           {% set hit = parts | selectattr(0, 'in', a) | map(attribute=1) | list %}
           {{ exact[a] if a in exact else hit[0] if hit else (a.split('.') | last | capitalize) if a else 'Sees' }}{% endif %}
 
-# Watch time for the Teler tab: how long the TV was on, and per app today. Counted
+# Watch time for the Teler tab: how long the TV was watched, and per app today. Counted
 # from the recorder, so it covers only what HA saw (history starts 2026-09-23,
-# when the streamer was paired). "Avaleht" counts as on; the home screen is on
-# screen too. The per-app list is the house's five main apps.
+# when the streamer was paired). "Avaleht" counts, the home screen is on screen too;
+# the screensaver does not. The per-app list is the house's five main apps.
 sensor:
   - platform: history_stats
     name: "Teler sees täna"
     unique_id: google_tv_on_today
-    entity_id: media_player.google_tv_streamer
-    state: ["on", "playing", "paused", "idle"]
+    entity_id: binary_sensor.teleri_vaatamine
+    state: "on"
     type: time
     start: "{{ today_at() }}"
     end: "{{ now() }}"
   - platform: history_stats
     name: "Teler sees eile"
     unique_id: google_tv_on_yesterday
-    entity_id: media_player.google_tv_streamer
-    state: ["on", "playing", "paused", "idle"]
+    entity_id: binary_sensor.teleri_vaatamine
+    state: "on"
     type: time
     start: "{{ today_at() - timedelta(days=1) }}"
     end: "{{ today_at() }}"
   - platform: history_stats
     name: "Teler sees 7 päeva"
     unique_id: google_tv_on_7_days
-    entity_id: media_player.google_tv_streamer
-    state: ["on", "playing", "paused", "idle"]
+    entity_id: binary_sensor.teleri_vaatamine
+    state: "on"
     type: time
     start: "{{ today_at() - timedelta(days=6) }}"
     end: "{{ now() }}"

@@ -230,7 +230,7 @@ def tv_section():
 
 # Watch time, not an alarm, shaped like a phone's screen-time page: the day's total as one
 # number, the apps actually used today in order, the week as columns split by app, and
-# today's timeline for "when". Apps at zero are left out; a first version showed eight
+# today's app changes with their times for "when". Apps at zero are left out; a first version showed eight
 # tiles that mostly read "0 t", two timelines too sparse to read and a statistics chart
 # that stays empty until the recorder's first hourly compile. The numbers are
 # history_stats sensors in packages/google_tv.yaml ("Muu" is the home screen and Cast).
@@ -277,8 +277,11 @@ teler = {"title": "Teler", "path": "teler", "icon": "mdi:television", "type": "s
  ],
  "sections": [
     section("Täna", [tv_today], column_span=2),
-    section("Nädal", [titled("Teler sees päevas, h", tv_week, columns="full")], column_span=2),
-    section("24 tundi", [hist("Mis äpp millal ees oli", [("sensor.teleri_app", "Äpp")], 24, columns="full")], column_span=2),
+    section("Nädal", [titled("Päevade kaupa, tundides", tv_week, columns="full")], column_span=2),
+    # "When" as a list with times rather than a timeline: 40 minutes on a 24 h axis was an
+    # unlabelled sliver at the right edge. The logbook lists each app change with its time.
+    section("Täna ajas", [{"type": "logbook", "target": {"entity_id": ["sensor.teleri_app"]}, "hours_to_show": 24,
+                           "grid_options": {"columns": "full"}}], column_span=2),
 ]}
 
 # The two partitions, the same pair on Kodu and Valve. Name and state both stay:
