@@ -262,13 +262,13 @@ tv_apps = {"type": "markdown", "grid_options": {"columns": 12}, "content": DUR +
     "{% if not ns.rows %}Täna pole veel vaadatud.{% endif %}")}
 # Daily totals per app: the max of each "today" counter per day, stacked. apexcharts reads the
 # recorder history directly, so today's column is there at once and grows during the day.
-tv_week = {"type": "custom:apexcharts-card", "graph_span": "7d", "span": {"end": "day"}, "header": {"show": False},
-    "yaxis": [{"min": 0, "decimals": 1}],
-    "apex_config": {"chart": {"height": 280, "stacked": True}, "legend": {"show": True},
-                    "plotOptions": {"bar": {"columnWidth": "60%"}},
-                    "xaxis": {"labels": {"datetimeFormatter": {"day": "ddd d."}}}},
-    "series": [{"entity": e, "name": n, "type": "column", "color": c, "float_precision": 2,
-                "group_by": {"func": "max", "duration": "1d"}} for n, e, _, c in TV_APPS]}
+# The week from long-term statistics: each app's "today" counter peaks at the day's total just
+# before midnight, so the daily max is that day, stacked by app. HA's own bar-stack, because
+# apexcharts-card sizes stacked columns on a time axis by the number of points across all
+# series (35 here), which left a 5 px column however it was configured. Statistics compile on
+# the hour, so a new counter's first column appears at the next full hour.
+tv_week = {"type": "statistics-graph", "chart_type": "bar-stack", "period": "day", "days_to_show": 7,
+           "stat_types": ["max"], "min_y_axis": 0, "entities": [{"entity": e, "name": n} for n, e, _, _ in TV_APPS]}
 teler = {"title": "Teler", "path": "teler", "icon": "mdi:television", "type": "sections", "max_columns": 2,
  "sections": [
     section("Täna", [tv_today, tv_apps], column_span=2),
