@@ -1,8 +1,9 @@
 # Google TV Streamer helpers on top of the Android TV Remote integration.
 # The integration reports the foreground app as its Android package name
 # ("com.google.android.youtube.tv"), so the dashboard reads this label instead.
-# Unknown packages fall back to the last part of the name; add them here as
-# they show up in the history of media_player.google_tv_streamer.
+# The house's own apps match on a part of the package name, because their exact
+# packages were not known when this was written; anything else falls back to the
+# last part of the name. Add apps as they show up in the streamer's history.
 template:
   - sensor:
       - name: "Teleri äpp"
@@ -11,24 +12,22 @@ template:
         availability: "{{ has_value('media_player.google_tv_streamer') }}"
         state: >
           {% if is_state('media_player.google_tv_streamer', 'off') %}Väljas{% else %}
-          {% set m = {
+          {% set exact = {
                'com.google.android.apps.tv.launcherx': 'Avaleht',
                'com.google.android.apps.mediashell': 'Cast',
                'com.google.android.youtube.tv': 'YouTube',
                'com.google.android.youtube.tvkids': 'YouTube Kids',
-               'com.google.android.youtube.tvmusic': 'YouTube Music',
-               'com.netflix.ninja': 'Netflix',
-               'com.disney.disneyplus': 'Disney+',
-               'com.amazon.amazonvideo.livingroom': 'Prime Video',
-               'com.spotify.tv.android': 'Spotify',
-               'ee.elisa.smarttvclient': 'Elisa Elamus'} %}
+               'com.google.android.youtube.tvmusic': 'YouTube Music'} %}
+          {% set parts = [['elisa', 'Elisa Elamus'], ['jupiter', 'Jupiter'], ['go3', 'Go3'],
+                          ['stremio', 'Stremio'], ['netflix', 'Netflix']] %}
           {% set a = state_attr('media_player.google_tv_streamer', 'app_id') or '' %}
-          {{ m.get(a, (a.split('.') | last | capitalize) if a else 'Sees') }}{% endif %}
+          {% set hit = parts | selectattr(0, 'in', a) | map(attribute=1) | list %}
+          {{ exact[a] if a in exact else hit[0] if hit else (a.split('.') | last | capitalize) if a else 'Sees' }}{% endif %}
 
 # Watch time for the Teler tab: how long the TV was on, and per app today. Counted
 # from the recorder, so it covers only what HA saw (history starts 2026-09-23,
 # when the streamer was paired). "Avaleht" counts as on; the home screen is on
-# screen too. The per-app list is what the house uses; add apps as they appear.
+# screen too. The per-app list is the house's five main apps.
 sensor:
   - platform: history_stats
     name: "Teler sees täna"
@@ -63,14 +62,6 @@ sensor:
     start: "{{ today_at() }}"
     end: "{{ now() }}"
   - platform: history_stats
-    name: "YouTube Kids täna"
-    unique_id: google_tv_youtube_kids_today
-    entity_id: sensor.teleri_app
-    state: "YouTube Kids"
-    type: time
-    start: "{{ today_at() }}"
-    end: "{{ now() }}"
-  - platform: history_stats
     name: "Elisa Elamus täna"
     unique_id: google_tv_elisa_today
     entity_id: sensor.teleri_app
@@ -79,10 +70,26 @@ sensor:
     start: "{{ today_at() }}"
     end: "{{ now() }}"
   - platform: history_stats
-    name: "Netflix täna"
-    unique_id: google_tv_netflix_today
+    name: "Jupiter täna"
+    unique_id: google_tv_jupiter_today
     entity_id: sensor.teleri_app
-    state: "Netflix"
+    state: "Jupiter"
+    type: time
+    start: "{{ today_at() }}"
+    end: "{{ now() }}"
+  - platform: history_stats
+    name: "Go3 täna"
+    unique_id: google_tv_go3_today
+    entity_id: sensor.teleri_app
+    state: "Go3"
+    type: time
+    start: "{{ today_at() }}"
+    end: "{{ now() }}"
+  - platform: history_stats
+    name: "Stremio täna"
+    unique_id: google_tv_stremio_today
+    entity_id: sensor.teleri_app
+    state: "Stremio"
     type: time
     start: "{{ today_at() }}"
     end: "{{ now() }}"

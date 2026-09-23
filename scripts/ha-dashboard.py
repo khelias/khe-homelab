@@ -243,8 +243,8 @@ teler = {"title": "Teler", "path": "teler", "icon": "mdi:television", "type": "s
  "sections": [
     section("Sees", row([watch("sensor.teler_sees_tana", "Täna"), watch("sensor.teler_sees_eile", "Eile"),
                          watch("sensor.teler_sees_7_paeva", "7 päeva")])),
-    section("Äpid täna", row([watch("sensor.youtube_tana", "YouTube"), watch("sensor.youtube_kids_tana", "YouTube Kids"),
-                              watch("sensor.elisa_elamus_tana", "Elisa Elamus"), watch("sensor.netflix_tana", "Netflix")])),
+    section("Äpid täna", row([watch("sensor.youtube_tana", "YouTube"), watch("sensor.elisa_elamus_tana", "Elisa Elamus"),
+                              watch("sensor.jupiter_tana", "Jupiter"), watch("sensor.go3_tana", "Go3"), watch("sensor.stremio_tana", "Stremio")])),
     section("Ajajoon", [
         hist("24 tundi", [("sensor.teleri_app", "Äpp")], 24),
         hist("7 päeva", [("sensor.teleri_app", "Äpp")], 168),
