@@ -150,6 +150,21 @@ def mode_button(name, icon, option, color=None, **kw):
     return action_tile(MODE, name, icon, color, "select.select_option", {"option": option},
                        f"Ventilatsioon režiimile {name}?", **kw)
 
+# The boost tile as two tiles, one per state. A tile colours its icon whenever the entity is
+# active, and the tank's normal mode "on" counts as active, so a single tile sat orange all
+# day as if boost were running. Grey while off; orange only in "performance", and there a
+# tap ends it instead of asking to start it again.
+def dhw_boost():
+    def is_(mode, neg=False):
+        return [{"condition": "state", "entity": DHW, ("state_not" if neg else "state"): mode}]
+    return [action_tile(DHW, "Kiirsoojendus", "mdi:water-boiler", "disabled", "water_heater.set_operation_mode",
+                        {"operation_mode": "performance"}, "Boileri kiirsoojendus (Daikin Powerful) sisse? Lõpeb ise, kui vesi on soe.",
+                        visibility=is_("performance", neg=True)),
+            action_tile(DHW, "Kiirsoojendus sees", "mdi:water-boiler", "orange", "water_heater.set_operation_mode",
+                        {"operation_mode": "on"}, "Lõpetad boileri kiirsoojenduse? Vesi soojeneb edasi tavarežiimis.",
+                        visibility=is_("performance"))]
+
+
 def note(text):
     return {"type": "heading", "heading": text, "heading_style": "subtitle"}
 def bars(title, ents, days, stat="change"):
@@ -204,8 +219,7 @@ home = {"title": "Kodu", "path": "kodu", "icon": "mdi:home", "type": "sections",
         nowrite(DHW, "Boiler", state_content=["state", "current_temperature"]),
         # Daikin Powerful: the one DHW quick mode on Kodu. Temporary, the unit returns to normal
         # by itself once the tank is hot, so an accidental tap costs one heat-up, not a setting.
-        action_tile(DHW, "Kiirsoojendus", "mdi:water-boiler", "orange", "water_heater.set_operation_mode",
-                    {"operation_mode": "performance"}, "Boileri kiirsoojendus (Daikin Powerful) sisse? Lõpeb ise, kui vesi on soe."),
+        *dhw_boost(),
         when_on("binary_sensor.hot_water_tank_state", "Boileri viga"),
     ], **nav("/lovelace/soojuspump")),
     section("Ventilatsioon", [
@@ -674,8 +688,7 @@ soojuspump_seaded = {"title": "Soojuspumba seaded", "path": "soojuspump-seaded",
         note("Siht 55 °C, mitte alla 45 °C (legionella)."),
         tile("water_heater.hot_water_tank_domestic_hot_water_tank", "Boiler", state_content=["state", "current_temperature"],
              features=[{"type": "target-temperature"}]),
-        action_tile(DHW, "Kiirsoojendus", "mdi:water-boiler", "orange", "water_heater.set_operation_mode",
-                    {"operation_mode": "performance"}, "Boileri kiirsoojendus (Daikin Powerful) sisse? Lõpeb ise, kui vesi on soe."),
+        *dhw_boost(),
     ]),
 ]}
 
