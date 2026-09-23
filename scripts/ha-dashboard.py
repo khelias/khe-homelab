@@ -215,15 +215,21 @@ FAULTS = [("binary_sensor.suitsuandurid", "Tulekahju"),
           ("binary_sensor.space_heating_unit_state", "Soojuspumba viga"), ("binary_sensor.hot_water_tank_state", "Boileri viga"),
           ("binary_sensor.komfovent_status_alarm_fault", "Ventilatsiooni viga"), ("binary_sensor.komfovent_status_alarm_warning", "Ventilatsiooni hoiatus")]
 
+# The two partitions, the same pair on Kodu, Valve and Kaamerad. Name and state both stay:
+# the shield icon alone does not say which of the two is armed.
+ALARM_BADGES = [{"type": "entity", "entity": "alarm_control_panel.maja", "name": "Maja", "show_name": True, "show_state": True},
+                {"type": "entity", "entity": "alarm_control_panel.garaaz", "name": "Garaaž", "show_name": True, "show_state": True}]
+
 # Two columns even on a wide screen: sections fill rows in order and are not packed, so with three
 # only Küte sat beside the tall Elekter section and everything else went below it.
 home = {"title": "Kodu", "path": "kodu", "icon": "mdi:home", "type": "sections", "max_columns": 2,
  "badges": [
-    *[{"type": "entity", "entity": e, "name": n, "show_name": True, "show_state": True} for e, n in PEOPLE],
+    # Presence as the name alone, the icon green at home and grey away. "X on Kodus" twice
+    # plus the two partitions wrapped to a second row on a phone and pushed the page down.
+    *[{"type": "entity", "entity": e, "name": n.removesuffix(" on"), "show_name": True, "show_state": False} for e, n in PEOPLE],
     # Arming on the way out is a daily action, so the state belongs here. Tap
     # opens more-info, which carries the arm buttons: no detour via the tab.
-    {"type": "entity", "entity": "alarm_control_panel.maja", "name": "Maja", "show_name": True, "show_state": True},
-    {"type": "entity", "entity": "alarm_control_panel.garaaz", "name": "Garaaž", "show_name": True, "show_state": True},
+    *ALARM_BADGES,
  ] + [
     {"type": "entity", "entity": e, "name": n, "color": "red", "show_name": True, "show_state": False, "visibility": [{"condition": "state", "entity": e, "state": "on"}]}
     for e, n in FAULTS
@@ -360,8 +366,9 @@ def cam_view(slug, name):
 cameras = {"title": "Kaamerad", "path": "kaamerad", "icon": "mdi:cctv", "type": "sections", "max_columns": 3,
  # Kodu shape: cameras as they were, NVR and per-camera motion switches in one section, no captions. The NVR disk
  # badge shows only when the disk is not OK. Motion is too noisy for a badge (fires on insects and rain).
- # The alarm moved to its own Valve tab once PAI landed; the leak-sensor plan is still in khe-meta.
+ # The alarm has its own Valve tab; its two partition badges are repeated here, the leak-sensor plan is still in khe-meta.
  "badges": [
+    *ALARM_BADGES,
     {"type": "entity", "entity": "sensor.nvr_ketas", "name": "NVR ketas", "color": "red", "show_name": True, "show_state": True,
      "visibility": [{"condition": "state", "entity": "sensor.nvr_ketas", "state_not": "OK"}]},
  ],
@@ -429,8 +436,7 @@ valve = {"title": "Valve", "path": "valve", "icon": "mdi:shield-home", "type": "
  # other two badges are genuinely rare, so the row reflowing when they appear
  # is a cost worth paying.
  "badges": [
-    {"type": "entity", "entity": "alarm_control_panel.maja", "name": "Maja", "show_name": True, "show_state": True},
-    {"type": "entity", "entity": "alarm_control_panel.garaaz", "name": "Garaaž", "show_name": True, "show_state": True},
+    *ALARM_BADGES,
     rare("binary_sensor.suitsuandurid", "Tulekahju", state="on"),
     rare("sensor.valve_uhendus", "Ühendus katkes", state_not="online"),
  ],
@@ -732,6 +738,9 @@ soojuspump_seaded = {"title": "Soojuspumba seaded", "path": "soojuspump-seaded",
 
 config = {"title": "Kodu", "views": [home, energy, soojuspump, ventilatsioon, pergola, valve, cameras, susteem,
                                     komfovent_seaded, soojuspump_seaded, pergola_seaded] + [cam_view(s, n) for s, n in CAMS]}
+# A badge row that runs out of width scrolls sideways instead of wrapping to a second line.
+for v in config["views"]:
+    if v.get("badges"): v["header"] = {"badges_wrap": "scroll"}
 
 async def main():
     async with websockets.connect(f"ws://{HA}/api/websocket", max_size=2**24) as ws:
