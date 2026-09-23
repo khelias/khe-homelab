@@ -24,3 +24,65 @@ template:
                'ee.elisa.smarttvclient': 'Elisa Elamus'} %}
           {% set a = state_attr('media_player.google_tv_streamer', 'app_id') or '' %}
           {{ m.get(a, (a.split('.') | last | capitalize) if a else 'Sees') }}{% endif %}
+
+# Watch time for the Teler tab: how long the TV was on, and per app today. Counted
+# from the recorder, so it covers only what HA saw (history starts 2026-09-23,
+# when the streamer was paired). "Avaleht" counts as on; the home screen is on
+# screen too. The per-app list is what the house uses; add apps as they appear.
+sensor:
+  - platform: history_stats
+    name: "Teler sees täna"
+    unique_id: google_tv_on_today
+    entity_id: media_player.google_tv_streamer
+    state: ["on", "playing", "paused", "idle"]
+    type: time
+    start: "{{ today_at() }}"
+    end: "{{ now() }}"
+  - platform: history_stats
+    name: "Teler sees eile"
+    unique_id: google_tv_on_yesterday
+    entity_id: media_player.google_tv_streamer
+    state: ["on", "playing", "paused", "idle"]
+    type: time
+    start: "{{ today_at() - timedelta(days=1) }}"
+    end: "{{ today_at() }}"
+  - platform: history_stats
+    name: "Teler sees 7 päeva"
+    unique_id: google_tv_on_7_days
+    entity_id: media_player.google_tv_streamer
+    state: ["on", "playing", "paused", "idle"]
+    type: time
+    start: "{{ today_at() - timedelta(days=6) }}"
+    end: "{{ now() }}"
+  - platform: history_stats
+    name: "YouTube täna"
+    unique_id: google_tv_youtube_today
+    entity_id: sensor.teleri_app
+    state: "YouTube"
+    type: time
+    start: "{{ today_at() }}"
+    end: "{{ now() }}"
+  - platform: history_stats
+    name: "YouTube Kids täna"
+    unique_id: google_tv_youtube_kids_today
+    entity_id: sensor.teleri_app
+    state: "YouTube Kids"
+    type: time
+    start: "{{ today_at() }}"
+    end: "{{ now() }}"
+  - platform: history_stats
+    name: "Elisa Elamus täna"
+    unique_id: google_tv_elisa_today
+    entity_id: sensor.teleri_app
+    state: "Elisa Elamus"
+    type: time
+    start: "{{ today_at() }}"
+    end: "{{ now() }}"
+  - platform: history_stats
+    name: "Netflix täna"
+    unique_id: google_tv_netflix_today
+    entity_id: sensor.teleri_app
+    state: "Netflix"
+    type: time
+    start: "{{ today_at() }}"
+    end: "{{ now() }}"

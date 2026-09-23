@@ -224,9 +224,33 @@ def tv_section():
     s = section("Teler", [
         label("sensor.teleri_app", TV, "Teler", icon="mdi:television"),
         action_tile(TV, "Lülita välja", "mdi:power", None, "media_player.turn_off", {}, "Lülitad teleri välja?"),
-    ])
+    ], **nav("/lovelace/teler"))
     s["visibility"] = [{"condition": "state", "entity": TV, "state_not": ["off", "unavailable", "unknown"]}]
     return s
+
+# Watch time, not an alarm: the question is how long the TV was on and in which app, so the
+# tab has the day's totals, the apps on a timeline and the daily totals as bars. The numbers
+# are history_stats sensors in packages/google_tv.yaml; the timeline is the app label's own
+# history, where "Väljas" is the off stretch. Nothing here can say what was on screen:
+# the Android TV Remote protocol carries the app, never a title (khe-meta, phase 8).
+def watch(entity, name):
+    return nowrite(entity, name, vertical=True)
+teler = {"title": "Teler", "path": "teler", "icon": "mdi:television", "type": "sections", "max_columns": 2,
+ "badges": [
+    {"type": "entity", "entity": "sensor.teleri_app", "name": "Teler", "show_name": True, "show_state": True,
+     "tap_action": {"action": "more-info", "entity": TV}},
+ ],
+ "sections": [
+    section("Sees", row([watch("sensor.teler_sees_tana", "Täna"), watch("sensor.teler_sees_eile", "Eile"),
+                         watch("sensor.teler_sees_7_paeva", "7 päeva")])),
+    section("Äpid täna", row([watch("sensor.youtube_tana", "YouTube"), watch("sensor.youtube_kids_tana", "YouTube Kids"),
+                              watch("sensor.elisa_elamus_tana", "Elisa Elamus"), watch("sensor.netflix_tana", "Netflix")])),
+    section("Ajajoon", [
+        hist("24 tundi", [("sensor.teleri_app", "Äpp")], 24),
+        hist("7 päeva", [("sensor.teleri_app", "Äpp")], 168),
+    ], column_span=2),
+    section("Päevade kaupa", [bars("Teler sees päevas, h", [("sensor.teler_sees_tana", "Sees")], 14, stat="max")], column_span=2),
+]}
 
 # The two partitions, the same pair on Kodu and Valve. Name and state both stay:
 # the shield icon alone does not say which of the two is armed.
@@ -755,7 +779,7 @@ soojuspump_seaded = {"title": "Soojuspumba seaded", "path": "soojuspump-seaded",
     ]),
 ]}
 
-config = {"title": "Kodu", "views": [home, energy, soojuspump, ventilatsioon, pergola, valve, cameras, susteem,
+config = {"title": "Kodu", "views": [home, energy, soojuspump, ventilatsioon, pergola, valve, cameras, teler, susteem,
                                     komfovent_seaded, soojuspump_seaded, pergola_seaded, kaamerad_seaded] + [cam_view(s, n) for s, n in CAMS]}
 # A badge row that runs out of width scrolls sideways instead of wrapping to a second line.
 for v in config["views"]:
