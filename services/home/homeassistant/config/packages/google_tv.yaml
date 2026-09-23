@@ -20,6 +20,7 @@ template:
                'com.netflix.ninja': 'Netflix',
                'com.disney.disneyplus': 'Disney+',
                'com.amazon.amazonvideo.livingroom': 'Prime Video',
-               'com.spotify.tv.android': 'Spotify'} %}
+               'com.spotify.tv.android': 'Spotify',
+               'ee.elisa.smarttvclient': 'Elisa Elamus'} %}
           {% set a = state_attr('media_player.google_tv_streamer', 'app_id') or '' %}
           {{ m.get(a, (a.split('.') | last | capitalize) if a else 'Sees') }}{% endif %}
