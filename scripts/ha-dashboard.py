@@ -245,14 +245,12 @@ TV_APPS = [("YouTube", "sensor.youtube_tana", "mdi:youtube", "#e53935"),
 # Hours as "1 t 5 min" / "22 min", the way the tiles format a duration.
 DUR = ("{% macro d(h) %}{% set m = (h | float(0) * 60) | round | int %}"
        "{{ (m // 60) ~ ' t ' ~ (m % 60) ~ ' min' if m >= 60 else m ~ ' min' }}{% endmacro %}")
-tv_today = {"type": "markdown", "grid_options": {"columns": 12}, "content": DUR + (
-    "## {{ d(states('sensor.teler_sees_tana')) }}\n"
-    "sees täna · eile {{ d(states('sensor.teler_sees_eile')) }} · 7 päeva {{ d(states('sensor.teler_sees_7_paeva')) }}\n\n"
-    "{% if is_state('" + TV + "', 'off') %}<ha-icon icon=\"mdi:television-off\"></ha-icon> Väljas alates "
-    "{{ as_local(states['" + TV + "'].last_changed).strftime('%H:%M') }}"
-    "{% else %}<ha-icon icon=\"mdi:television-play\"></ha-icon> Praegu **{{ states('sensor.teleri_app') }}**, alates "
-    "{{ as_local(states['sensor.teleri_app'].last_changed).strftime('%H:%M') }}{% endif %}")}
-tv_apps = {"type": "markdown", "grid_options": {"columns": 12}, "content": DUR + (
+# One card, the phone's screen-time shape: the day's total as the one big number and the apps
+# used today under it, longest first, zero apps left out. Yesterday and the week are the chart
+# below; what is on now is the Pult badge. A first version put all of that in the card too,
+# and it read as a paragraph rather than a number.
+tv_today = {"type": "markdown", "grid_options": {"columns": "full"}, "content": DUR + (
+    "# {{ d(states('sensor.teler_sees_tana')) }}\n\n"
     "{% set ns = namespace(rows=[]) %}"
     "{% for n, e, i in " + repr([(n, e, i) for n, e, i, _ in TV_APPS]) + " %}"
     "{% set h = states(e) | float(0) %}{% if h * 60 >= 0.5 %}{% set ns.rows = ns.rows + [{'n': n, 'h': h, 'i': i}] %}{% endif %}"
@@ -260,8 +258,6 @@ tv_apps = {"type": "markdown", "grid_options": {"columns": 12}, "content": DUR +
     "{% for r in ns.rows | sort(attribute='h', reverse=true) %}"
     "<ha-icon icon=\"{{ r.i }}\"></ha-icon> **{{ r.n }}** {{ d(r.h) }}\n\n{% endfor %}"
     "{% if not ns.rows %}Täna pole veel vaadatud.{% endif %}")}
-# Daily totals per app: the max of each "today" counter per day, stacked. apexcharts reads the
-# recorder history directly, so today's column is there at once and grows during the day.
 # The week from long-term statistics: each app's "today" counter peaks at the day's total just
 # before midnight, so the daily max is that day, stacked by app. HA's own bar-stack, because
 # apexcharts-card sizes stacked columns on a time axis by the number of points across all
@@ -270,8 +266,17 @@ tv_apps = {"type": "markdown", "grid_options": {"columns": 12}, "content": DUR +
 tv_week = {"type": "statistics-graph", "chart_type": "bar-stack", "period": "day", "days_to_show": 7,
            "stat_types": ["max"], "min_y_axis": 0, "entities": [{"entity": e, "name": n} for n, e, _, _ in TV_APPS]}
 teler = {"title": "Teler", "path": "teler", "icon": "mdi:television", "type": "sections", "max_columns": 2,
+ # Pult opens the streamer's own controls (power, playback, volume) and names what is on now.
+ "badges": [
+    {"type": "entity", "entity": "sensor.teleri_app", "name": "Pult", "icon": "mdi:remote-tv", "show_name": True, "show_state": True,
+     "tap_action": {"action": "more-info", "entity": TV}},
+    {"type": "entity", "entity": TV, "name": "Lülita välja", "icon": "mdi:power", "show_name": True, "show_state": False,
+     "tap_action": {"action": "perform-action", "perform_action": "media_player.turn_off", "target": {"entity_id": TV},
+                    "confirmation": {"text": "Lülitad teleri välja?"}},
+     "visibility": [{"condition": "state", "entity": TV, "state_not": ["off", "unavailable", "unknown"]}]},
+ ],
  "sections": [
-    section("Täna", [tv_today, tv_apps], column_span=2),
+    section("Täna", [tv_today], column_span=2),
     section("Nädal", [titled("Teler sees päevas, h", tv_week, columns="full")], column_span=2),
     section("24 tundi", [hist("Mis äpp millal ees oli", [("sensor.teleri_app", "Äpp")], 24, columns="full")], column_span=2),
 ]}
