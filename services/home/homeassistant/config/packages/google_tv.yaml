@@ -93,3 +93,11 @@ sensor:
     type: time
     start: "{{ today_at() }}"
     end: "{{ now() }}"
+  - platform: history_stats
+    name: "Muu täna"
+    unique_id: google_tv_other_today
+    entity_id: sensor.teleri_app
+    state: ["Avaleht", "Cast"]
+    type: time
+    start: "{{ today_at() }}"
+    end: "{{ now() }}"

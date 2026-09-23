@@ -80,9 +80,9 @@ def row(cards):
 def titled(title, card, columns=12):
     return {"type": "vertical-stack", "grid_options": {"columns": columns},
             "cards": [{"type": "heading", "heading": title, "heading_style": "subtitle"}, card]}
-def hist(title, ents, hours):
+def hist(title, ents, hours, columns=12):
     return titled(title, {"type": "history-graph", "hours_to_show": hours,
-                          "entities": [{"entity": e, **({"name": n} if n else {})} for e, n in ents]})
+                          "entities": [{"entity": e, **({"name": n} if n else {})} for e, n in ents]}, columns)
 def section(title, cards, column_span=1, **heading):
     return {"type": "grid", "column_span": column_span, "cards": [{"type": "heading", "heading": title, **heading}] + cards}
 def nav(path):
@@ -228,31 +228,52 @@ def tv_section():
     s["visibility"] = [{"condition": "state", "entity": TV, "state_not": ["off", "unavailable", "unknown"]}]
     return s
 
-# Watch time, not an alarm: the question is how long the TV was on and in which app, so the
-# tab has the day's totals, the apps on a timeline and the daily totals as bars. The numbers
-# are history_stats sensors in packages/google_tv.yaml; the timeline is the app label's own
-# history, where "Väljas" is the off stretch. Nothing here can say what was on screen:
-# the Android TV Remote protocol carries the app, never a title (khe-meta, phase 8).
-def watch(entity, name, icon):
-    return nowrite(entity, name, icon=icon, vertical=True)
+# Watch time, not an alarm, shaped like a phone's screen-time page: the day's total as one
+# number, the apps actually used today in order, the week as columns split by app, and
+# today's timeline for "when". Apps at zero are left out; a first version showed eight
+# tiles that mostly read "0 t", two timelines too sparse to read and a statistics chart
+# that stays empty until the recorder's first hourly compile. The numbers are
+# history_stats sensors in packages/google_tv.yaml ("Muu" is the home screen and Cast).
+# Nothing here can say what was on screen: the Android TV Remote protocol carries the
+# app, never a title (khe-meta, phase 8).
+TV_APPS = [("YouTube", "sensor.youtube_tana", "mdi:youtube", "#e53935"),
+           ("Elisa Elamus", "sensor.elisa_elamus_tana", "mdi:television-classic", "#7e57c2"),
+           ("Jupiter", "sensor.jupiter_tana", "mdi:television-play", "#1e88e5"),
+           ("Go3", "sensor.go3_tana", "mdi:play-box-multiple", "#fb8c00"),
+           ("Stremio", "sensor.stremio_tana", "mdi:movie-open-play", "#43a047"),
+           ("Muu", "sensor.muu_tana", "mdi:dots-horizontal", "#90a4ae")]
+# Hours as "1 t 5 min" / "22 min", the way the tiles format a duration.
+DUR = ("{% macro d(h) %}{% set m = (h | float(0) * 60) | round | int %}"
+       "{{ (m // 60) ~ ' t ' ~ (m % 60) ~ ' min' if m >= 60 else m ~ ' min' }}{% endmacro %}")
+tv_today = {"type": "markdown", "grid_options": {"columns": 12}, "content": DUR + (
+    "## {{ d(states('sensor.teler_sees_tana')) }}\n"
+    "sees täna · eile {{ d(states('sensor.teler_sees_eile')) }} · 7 päeva {{ d(states('sensor.teler_sees_7_paeva')) }}\n\n"
+    "{% if is_state('" + TV + "', 'off') %}<ha-icon icon=\"mdi:television-off\"></ha-icon> Väljas alates "
+    "{{ as_local(states['" + TV + "'].last_changed).strftime('%H:%M') }}"
+    "{% else %}<ha-icon icon=\"mdi:television-play\"></ha-icon> Praegu **{{ states('sensor.teleri_app') }}**, alates "
+    "{{ as_local(states['sensor.teleri_app'].last_changed).strftime('%H:%M') }}{% endif %}")}
+tv_apps = {"type": "markdown", "grid_options": {"columns": 12}, "content": DUR + (
+    "{% set ns = namespace(rows=[]) %}"
+    "{% for n, e, i in " + repr([(n, e, i) for n, e, i, _ in TV_APPS]) + " %}"
+    "{% set h = states(e) | float(0) %}{% if h * 60 >= 0.5 %}{% set ns.rows = ns.rows + [{'n': n, 'h': h, 'i': i}] %}{% endif %}"
+    "{% endfor %}"
+    "{% for r in ns.rows | sort(attribute='h', reverse=true) %}"
+    "<ha-icon icon=\"{{ r.i }}\"></ha-icon> **{{ r.n }}** {{ d(r.h) }}\n\n{% endfor %}"
+    "{% if not ns.rows %}Täna pole veel vaadatud.{% endif %}")}
+# Daily totals per app: the max of each "today" counter per day, stacked. apexcharts reads the
+# recorder history directly, so today's column is there at once and grows during the day.
+tv_week = {"type": "custom:apexcharts-card", "graph_span": "7d", "span": {"end": "day"}, "header": {"show": False},
+    "yaxis": [{"min": 0, "decimals": 1}],
+    "apex_config": {"chart": {"height": 280, "stacked": True}, "legend": {"show": True},
+                    "plotOptions": {"bar": {"columnWidth": "60%"}},
+                    "xaxis": {"labels": {"datetimeFormatter": {"day": "ddd d."}}}},
+    "series": [{"entity": e, "name": n, "type": "column", "color": c, "float_precision": 2,
+                "group_by": {"func": "max", "duration": "1d"}} for n, e, _, c in TV_APPS]}
 teler = {"title": "Teler", "path": "teler", "icon": "mdi:television", "type": "sections", "max_columns": 2,
- "badges": [
-    {"type": "entity", "entity": "sensor.teleri_app", "name": "Teler", "show_name": True, "show_state": True,
-     "tap_action": {"action": "more-info", "entity": TV}},
- ],
  "sections": [
-    section("Sees", row([watch("sensor.teler_sees_tana", "Täna", "mdi:television"), watch("sensor.teler_sees_eile", "Eile", "mdi:history"),
-                         watch("sensor.teler_sees_7_paeva", "7 päeva", "mdi:calendar-week")])),
-    section("Äpid täna", row([watch("sensor.youtube_tana", "YouTube", "mdi:youtube"),
-                              watch("sensor.elisa_elamus_tana", "Elisa Elamus", "mdi:television-classic"),
-                              watch("sensor.jupiter_tana", "Jupiter", "mdi:television-play"),
-                              watch("sensor.go3_tana", "Go3", "mdi:play-box-multiple"),
-                              watch("sensor.stremio_tana", "Stremio", "mdi:movie-open-play")])),
-    section("Ajajoon", [
-        hist("24 tundi", [("sensor.teleri_app", "Äpp")], 24),
-        hist("7 päeva", [("sensor.teleri_app", "Äpp")], 168),
-    ], column_span=2),
-    section("Päevade kaupa", [bars("Teler sees päevas, h", [("sensor.teler_sees_tana", "Sees")], 14, stat="max")], column_span=2),
+    section("Täna", [tv_today, tv_apps], column_span=2),
+    section("Nädal", [titled("Teler sees päevas, h", tv_week, columns="full")], column_span=2),
+    section("24 tundi", [hist("Mis äpp millal ees oli", [("sensor.teleri_app", "Äpp")], 24, columns="full")], column_span=2),
 ]}
 
 # The two partitions, the same pair on Kodu and Valve. Name and state both stay:
