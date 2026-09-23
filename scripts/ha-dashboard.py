@@ -233,18 +233,21 @@ def tv_section():
 # are history_stats sensors in packages/google_tv.yaml; the timeline is the app label's own
 # history, where "Väljas" is the off stretch. Nothing here can say what was on screen:
 # the Android TV Remote protocol carries the app, never a title (khe-meta, phase 8).
-def watch(entity, name):
-    return nowrite(entity, name, vertical=True)
+def watch(entity, name, icon):
+    return nowrite(entity, name, icon=icon, vertical=True)
 teler = {"title": "Teler", "path": "teler", "icon": "mdi:television", "type": "sections", "max_columns": 2,
  "badges": [
     {"type": "entity", "entity": "sensor.teleri_app", "name": "Teler", "show_name": True, "show_state": True,
      "tap_action": {"action": "more-info", "entity": TV}},
  ],
  "sections": [
-    section("Sees", row([watch("sensor.teler_sees_tana", "Täna"), watch("sensor.teler_sees_eile", "Eile"),
-                         watch("sensor.teler_sees_7_paeva", "7 päeva")])),
-    section("Äpid täna", row([watch("sensor.youtube_tana", "YouTube"), watch("sensor.elisa_elamus_tana", "Elisa Elamus"),
-                              watch("sensor.jupiter_tana", "Jupiter"), watch("sensor.go3_tana", "Go3"), watch("sensor.stremio_tana", "Stremio")])),
+    section("Sees", row([watch("sensor.teler_sees_tana", "Täna", "mdi:television"), watch("sensor.teler_sees_eile", "Eile", "mdi:history"),
+                         watch("sensor.teler_sees_7_paeva", "7 päeva", "mdi:calendar-week")])),
+    section("Äpid täna", row([watch("sensor.youtube_tana", "YouTube", "mdi:youtube"),
+                              watch("sensor.elisa_elamus_tana", "Elisa Elamus", "mdi:television-classic"),
+                              watch("sensor.jupiter_tana", "Jupiter", "mdi:television-play"),
+                              watch("sensor.go3_tana", "Go3", "mdi:play-box-multiple"),
+                              watch("sensor.stremio_tana", "Stremio", "mdi:movie-open-play")])),
     section("Ajajoon", [
         hist("24 tundi", [("sensor.teleri_app", "Äpp")], 24),
         hist("7 päeva", [("sensor.teleri_app", "Äpp")], 168),
