@@ -215,6 +215,19 @@ FAULTS = [("binary_sensor.suitsuandurid", "Tulekahju"),
           ("binary_sensor.space_heating_unit_state", "Soojuspumba viga"), ("binary_sensor.hot_water_tank_state", "Boileri viga"),
           ("binary_sensor.komfovent_status_alarm_fault", "Ventilatsiooni viga"), ("binary_sensor.komfovent_status_alarm_warning", "Ventilatsiooni hoiatus")]
 
+# The TV is on Kodu for one reason: the owner's Google TV profile has no time limits and the
+# children land in it (khe-meta house plan, phase 8). So the section answers "is it on, and
+# what is running" and offers the off switch; it exists only while the TV is on, and sits
+# last so that it fills the free slot beside Süsteem instead of reflowing the page.
+TV = "media_player.google_tv_streamer"
+def tv_section():
+    s = section("Teler", [
+        label("sensor.teleri_app", TV, "Teler", icon="mdi:television"),
+        action_tile(TV, "Lülita välja", "mdi:power", None, "media_player.turn_off", {}, "Lülitad teleri välja?"),
+    ])
+    s["visibility"] = [{"condition": "state", "entity": TV, "state_not": ["off", "unavailable", "unknown"]}]
+    return s
+
 # The two partitions, the same pair on Kodu and Valve. Name and state both stay:
 # the shield icon alone does not say which of the two is armed.
 ALARM_BADGES = [{"type": "entity", "entity": "alarm_control_panel.maja", "name": "Maja", "show_name": True, "show_state": True},
@@ -290,6 +303,7 @@ home = {"title": "Kodu", "path": "kodu", "icon": "mdi:home", "type": "sections",
          "visibility": [{"condition": "and", "conditions": [{"condition": "state", "entity": "sensor.nvr_ketas", "state": "OK"}] +
                          [{"condition": "state", "entity": u, "state_not": "on"} for u in UPDATES]}]},
     ], **nav("/lovelace/susteem")),
+    tv_section(),
 ]}
 
 # The fork's price statistic (estfeed:estfeed_price) has the whole tariff price for every cached hour,

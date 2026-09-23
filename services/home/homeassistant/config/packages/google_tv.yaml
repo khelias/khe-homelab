@@ -1,0 +1,25 @@
+# Google TV Streamer helpers on top of the Android TV Remote integration.
+# The integration reports the foreground app as its Android package name
+# ("com.google.android.youtube.tv"), so the dashboard reads this label instead.
+# Unknown packages fall back to the last part of the name; add them here as
+# they show up in the history of media_player.google_tv_streamer.
+template:
+  - sensor:
+      - name: "Teleri äpp"
+        unique_id: google_tv_app_label
+        icon: mdi:television-play
+        availability: "{{ has_value('media_player.google_tv_streamer') }}"
+        state: >
+          {% if is_state('media_player.google_tv_streamer', 'off') %}Väljas{% else %}
+          {% set m = {
+               'com.google.android.apps.tv.launcherx': 'Avaleht',
+               'com.google.android.apps.mediashell': 'Cast',
+               'com.google.android.youtube.tv': 'YouTube',
+               'com.google.android.youtube.tvkids': 'YouTube Kids',
+               'com.google.android.youtube.tvmusic': 'YouTube Music',
+               'com.netflix.ninja': 'Netflix',
+               'com.disney.disneyplus': 'Disney+',
+               'com.amazon.amazonvideo.livingroom': 'Prime Video',
+               'com.spotify.tv.android': 'Spotify'} %}
+          {% set a = state_attr('media_player.google_tv_streamer', 'app_id') or '' %}
+          {{ m.get(a, (a.split('.') | last | capitalize) if a else 'Sees') }}{% endif %}
