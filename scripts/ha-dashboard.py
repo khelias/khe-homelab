@@ -21,7 +21,7 @@ DHW = "water_heater.hot_water_tank_domestic_hot_water_tank"
 # Two untracked local files carry that, and every consumer below degrades to "leave the card out"
 # when they are missing:
 #   ~/.config/khe/ha-house.json   {"cams": [[slug, label], ...], "phone": "sensor.<device>",
-#                                  "nvr_app_url": "<scheme>://", "updates": ["update.<x>"]}
+#                                  "nvr_app_url": "<scheme>://", "updates": [["update.<x>", "<name>"]]}
 #   ~/.config/khe/ha-people.json  [[entity_id, label], ...]
 # Presence badges render "<name> <state>", so the verb rides in the name ("X on" -> "X on Kodus").
 def _local(name, default):
@@ -33,9 +33,16 @@ CAMS = [tuple(c) for c in _house.get("cams", [])]
 PHONE = _house.get("phone")
 NVR_APP = _house.get("nvr_app_url")
 PEOPLE = [tuple(p) for p in _local("ha-people.json", [])]
-UPDATES = ["update.hacs_update", "update.komfovent_update", "update.daikin_altherma_update",
-           "update.estfeed_update", "update.apexcharts_card_update",
-           "update.advanced_camera_card_update"] + _house.get("updates", [])
+# Rows are named after the thing being updated: the entity's own name is "Update", so the
+# default reads "HACS Update" seven times over. House-file entries are [entity_id, name].
+_UPDATES = [("update.hacs_update", "HACS"), ("update.komfovent_update", "Komfovent"),
+            ("update.daikin_altherma_update", "Daikin Altherma"), ("update.estfeed_update", "Estfeed"),
+            ("update.apexcharts_card_update", "ApexCharts Card"), ("update.advanced_camera_card_update", "Advanced Camera Card")
+            ] + [tuple(u) if isinstance(u, list) else (u, None) for u in _house.get("updates", [])]
+UPDATES = [u for u, _ in _UPDATES]
+# Estfeed has no brand image, so its row showed "icon not available"; an explicit icon wins over the picture.
+UPDATE_ROWS = [{"entity": u, **({"name": n} if n else {}), **({"icon": "mdi:meter-electric"} if u == "update.estfeed_update" else {})}
+               for u, n in _UPDATES]
 
 def tile(entity, name=None, **kw):
     c = {"type": "tile", "entity": entity}
@@ -45,6 +52,14 @@ def nowrite(entity, name, **kw):
     return tile(entity, name, tap_action={"action": "none"}, icon_tap_action={"action": "none"}, **kw)
 def when_on(entity, name, **kw):
     return tile(entity, name, color="red", visibility=[{"condition": "state", "entity": entity, "state": "on"}], **kw)
+def heater_month(name, **kw):
+    """Afterheater kWh this month: red only above zero. Under ECO it should stay at 0, so a
+    tile that is always red cries wolf; the one that turns red is the one worth seeing."""
+    e = "sensor.jarelkute_sel_kuul"
+    used, idle = tile(e, name, color="red", vertical=True, **kw), tile(e, name, color="disabled", vertical=True, **kw)
+    used["visibility"] = [{"condition": "numeric_state", "entity": e, "above": 0}]
+    idle["visibility"] = [{"condition": "numeric_state", "entity": e, "below": 0.001}]
+    return [used, idle]
 def third(card):
     card["grid_options"] = {"columns": 4, "rows": 2}; return card
 def flat(card):
@@ -146,23 +161,35 @@ def action_tile(entity, name, icon, color, perform_action, data, text, **kw):
     act = {"action": "perform-action", "perform_action": perform_action, "target": {"entity_id": entity},
            "data": data, "confirmation": {"text": text}}
     return tile(entity, name, icon=icon, color=color, hide_state=True, tap_action=act, icon_tap_action=act, **kw)
-def mode_button(name, icon, option, color=None, **kw):
-    return action_tile(MODE, name, icon, color, "select.select_option", {"option": option},
+def by_state(entity, value, on, off):
+    """The same control twice, one tile per state: a tile colours its icon whenever the entity
+    is active at all, and a select or a water heater in its normal mode always is."""
+    on["visibility"] = [{"condition": "state", "entity": entity, "state": value}]
+    off["visibility"] = [{"condition": "state", "entity": entity, "state_not": value}]
+    return [on, off]
+def label(sensor, select, name, **kw):
+    """A select shown through its Estonian label sensor (the integrations ship raw option
+    keys); tap still opens the select itself, which is where the mode is changed."""
+    act = {"action": "more-info", "entity": select}
+    return tile(sensor, name, tap_action=act, icon_tap_action=act, **kw)
+MODE_LABEL = "sensor.ventilatsiooni_reziim"
+def mode_button(name, icon, option, color, **kw):
+    """Mode button in its colour only while that mode runs; tapping the running one does nothing."""
+    running = tile(MODE, name, icon=icon, color=color, hide_state=True,
+                   tap_action={"action": "none"}, icon_tap_action={"action": "none"}, **kw)
+    idle = action_tile(MODE, name, icon, "disabled", "select.select_option", {"option": option},
                        f"Ventilatsioon režiimile {name}?", **kw)
+    return [third(t) for t in by_state(MODE, option, running, idle)]
 
-# The boost tile as two tiles, one per state. A tile colours its icon whenever the entity is
-# active, and the tank's normal mode "on" counts as active, so a single tile sat orange all
-# day as if boost were running. Grey while off; orange only in "performance", and there a
-# tap ends it instead of asking to start it again.
+# Boiler boost, grey while off and orange only in "performance", where a tap ends it
+# instead of asking to start it again. See by_state for why it takes two tiles.
 def dhw_boost():
-    def is_(mode, neg=False):
-        return [{"condition": "state", "entity": DHW, ("state_not" if neg else "state"): mode}]
-    return [action_tile(DHW, "Kiirsoojendus", "mdi:water-boiler", "disabled", "water_heater.set_operation_mode",
-                        {"operation_mode": "performance"}, "Boileri kiirsoojendus (Daikin Powerful) sisse? Lõpeb ise, kui vesi on soe.",
-                        visibility=is_("performance", neg=True)),
-            action_tile(DHW, "Kiirsoojendus sees", "mdi:water-boiler", "orange", "water_heater.set_operation_mode",
-                        {"operation_mode": "on"}, "Lõpetad boileri kiirsoojenduse? Vesi soojeneb edasi tavarežiimis.",
-                        visibility=is_("performance"))]
+    act = lambda mode, text: ("water_heater.set_operation_mode", {"operation_mode": mode}, text)
+    return by_state(DHW, "performance",
+        action_tile(DHW, "Kiirsoojendus sees", "mdi:water-boiler", "orange",
+                    *act("on", "Lõpetad boileri kiirsoojenduse? Vesi soojeneb edasi tavarežiimis.")),
+        action_tile(DHW, "Kiirsoojendus", "mdi:water-boiler", "disabled",
+                    *act("performance", "Boileri kiirsoojendus (Daikin Powerful) sisse? Lõpeb ise, kui vesi on soe.")))
 
 
 def note(text):
@@ -216,7 +243,7 @@ home = {"title": "Kodu", "path": "kodu", "icon": "mdi:home", "type": "sections",
         when_on("binary_sensor.space_heating_unit_state", "Soojuspumba viga"),
     ], **nav("/lovelace/soojuspump")),
     section("Soe vesi", [
-        nowrite(DHW, "Boiler", state_content=["state", "current_temperature"]),
+        nowrite(DHW, "Boiler", state_content=["current_temperature"]),
         # Daikin Powerful: the one DHW quick mode on Kodu. Temporary, the unit returns to normal
         # by itself once the tank is hot, so an accidental tap costs one heat-up, not a setting.
         *dhw_boost(),
@@ -226,21 +253,22 @@ home = {"title": "Kodu", "path": "kodu", "icon": "mdi:home", "type": "sections",
         # Kitchen mode is 80/20 on purpose: it pressurises the kitchen so the cooker hood does the
         # extraction. Boost is 100/100 and is the mode that clears the whole house, which is
         # what a sauna or a smoking oven needs. Both belong here; they are not the same tool.
-        third(mode_button("Tavaline", "mdi:fan", "normal", "green", vertical=True)),
-        third(mode_button("Köök", "mdi:stove", "kitchen", "orange", vertical=True)),
-        third(mode_button("Boost", "mdi:fan-plus", "boost", "purple", vertical=True)),
+        *mode_button("Tavaline", "mdi:fan", "normal", "green", vertical=True),
+        *mode_button("Köök", "mdi:stove", "kitchen", "orange", vertical=True),
+        *mode_button("Boost", "mdi:fan-plus", "boost", "purple", vertical=True),
         third(tile("sensor.komfovent_supply_temperature", "Sissepuhe", vertical=True)),
         third(tile("sensor.komfovent_extract_temperature", "Väljatõmme", vertical=True)),
         third(tile("sensor.komfovent_panel_1_humidity", "Niiskus", vertical=True)),
         when_on("binary_sensor.komfovent_status_alarm_fault", "Ventilatsiooni viga"),
         when_on("binary_sensor.komfovent_status_alarm_warning", "Ventilatsiooni hoiatus"),
-    ], badges=[{"type": "entity", "entity": MODE, "name": "Režiim", "show_state": True}], **nav("/lovelace/ventilatsioon")),
+    ], badges=[{"type": "entity", "entity": MODE_LABEL, "name": "Režiim", "show_state": True,
+                "tap_action": {"action": "more-info", "entity": MODE}}], **nav("/lovelace/ventilatsioon")),
     section("Pergola", [
-        tile("cover.pergola_katus", "Katus", features=[{"type": "cover-open-close"}]),
+        tile("cover.pergola_katus", "Katus", hide_state=True, features=[{"type": "cover-open-close"}]),
         tile("light.pergola_valgustus", "Valgustus", features=[{"type": "light-brightness"}]),
     ], **nav("/lovelace/pergola")),
     section("Süsteem", [
-        {"type": "entities", "title": "Uuendused", "entities": UPDATES,
+        {"type": "entities", "title": "Uuendused", "entities": UPDATE_ROWS,
          "visibility": [{"condition": "or", "conditions": [{"condition": "state", "entity": u, "state": "on"} for u in UPDATES]}]},
         tile("sensor.nvr_ketas", "NVR ketas", color="red", visibility=[{"condition": "state", "entity": "sensor.nvr_ketas", "state_not": "OK"}]),
         *([tile(PHONE + "_battery_level", "Telefoni aku", color="red",
@@ -288,7 +316,7 @@ energy = {"title": "Energia", "path": "energia", "icon": "mdi:lightning-bolt", "
     section("Suuremad tarbijad sel kuul", [
         third(tile("sensor.boiler_energy_month", "Boiler", vertical=True, **nav("/lovelace/soojuspump"))),
         third(tile("sensor.ventilatsioon_sel_kuul", "Ventilatsioon", vertical=True, **nav("/lovelace/ventilatsioon"))),
-        third(tile("sensor.jarelkute_sel_kuul", "Järelküte", color="red", vertical=True, **nav("/lovelace/ventilatsioon"))),
+        *[third(t) for t in heater_month("Järelküte", **nav("/lovelace/ventilatsioon"))],
     ], column_span=2),
 ]}
 
@@ -411,7 +439,7 @@ valve = {"title": "Valve", "path": "valve", "icon": "mdi:shield-home", "type": "
     section("Süsteem", [
         {"type": "horizontal-stack", "cards": [
             nowrite("sensor.valve_aku", "Aku", vertical=True),
-            nowrite("sensor.valve_uhendus", "Ühendus", vertical=True)]},
+            nowrite("binary_sensor.valve_uhendus", "Ühendus", vertical=True)]},
         # Smoke was a badge only, which meant it was invisible until the house
         # was already on fire. You need to see that it is connected on a normal
         # day too, so it leads the row that answers "is anything wrong".
@@ -460,7 +488,8 @@ ventilatsioon = {"title": "Ventilatsioon", "path": "ventilatsioon", "icon": "mdi
  # Same shape as Kodu: one row of vertical tiles per section, a chart only where the number moves, no captions.
  # Mode and ECO ride as badges; the settings subview is a badge too, so the view has no card that is only a link.
  "badges": [
-    {"type": "entity", "entity": MODE, "name": "Režiim", "show_name": True, "show_state": True},
+    {"type": "entity", "entity": MODE_LABEL, "name": "Režiim", "show_name": True, "show_state": True,
+     "tap_action": {"action": "more-info", "entity": MODE}},
     {"type": "entity", "entity": "switch.komfovent_eco_mode", "name": "ECO", "show_name": True, "show_state": True},
     {"type": "entity", "entity": MODE, "name": "Seaded", "icon": "mdi:tune", "color": "grey", "show_name": True, "show_state": False,
      "tap_action": {"action": "navigate", "navigation_path": "/lovelace/komfovent-seaded"}},
@@ -493,7 +522,7 @@ ventilatsioon = {"title": "Ventilatsioon", "path": "ventilatsioon", "icon": "mdi
         {"type": "horizontal-stack", "cards": [
             nowrite("sensor.komfovent_power_consumption", "Võimsus", vertical=True),
             nowrite("sensor.ventilatsioon_sel_kuul", "Kuu kokku", vertical=True),
-            nowrite("sensor.jarelkute_sel_kuul", "Kuu järelküte", color="red", vertical=True)]},
+            *heater_month("Kuu järelküte", tap_action={"action": "none"}, icon_tap_action={"action": "none"})]},
         bars("Seade päevas, kWh", [("sensor.komfovent_total_ahu_energy", "Seade")], 31),
     ]),
 ]}
@@ -552,8 +581,8 @@ pergola = {"title": "Pergola", "path": "pergola", "icon": "mdi:awning-outline", 
 pergola_seaded = {"title": "Pergola seaded", "path": "pergola-seaded", "icon": "mdi:tune", "type": "sections", "subview": True, "max_columns": 2, "sections": [
     section("Katus poolte kaupa", [
         {"type": "horizontal-stack", "cards": [
-            tile("cover.pergola_parem", "Parem", vertical=True, features=[{"type": "cover-open-close"}]),
-            tile("cover.pergola_vasak", "Vasak", vertical=True, features=[{"type": "cover-open-close"}])]},
+            tile("cover.pergola_parem", "Parem", vertical=True, hide_state=True, features=[{"type": "cover-open-close"}]),
+            tile("cover.pergola_vasak", "Vasak", vertical=True, hide_state=True, features=[{"type": "cover-open-close"}])]},
     ]),
     section("Valgus poolte kaupa", [
         {"type": "horizontal-stack", "cards": [
@@ -595,14 +624,13 @@ susteem = {"title": "Süsteem", "path": "susteem", "icon": "mdi:home-assistant",
     # Kodu shape, no captions. Operational notes that used to sit here (backup.sh, companion-app sensors, recorder
     # retention) live in khe-meta's house/home-assistant-plan.md. The NVR disk is on Valve and Kodu, not repeated here.
     section("Uuendused", [
-        {"type": "entities", "entities": UPDATES},
+        {"type": "entities", "entities": UPDATE_ROWS},
     ]),
     section("Telefon", [
         # SSID is left out: iOS only reports it with precise-location permission, so the tile sat on "unavailable".
         *row([
             *[nowrite(e, n.removesuffix(" on"), vertical=True) for e, n in PEOPLE[:1]],
             *([nowrite(PHONE + "_battery_level", "Aku", vertical=True),
-               nowrite(PHONE + "_battery_state", "Laadimine", vertical=True),
                nowrite(PHONE + "_connection_type", "Ühendus", vertical=True)] if PHONE else [])]),
     ]),
     section("Kaamerate põhivood", [
@@ -628,15 +656,15 @@ def mode_row(key, timer=False):
     cards = [tile(f"number.komfovent_{key}_supply_flow", "Sisse", vertical=True),
              tile(f"number.komfovent_{key}_extract_flow", "Välja", vertical=True),
              tile(f"number.komfovent_{key}_temperature", "Sihttemp", vertical=True),
-             confirm(f"switch.komfovent_{key}_electric_heater", "Järelküte", "Järelküte selles režiimis. Kindel?", color="red", vertical=True)]
+             confirm(f"switch.komfovent_{key}_electric_heater", "Järelküte", "Järelküte selles režiimis. Kindel?", vertical=True)]
     if timer: cards.append(tile(f"number.komfovent_{key}_timer", "Kestus min", vertical=True))
     return row(cards)
 
 komfovent_seaded = {"title": "Ventilatsiooni seaded", "path": "komfovent-seaded", "icon": "mdi:tune", "type": "sections", "subview": True, "max_columns": 3, "sections": [
     section("Juhtimine", [
         # No inline dropdown: the integration ships raw option keys ("working_week"), so the tap opens more-info to pick instead.
-        tile(MODE, "Režiim"),
-        tile("select.komfovent_scheduler_mode", "Ajakava"),
+        label(MODE_LABEL, MODE, "Režiim"),
+        label("sensor.ventilatsiooni_ajakava", "select.komfovent_scheduler_mode", "Ajakava"),
         tile("switch.komfovent_auto_mode", "Automaatrežiim"),
         confirm("switch.komfovent_power", "Seade sees", "Lülitad kogu ventilatsiooni. Kindel?"),
     ]),
@@ -645,7 +673,7 @@ komfovent_seaded = {"title": "Ventilatsiooni seaded", "path": "komfovent-seaded"
     # cannot read that register back, so its tile is always blank; the name says so.
     section("ECO", [
         tile("switch.komfovent_eco_mode", "ECO sees"),
-        confirm("switch.komfovent_eco_heater_blocking", "Kütteblokeering", "Väljalülitamine lubab elektrilise järelkütte. Kindel?", color="red"),
+        confirm("switch.komfovent_eco_heater_blocking", "Kütteblokeering", "Väljalülitamine lubab elektrilise järelkütte. Kindel?", color="green"),
         confirm("switch.komfovent_eco_free_heating_cooling", "Vaba jahutus", "Suvine vaba jahutus. Sees: soojusvaheti seisab, kui välisõhk on toast jahedam. Talvel peab olema väljas. Kindel?"),
         tile("select.komfovent_eco_heat_recovery", "Soojustagastus"),  # reads back as unknown; tap opens more-info where the option can still be set
         tile("number.komfovent_eco_min_supply_temperature", "Min sissepuhe"),
@@ -667,8 +695,8 @@ komfovent_seaded = {"title": "Ventilatsiooni seaded", "path": "komfovent-seaded"
         note("Puhkus"),
         {"type": "horizontal-stack", "cards": [
             tile("number.komfovent_holidays_temperature", "Sihttemp", vertical=True),
-            confirm("switch.komfovent_holidays_electric_heater", "Järelküte", "Järelküte selles režiimis. Kindel?", color="red", vertical=True),
-            tile("select.komfovent_holidays_micro_ventilation", "Mikroventilatsioon", vertical=True)]},
+            confirm("switch.komfovent_holidays_electric_heater", "Järelküte", "Järelküte selles režiimis. Kindel?", vertical=True),
+            label("sensor.puhkuse_mikroventilatsioon", "select.komfovent_holidays_micro_ventilation", "Mikroventilatsioon", vertical=True)]},
     ], column_span=2),
     section("Hooldus", [
         {"type": "button", "name": "Puhaste filtrite kalibreerimine", "icon": "mdi:gesture-tap-button", "tap_action": {"action": "perform-action", "perform_action": "button.press", "target": {"entity_id": "button.komfovent_clean_filters_calibration"}, "confirmation": {"text": "Kindel?"}}},
@@ -680,13 +708,13 @@ komfovent_seaded = {"title": "Ventilatsiooni seaded", "path": "komfovent-seaded"
 soojuspump_seaded = {"title": "Soojuspumba seaded", "path": "soojuspump-seaded", "icon": "mdi:tune", "type": "sections", "subview": True, "max_columns": 2, "sections": [
     section("Küte", [
         confirm("switch.space_heating_climate_control", "Küte", "Lülitad maja kütte. Kindel?"),
-        tile("select.space_heating_operation_mode", "Kütte režiim"),  # raw option keys from the integration; tap opens the picker
+        label("sensor.kutte_reziim", "select.space_heating_operation_mode", "Kütte režiim"),
         # The one heating knob the unit exposes: +1 shifts the weather curve one degree up, -1 down.
         tile("number.space_heating_temperature_control", "Küttevee nihe", features=[{"type": "numeric-input", "style": "buttons"}]),
     ]),
     section("Soe vesi", [
         note("Siht 55 °C, mitte alla 45 °C (legionella)."),
-        tile("water_heater.hot_water_tank_domestic_hot_water_tank", "Boiler", state_content=["state", "current_temperature"],
+        tile("water_heater.hot_water_tank_domestic_hot_water_tank", "Boiler", state_content=["current_temperature"],
              features=[{"type": "target-temperature"}]),
         *dhw_boost(),
     ]),

@@ -195,3 +195,32 @@ automation:
             väljas {{ states('sensor.komfovent_outdoor_temperature') | round(1) }} °C,
             väljatõmme {{ states('sensor.komfovent_extract_temperature') | round(1) }} °C.
             Kontrolli ECO, free cooling ja constant heat recovery sätteid.
+
+# Estonian labels for the selects. The integration ships no translations, so the
+# frontend shows the raw option keys ("Normal", "working_week", "twice"). The
+# dashboard shows these and opens the select itself on tap, to change it.
+template:
+  - sensor:
+      - name: "Ventilatsiooni režiim"
+        unique_id: komfovent_mode_label
+        icon: mdi:fan
+        availability: "{{ has_value('select.komfovent_operation_mode') }}"
+        state: >
+          {% set m = {'standby': 'Ootel', 'away': 'Eemal', 'normal': 'Tavaline', 'intensive': 'Intensiivne',
+                      'boost': 'Boost', 'kitchen': 'Köök', 'fireplace': 'Kamin', 'override': 'Override',
+                      'holiday': 'Puhkus', 'air_quality': 'Õhukvaliteet', 'off': 'Väljas'} %}
+          {% set s = states('select.komfovent_operation_mode') %}{{ m.get(s, s) }}
+      - name: "Ventilatsiooni ajakava"
+        unique_id: komfovent_scheduler_label
+        icon: mdi:calendar-clock
+        availability: "{{ has_value('select.komfovent_scheduler_mode') }}"
+        state: >
+          {% set m = {'stay_at_home': 'Kodus', 'working_week': 'Töönädal', 'office': 'Kontor', 'custom': 'Kohandatud'} %}
+          {% set s = states('select.komfovent_scheduler_mode') %}{{ m.get(s, s) }}
+      - name: "Puhkuse mikroventilatsioon"
+        unique_id: komfovent_holiday_microvent_label
+        icon: mdi:fan-clock
+        availability: "{{ has_value('select.komfovent_holidays_micro_ventilation') }}"
+        state: >
+          {% set m = {'once': '1× päevas', 'twice': '2× päevas', 'thrice': '3× päevas', 'four': '4× päevas'} %}
+          {% set s = states('select.komfovent_holidays_micro_ventilation') %}{{ m.get(s, s) }}

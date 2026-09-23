@@ -591,6 +591,19 @@ for a newly discovered device to the stored Overview config by itself, so
 integration. That is what the generator is for; diff before assuming the
 drift is someone's deliberate edit.
 
+**A tile's colour is not a state indicator by itself.** A tile paints its
+icon whenever the entity counts as active, and a select, a sensor or a water
+heater in its normal mode (`on`) always does. So a coloured tile on such an
+entity is coloured all day. Where colour has to mean "this is running",
+the generator shows two tiles picked by a visibility condition, coloured and
+`disabled` (`by_state`, `heater_month`). Red is kept for faults and for
+things that should be zero and are not.
+
+**Integrations without translations show raw option keys** (`working_week`,
+`heating`, `twice`). The Estonian labels are template sensors in the device's
+package, and the dashboard tile shows the label with a `more-info` tap action
+on the select (`"entity": <select>`), so the picker is one tap away as before.
+
 ### HVAC integrations
 
 The Komfovent and Daikin integration quirks (Modbus client rules, register

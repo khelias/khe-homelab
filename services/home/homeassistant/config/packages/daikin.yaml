@@ -11,3 +11,11 @@ template:
         icon: mdi:thermometer-water
         availability: "{{ state_attr('water_heater.hot_water_tank_domestic_hot_water_tank', 'current_temperature') is not none }}"
         state: "{{ state_attr('water_heater.hot_water_tank_domestic_hot_water_tank', 'current_temperature') }}"
+      # The heating mode select shows its raw key ("heating"); the dashboard shows this instead.
+      - name: "Kütte režiim"
+        unique_id: daikin_space_heating_mode_label
+        icon: mdi:sun-snowflake-variant
+        availability: "{{ has_value('select.space_heating_operation_mode') }}"
+        state: >
+          {% set m = {'heating': 'Küte', 'cooling': 'Jahutus', 'auto': 'Automaatne'} %}
+          {% set s = states('select.space_heating_operation_mode') %}{{ m.get(s, s) }}

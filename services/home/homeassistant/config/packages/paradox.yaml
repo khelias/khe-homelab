@@ -182,3 +182,9 @@ template:
                'binary_sensor.koridor_liikumine_rikkumine', 'binary_sensor.garaaz_liikumine_rikkumine',
                'binary_sensor.tehnoruum_liikumine_rikkumine'
              ) | selectattr('state', 'eq', 'on') | list | count > 0 }}
+      # PAI reports its link as the raw word "online"; as a connectivity sensor the
+      # frontend says Ühendatud / Lahti ühendatud. The badge still watches the raw one.
+      - name: "Valve ühendus"
+        unique_id: paradox_connection
+        device_class: connectivity
+        state: "{{ is_state('sensor.valve_uhendus', 'online') }}"
