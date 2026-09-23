@@ -215,7 +215,7 @@ FAULTS = [("binary_sensor.suitsuandurid", "Tulekahju"),
           ("binary_sensor.space_heating_unit_state", "Soojuspumba viga"), ("binary_sensor.hot_water_tank_state", "Boileri viga"),
           ("binary_sensor.komfovent_status_alarm_fault", "Ventilatsiooni viga"), ("binary_sensor.komfovent_status_alarm_warning", "Ventilatsiooni hoiatus")]
 
-# The two partitions, the same pair on Kodu, Valve and Kaamerad. Name and state both stay:
+# The two partitions, the same pair on Kodu and Valve. Name and state both stay:
 # the shield icon alone does not say which of the two is armed.
 ALARM_BADGES = [{"type": "entity", "entity": "alarm_control_panel.maja", "name": "Maja", "show_name": True, "show_state": True},
                 {"type": "entity", "entity": "alarm_control_panel.garaaz", "name": "Garaaž", "show_name": True, "show_state": True}]
@@ -346,8 +346,8 @@ energy = {"title": "Energia", "path": "energia", "icon": "mdi:lightning-bolt", "
 # Every subview is the same viewer with a different camera selected first, because the
 # card lets you swipe on to the next camera. So nothing outside the card names a camera:
 # the view title stays "Kaamerad" and the card's own status bar carries the name, since
-# dashboard chrome cannot follow a selection made inside a card. Per-camera state and the
-# motion switches stay on the tab behind, for the same reason.
+# dashboard chrome cannot follow a selection made inside a card. Per-camera state stays on the
+# grid behind and the motion switches on Kaamerate seaded, for the same reason.
 #
 # Panel, not sections: a sections column stops at 500 px, which left a 2.7K stream
 # as a thumbnail on a desktop. In a panel the card takes the whole area under the
@@ -363,29 +363,38 @@ def cam_view(slug, name):
          "live": {"display": {"mode": "single"}},  # grid mode would open every stream at once
          "status_bar": {"style": "outside", "position": "bottom"}}]}
 
+# Same shape as Soojuspump and Ventilatsioon: the tab is the cameras and nothing else, the
+# NVR rides in the badge row (disk state, the vendor app, Seaded) and the motion switches
+# live in the settings subview. Motion is too noisy for a badge (fires on insects and rain).
+# The leak-sensor plan is still in khe-meta.
+NVR_OK = [{"condition": "state", "entity": "sensor.nvr_ketas", "state": "OK"}]
+NVR_BAD = [{"condition": "state", "entity": "sensor.nvr_ketas", "state_not": "OK"}]
 cameras = {"title": "Kaamerad", "path": "kaamerad", "icon": "mdi:cctv", "type": "sections", "max_columns": 3,
- # Kodu shape: cameras as they were, NVR and per-camera motion switches in one section, no captions. The NVR disk
- # badge shows only when the disk is not OK. Motion is too noisy for a badge (fires on insects and rain).
- # The alarm has its own Valve tab; its two partition badges are repeated here, the leak-sensor plan is still in khe-meta.
  "badges": [
-    *ALARM_BADGES,
-    {"type": "entity", "entity": "sensor.nvr_ketas", "name": "NVR ketas", "color": "red", "show_name": True, "show_state": True,
-     "visibility": [{"condition": "state", "entity": "sensor.nvr_ketas", "state_not": "OK"}]},
+    {"type": "entity", "entity": "sensor.nvr_ketas", "name": "NVR ketas", "show_name": True, "show_state": True, "visibility": NVR_OK},
+    {"type": "entity", "entity": "sensor.nvr_ketas", "name": "NVR ketas", "color": "red", "show_name": True, "show_state": True, "visibility": NVR_BAD},
+    # Opens the NVR vendor's phone app via its URL scheme (from the local house file); the NVR web UI is too slow to be worth a button.
+    *([{"type": "entity", "entity": "sensor.nvr_ketas", "name": "Ava NVR", "icon": "mdi:cellphone-play", "color": "grey", "show_name": True, "show_state": False,
+        "tap_action": {"action": "url", "url_path": NVR_APP}}] if NVR_APP else []),
+    {"type": "entity", "entity": "sensor.nvr_ketas", "name": "Seaded", "icon": "mdi:tune", "color": "grey", "show_name": True, "show_state": False,
+     "tap_action": {"action": "navigate", "navigation_path": "/lovelace/kaamerad-seaded"}},
  ],
  "sections": [
     section("Kaamerad", [
         {"type": "picture-glance", "camera_image": "camera." + slug + "_alamvoog", "entity": "camera." + slug + "_alamvoog", "title": n, "camera_view": "auto",
          "entities": [{"entity": "binary_sensor." + slug + "_liikumine"}], **nav("/lovelace/kaamera-" + slug)}
         for slug, n in CAMS], column_span=3),
-    section("NVR", [
-        *row([
-            nowrite("sensor.nvr_ketas", "Ketas", vertical=True),
-            # Opens the NVR vendor's phone app via its URL scheme (from the local house file); the NVR web UI is too slow to be worth a button.
-            *([{"type": "tile", "entity": "sensor.nvr_ketas", "name": "Ava NVR", "icon": "mdi:cellphone-play", "hide_state": True, "vertical": True,
-                "tap_action": {"action": "url", "url_path": NVR_APP}, "icon_tap_action": {"action": "url", "url_path": NVR_APP}}] if NVR_APP else [])]),
-        # Per-camera motion detection. The camera integration switches these back on at every reload, so treat them as a temporary mute.
+]}
+
+kaamerad_seaded = {"title": "Kaamerate seaded", "path": "kaamerad-seaded", "icon": "mdi:tune", "type": "sections", "subview": True, "max_columns": 2, "sections": [
+    section("Liikumistuvastus", [
+        # The camera integration switches these back on at every reload, so treat them as a temporary mute.
         *row([tile("switch." + slug + "_liikumistuvastus", n, vertical=True) for slug, n in CAMS]),
-    ], column_span=3),
+    ], column_span=2),
+    section("Põhivood", [
+        # Full-resolution live streams as tiles; the same streams are zoomable from the Kaamerad grid.
+        *row([tile("camera." + slug, n, vertical=True) for slug, n in CAMS]),
+    ], column_span=2),
 ]}
 
 # Alarm zones grouped by what they are rather than by panel numbering, and
@@ -649,10 +658,6 @@ susteem = {"title": "Süsteem", "path": "susteem", "icon": "mdi:home-assistant",
             *([nowrite(PHONE + "_battery_level", "Aku", vertical=True),
                nowrite(PHONE + "_connection_type", "Ühendus", vertical=True)] if PHONE else [])]),
     ]),
-    section("Kaamerate põhivood", [
-        # Full-resolution live streams as tiles; the same streams are zoomable on the Kaamerad tab.
-        *row([tile("camera." + slug, n, vertical=True) for slug, n in CAMS]),
-    ], column_span=2),
     section("Nord Pool toorandmed", [
         # 15-minute spot without fees, the 15-minute total, and how far the forecast reaches; Kodu uses hourly means because the meter bills hourly.
         *row([
@@ -737,7 +742,7 @@ soojuspump_seaded = {"title": "Soojuspumba seaded", "path": "soojuspump-seaded",
 ]}
 
 config = {"title": "Kodu", "views": [home, energy, soojuspump, ventilatsioon, pergola, valve, cameras, susteem,
-                                    komfovent_seaded, soojuspump_seaded, pergola_seaded] + [cam_view(s, n) for s, n in CAMS]}
+                                    komfovent_seaded, soojuspump_seaded, pergola_seaded, kaamerad_seaded] + [cam_view(s, n) for s, n in CAMS]}
 # A badge row that runs out of width scrolls sideways instead of wrapping to a second line.
 for v in config["views"]:
     if v.get("badges"): v["header"] = {"badges_wrap": "scroll"}
