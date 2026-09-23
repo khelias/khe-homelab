@@ -73,9 +73,16 @@ def row(cards):
     cols = {1: 12, 2: 6, 4: 6}.get(len(cards), 4)
     for c in cards: c["grid_options"] = {"columns": cols, "rows": 2}
     return cards
+# Every chart carries its title as a subtitle heading above the card, not inside it. The stock
+# graphs print theirs large and white, apexcharts small and grey, so one page mixed two styles.
+# The stack is half of a wide section by default; pass columns="full" for a chart that needs the width.
+# A full-width apexcharts card keeps its aspect ratio and grows to ~600 px, so the two price charts pin 300.
+def titled(title, card, columns=12):
+    return {"type": "vertical-stack", "grid_options": {"columns": columns},
+            "cards": [{"type": "heading", "heading": title, "heading_style": "subtitle"}, card]}
 def hist(title, ents, hours):
-    return {"type": "history-graph", "title": title, "hours_to_show": hours,
-            "entities": [{"entity": e, **({"name": n} if n else {})} for e, n in ents]}
+    return titled(title, {"type": "history-graph", "hours_to_show": hours,
+                          "entities": [{"entity": e, **({"name": n} if n else {})} for e, n in ents]})
 def section(title, cards, column_span=1, **heading):
     return {"type": "grid", "column_span": column_span, "cards": [{"type": "heading", "heading": title, **heading}] + cards}
 def nav(path):
@@ -106,11 +113,11 @@ price_now = {"type": "markdown", "content": (
 
 price_chart = {
     "type": "custom:apexcharts-card", "graph_span": "2d", "span": {"start": "day"},
-    "header": {"show": True, "title": "Hind täna ja homme, €/kWh", "show_states": False},
+    "header": {"show": False},
     "now": {"show": True, "label": "Praegu"},
     "yaxis": [{"min": 0, "decimals": 2}],
     "experimental": {"color_threshold": True},
-    "apex_config": {"legend": {"show": True}, "plotOptions": {"bar": {"columnWidth": "90%"}},
+    "apex_config": {"chart": {"height": 300}, "legend": {"show": True}, "plotOptions": {"bar": {"columnWidth": "90%"}},
                     "xaxis": {"labels": {"datetimeFormatter": {"hour": "HH:mm", "day": "ddd"}}}},
     "series": [
         {"entity": FORECAST, "name": "Kokku", "type": "column", "float_precision": 3,
@@ -146,13 +153,13 @@ for (let k = -1; k <= 0; k++) for (let i = 0; i < 12; i++) {
 return out;
 """
 def daikin_bars(title, entity, span, end_unit, js, fmt):
-    return {"type": "custom:apexcharts-card", "graph_span": span, "span": {"end": end_unit},
-            "header": {"show": True, "title": title, "show_states": False},
+    return titled(title, {"type": "custom:apexcharts-card", "graph_span": span, "span": {"end": end_unit},
+            "header": {"show": False},
             "yaxis": [{"min": 0, "decimals": 0}],
             "apex_config": {"legend": {"show": False}, "plotOptions": {"bar": {"columnWidth": "70%"}},
                             "xaxis": {"labels": {"datetimeFormatter": fmt}}},
             "series": [{"entity": entity, "name": "kWh", "type": "column", "color": "#42a5f5", "float_precision": 0,
-                        "data_generator": js}]}
+                        "data_generator": js}]})
 
 
 MODE = "select.komfovent_operation_mode"
@@ -195,8 +202,8 @@ def dhw_boost():
 def note(text):
     return {"type": "heading", "heading": text, "heading_style": "subtitle"}
 def bars(title, ents, days, stat="change"):
-    return {"type": "statistics-graph", "title": title, "chart_type": "bar", "period": "day", "days_to_show": days, "hide_legend": len(ents) == 1, "min_y_axis": 0,
-            "stat_types": [stat], "entities": [{"entity": e, "name": n} for e, n in ents]}
+    return titled(title, {"type": "statistics-graph", "chart_type": "bar", "period": "day", "days_to_show": days, "hide_legend": len(ents) == 1, "min_y_axis": 0,
+                          "stat_types": [stat], "entities": [{"entity": e, "name": n} for e, n in ents]})
 
 
 def confirm(entity, name, text, **kw):
@@ -224,8 +231,8 @@ home = {"title": "Kodu", "path": "kodu", "icon": "mdi:home", "type": "sections",
  "sections": [
     section("Elekter", [
         price_now,
-        price_chart,
-        {"type": "horizontal-stack", "cards": [
+        titled("Hind täna ja homme, €/kWh", price_chart, columns="full"),
+        {"type": "horizontal-stack", "grid_options": {"columns": "full"}, "cards": [
             nowrite("sensor.maja_tana", "Täna", state_content=["state", "kulu"], vertical=True),
             nowrite("sensor.maja_eile", "Eile", state_content=["state", "kulu"], vertical=True),
             nowrite("sensor.maja_sel_kuul", "Sel kuul", state_content=["state", "kulu"], vertical=True)]},
@@ -292,10 +299,10 @@ return (r['{PRICE_STAT}'] || []).filter(x => x.{stat_type} != null).map(x => [x.
 """
 price_month = {
     "type": "custom:apexcharts-card", "graph_span": "30d", "span": {"end": "day"},
-    "header": {"show": True, "title": "Koguhind 30 päeva, €/kWh", "show_states": False},
+    "header": {"show": False},
     "yaxis": [{"min": 0, "decimals": 2}],
     "experimental": {"color_threshold": True},
-    "apex_config": {"legend": {"show": True}, "plotOptions": {"bar": {"columnWidth": "70%"}},
+    "apex_config": {"chart": {"height": 300}, "legend": {"show": True}, "plotOptions": {"bar": {"columnWidth": "70%"}},
                     "xaxis": {"labels": {"datetimeFormatter": {"day": "d. MMM"}}}},
     "series": [
         {"entity": "sensor.elektri_hind_see_tund", "name": "Keskmine", "type": "column", "float_precision": 3,
@@ -305,7 +312,7 @@ price_month = {
          "color": "#90a4ae", "float_precision": 3, "data_generator": price_stat_js("max")}]}
 
 energy = {"title": "Energia", "path": "energia", "icon": "mdi:lightning-bolt", "type": "sections", "max_columns": 2, "sections": [
-    section("Hind", [price_month], column_span=2),
+    section("Hind", [titled("Koguhind 30 päeva, €/kWh", price_month, columns="full")], column_span=2),
     section("Maja", [
         # Horizontal and half a wide section each: three numbers side by side do not fit a vertical tile on a phone.
         nowrite("sensor.maja_sel_kuul", "Sel kuul", state_content=["state", "kulu", "hind"], grid_options={"columns": 12, "rows": 1}),
@@ -314,9 +321,10 @@ energy = {"title": "Energia", "path": "energia", "icon": "mdi:lightning-bolt", "
         bars("Kulu päevas, € (ilma kuutasudeta)", [("estfeed:estfeed_cost_642b", "€")], 31),
     ], column_span=2, **nav("/energy")),
     section("Suuremad tarbijad sel kuul", [
-        third(tile("sensor.boiler_energy_month", "Boiler", vertical=True, **nav("/lovelace/soojuspump"))),
-        third(tile("sensor.ventilatsioon_sel_kuul", "Ventilatsioon", vertical=True, **nav("/lovelace/ventilatsioon"))),
-        *[third(t) for t in heater_month("Järelküte", **nav("/lovelace/ventilatsioon"))],
+        {"type": "horizontal-stack", "grid_options": {"columns": "full"}, "cards": [
+            tile("sensor.boiler_energy_month", "Boiler", vertical=True, **nav("/lovelace/soojuspump")),
+            tile("sensor.ventilatsioon_sel_kuul", "Ventilatsioon", vertical=True, **nav("/lovelace/ventilatsioon")),
+            *heater_month("Järelküte", **nav("/lovelace/ventilatsioon"))]},
     ], column_span=2),
 ]}
 
@@ -430,12 +438,14 @@ valve = {"title": "Valve", "path": "valve", "icon": "mdi:shield-home", "type": "
     # Tiles rather than keypad cards: the keypad is a tall block to look at all
     # day for something you tap twice, and the tile feature raises the code
     # dialog by itself when disarming asks for one.
+    # One column each: spanning two, every card here filled only half of it and the
+    # right half of the page stayed empty. Now Valve sits beside Uksed, Liikumine beside Süsteem.
     section("Valve", [armed("alarm_control_panel.maja", "Maja"),
-                      armed("alarm_control_panel.garaaz", "Garaaž")], column_span=2),
+                      armed("alarm_control_panel.garaaz", "Garaaž")]),
     section("Uksed", [
         {"type": "horizontal-stack", "cards": [tile(e, n, vertical=True) for e, n in DOORS]},
-    ], column_span=2),
-    section("Liikumine", [motion_list([("Ühisruumid", SHARED), ("Toad", PRIVATE)])], column_span=2),
+    ]),
+    section("Liikumine", [motion_list([("Ühisruumid", SHARED), ("Toad", PRIVATE)])]),
     section("Süsteem", [
         {"type": "horizontal-stack", "cards": [
             nowrite("sensor.valve_aku", "Aku", vertical=True),
@@ -447,7 +457,7 @@ valve = {"title": "Valve", "path": "valve", "icon": "mdi:shield-home", "type": "
             tile("binary_sensor.suitsuandurid", "Suitsuandurid", vertical=True),
             tile("binary_sensor.valve_rikkumine", "Rikkumine", vertical=True),
             tile("binary_sensor.valissireen", "Sireen", vertical=True)]},
-    ], column_span=2),
+    ]),
 ]}
 
 soojuspump = {"title": "Soojuspump", "path": "soojuspump", "icon": "mdi:heat-pump", "type": "sections", "max_columns": 2,
