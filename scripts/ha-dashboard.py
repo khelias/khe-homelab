@@ -49,6 +49,15 @@ def third(card):
     card["grid_options"] = {"columns": 4, "rows": 2}; return card
 def flat(card):
     card["grid_options"] = {"columns": 4, "rows": 1}; return card
+# A row of vertical tiles as grid cells rather than a horizontal-stack, which never wraps:
+# five in a stack are 68 px each on a phone and every name truncates. A section is
+# 12 columns on a phone and 12 per column it spans on a wide screen, so a cell of 4
+# is three to a row on the phone and six in a wide section. Four go 2x2 instead of
+# leaving one tile alone on the second line.
+def row(cards):
+    cols = {1: 12, 2: 6, 4: 6}.get(len(cards), 4)
+    for c in cards: c["grid_options"] = {"columns": cols, "rows": 2}
+    return cards
 def hist(title, ents, hours):
     return {"type": "history-graph", "title": title, "hours_to_show": hours,
             "entities": [{"entity": e, **({"name": n} if n else {})} for e, n in ents]}
@@ -82,7 +91,7 @@ price_now = {"type": "markdown", "content": (
 
 price_chart = {
     "type": "custom:apexcharts-card", "graph_span": "2d", "span": {"start": "day"},
-    "header": {"show": True, "title": "Hind täna ja homme, €/kWh (tunni keskmine)", "show_states": False},
+    "header": {"show": True, "title": "Hind täna ja homme, €/kWh", "show_states": False},
     "now": {"show": True, "label": "Praegu"},
     "yaxis": [{"min": 0, "decimals": 2}],
     "experimental": {"color_threshold": True},
@@ -157,6 +166,8 @@ FAULTS = [("binary_sensor.suitsuandurid", "Tulekahju"),
           ("binary_sensor.space_heating_unit_state", "Soojuspumba viga"), ("binary_sensor.hot_water_tank_state", "Boileri viga"),
           ("binary_sensor.komfovent_status_alarm_fault", "Ventilatsiooni viga"), ("binary_sensor.komfovent_status_alarm_warning", "Ventilatsiooni hoiatus")]
 
+# Two columns even on a wide screen: sections fill rows in order and are not packed, so with three
+# only Küte sat beside the tall Elekter section and everything else went below it.
 home = {"title": "Kodu", "path": "kodu", "icon": "mdi:home", "type": "sections", "max_columns": 2,
  "badges": [
     *[{"type": "entity", "entity": e, "name": n, "show_name": True, "show_state": True} for e, n in PEOPLE],
@@ -239,7 +250,7 @@ return (r['{PRICE_STAT}'] || []).filter(x => x.{stat_type} != null).map(x => [x.
 """
 price_month = {
     "type": "custom:apexcharts-card", "graph_span": "30d", "span": {"end": "day"},
-    "header": {"show": True, "title": "Koguhind 30 päeva, €/kWh (päeva keskmine ja kõrgeim tund)", "show_states": False},
+    "header": {"show": True, "title": "Koguhind 30 päeva, €/kWh", "show_states": False},
     "yaxis": [{"min": 0, "decimals": 2}],
     "experimental": {"color_threshold": True},
     "apex_config": {"legend": {"show": True}, "plotOptions": {"bar": {"columnWidth": "70%"}},
@@ -254,9 +265,9 @@ price_month = {
 energy = {"title": "Energia", "path": "energia", "icon": "mdi:lightning-bolt", "type": "sections", "max_columns": 2, "sections": [
     section("Hind", [price_month], column_span=2),
     section("Maja", [
-        {"type": "horizontal-stack", "cards": [
-            nowrite("sensor.maja_sel_kuul", "Sel kuul", state_content=["state", "kulu", "hind"], vertical=True),
-            nowrite("sensor.maja_eelmine_kuu", "Eelmine kuu", state_content=["state", "kulu", "hind"], vertical=True)]},
+        # Horizontal and half a wide section each: three numbers side by side do not fit a vertical tile on a phone.
+        nowrite("sensor.maja_sel_kuul", "Sel kuul", state_content=["state", "kulu", "hind"], grid_options={"columns": 12, "rows": 1}),
+        nowrite("sensor.maja_eelmine_kuu", "Eelmine kuu", state_content=["state", "kulu", "hind"], grid_options={"columns": 12, "rows": 1}),
         bars("Tarbimine päevas, kWh", [("estfeed:estfeed_consumption_642b", "kWh")], 31),
         bars("Kulu päevas, € (ilma kuutasudeta)", [("estfeed:estfeed_cost_642b", "€")], 31),
     ], column_span=2, **nav("/energy")),
@@ -281,19 +292,22 @@ energy = {"title": "Energia", "path": "energia", "icon": "mdi:lightning-bolt", "
 # the view title stays "Kaamerad" and the card's own status bar carries the name, since
 # dashboard chrome cannot follow a selection made inside a card. Per-camera state and the
 # motion switches stay on the tab behind, for the same reason.
+#
+# Panel, not sections: a sections column stops at 500 px, which left a 2.7K stream
+# as a thumbnail on a desktop. In a panel the card takes the whole area under the
+# header and letterboxes the stream inside it (card `dimensions` do not apply there),
+# so a desktop gets the full width and a phone gets full width with dark bands.
 def cam_view(slug, name):
     others = [{"camera_entity": "camera." + s, "title": t} for s, t in CAMS if s != slug]
-    return {"title": "Kaamerad", "path": "kaamera-" + slug, "icon": "mdi:cctv", "type": "sections",
-            "subview": True, "max_columns": 1, "sections": [
-        {"type": "grid", "cards": [
-            {"type": "custom:advanced-camera-card",
-             "cameras": [{"camera_entity": "camera." + slug, "title": name}] + others,
-             "view": {"default": "live"}, "menu": {"style": "hover"},
-             "live": {"display": {"mode": "single"}},  # grid mode would open all five streams at once
-             "status_bar": {"style": "outside", "position": "bottom"},
-             "grid_options": {"columns": "full"}}]}]}
+    return {"title": "Kaamerad", "path": "kaamera-" + slug, "icon": "mdi:cctv", "type": "panel",
+            "subview": True, "cards": [
+        {"type": "custom:advanced-camera-card",
+         "cameras": [{"camera_entity": "camera." + slug, "title": name}] + others,
+         "view": {"default": "live"}, "menu": {"style": "hover"},
+         "live": {"display": {"mode": "single"}},  # grid mode would open every stream at once
+         "status_bar": {"style": "outside", "position": "bottom"}}]}
 
-cameras = {"title": "Kaamerad", "path": "kaamerad", "icon": "mdi:cctv", "type": "sections", "max_columns": 2,
+cameras = {"title": "Kaamerad", "path": "kaamerad", "icon": "mdi:cctv", "type": "sections", "max_columns": 3,
  # Kodu shape: cameras as they were, NVR and per-camera motion switches in one section, no captions. The NVR disk
  # badge shows only when the disk is not OK. Motion is too noisy for a badge (fires on insects and rain).
  # The alarm moved to its own Valve tab once PAI landed; the leak-sensor plan is still in khe-meta.
@@ -305,16 +319,16 @@ cameras = {"title": "Kaamerad", "path": "kaamerad", "icon": "mdi:cctv", "type": 
     section("Kaamerad", [
         {"type": "picture-glance", "camera_image": "camera." + slug + "_alamvoog", "entity": "camera." + slug + "_alamvoog", "title": n, "camera_view": "auto",
          "entities": [{"entity": "binary_sensor." + slug + "_liikumine"}], **nav("/lovelace/kaamera-" + slug)}
-        for slug, n in CAMS], column_span=2),
+        for slug, n in CAMS], column_span=3),
     section("NVR", [
-        {"type": "horizontal-stack", "cards": [
+        *row([
             nowrite("sensor.nvr_ketas", "Ketas", vertical=True),
             # Opens the NVR vendor's phone app via its URL scheme (from the local house file); the NVR web UI is too slow to be worth a button.
             *([{"type": "tile", "entity": "sensor.nvr_ketas", "name": "Ava NVR", "icon": "mdi:cellphone-play", "hide_state": True, "vertical": True,
-                "tap_action": {"action": "url", "url_path": NVR_APP}, "icon_tap_action": {"action": "url", "url_path": NVR_APP}}] if NVR_APP else [])]},
+                "tap_action": {"action": "url", "url_path": NVR_APP}, "icon_tap_action": {"action": "url", "url_path": NVR_APP}}] if NVR_APP else [])]),
         # Per-camera motion detection. The camera integration switches these back on at every reload, so treat them as a temporary mute.
-        {"type": "horizontal-stack", "cards": [tile("switch." + slug + "_liikumistuvastus", n, vertical=True) for slug, n in CAMS]},
-    ], column_span=2),
+        *row([tile("switch." + slug + "_liikumistuvastus", n, vertical=True) for slug, n in CAMS]),
+    ], column_span=3),
 ]}
 
 # Alarm zones grouped by what they are rather than by panel numbering, and
@@ -404,22 +418,22 @@ soojuspump = {"title": "Soojuspump", "path": "soojuspump", "icon": "mdi:heat-pum
  ],
  "sections": [
     section("Küte", [
-        {"type": "horizontal-stack", "cards": [
+        *row([
             nowrite("sensor.space_heating_leaving_water_temperature", "Küttevesi", vertical=True),
             # "Sees" is the Komfovent wall panel in the utility room, the one indoor thermometer the house has.
             nowrite("sensor.komfovent_panel_1_temperature", "Sees", vertical=True),
             nowrite("sensor.space_heating_outdoor_temperature", "Väljas", vertical=True),
-            nowrite("number.space_heating_temperature_control", "Kõvera nihe", vertical=True)]},
+            nowrite("number.space_heating_temperature_control", "Kõvera nihe", vertical=True)]),
         when_on("binary_sensor.space_heating_unit_state", "Soojuspumba viga"),
         hist("Küttevesi ja välistemperatuur 48 h", [("sensor.space_heating_leaving_water_temperature", "Küttevesi"),
                                                     ("sensor.space_heating_outdoor_temperature", "Väljas")], 48),
     ]),
     section("Soe vesi", [
-        {"type": "horizontal-stack", "cards": [
+        *row([
             nowrite("sensor.boileri_vee_temperatuur", "Vesi", color="blue", vertical=True),
             nowrite(DHW, "Siht", state_content=["temperature"], vertical=True),
             nowrite("sensor.boiler_energy_today", "Täna", vertical=True),
-            nowrite("sensor.boiler_energy_month", "Sel kuul", vertical=True)]},
+            nowrite("sensor.boiler_energy_month", "Sel kuul", vertical=True)]),
         when_on("binary_sensor.hot_water_tank_state", "Boileri viga"),
         hist("Boileri vee temperatuur 48 h", [("sensor.boileri_vee_temperatuur", "Boileri vesi")], 48),
         # Daikin's own DHW electricity counter, whole kWh. Space-heating kWh are deliberately absent: that counter is broken on the unit.
@@ -428,7 +442,7 @@ soojuspump = {"title": "Soojuspump", "path": "soojuspump", "icon": "mdi:heat-pum
     ]),
 ]}
 
-ventilatsioon = {"title": "Ventilatsioon", "path": "ventilatsioon", "icon": "mdi:fan", "type": "sections", "max_columns": 2,
+ventilatsioon = {"title": "Ventilatsioon", "path": "ventilatsioon", "icon": "mdi:fan", "type": "sections", "max_columns": 3,
  # Same shape as Kodu: one row of vertical tiles per section, a chart only where the number moves, no captions.
  # Mode and ECO ride as badges; the settings subview is a badge too, so the view has no card that is only a link.
  "badges": [
@@ -439,11 +453,11 @@ ventilatsioon = {"title": "Ventilatsioon", "path": "ventilatsioon", "icon": "mdi
  ],
  "sections": [
     section("Õhk", [
-        {"type": "horizontal-stack", "cards": [
+        *row([
             nowrite("sensor.komfovent_supply_temperature", "Sissepuhe", vertical=True),
             nowrite("sensor.komfovent_extract_temperature", "Väljatõmme", vertical=True),
             nowrite("sensor.komfovent_outdoor_temperature", "Välisõhk", vertical=True),
-            nowrite("sensor.komfovent_panel_1_humidity", "Niiskus", vertical=True)]},
+            nowrite("sensor.komfovent_panel_1_humidity", "Niiskus", vertical=True)]),
         hist("Temperatuurid 48 h", [("sensor.komfovent_supply_temperature", "Sissepuhe"), ("sensor.komfovent_extract_temperature", "Väljatõmme"),
                                     ("sensor.komfovent_outdoor_temperature", "Välisõhk")], 48),
     ]),
@@ -464,8 +478,8 @@ ventilatsioon = {"title": "Ventilatsioon", "path": "ventilatsioon", "icon": "mdi
     section("Energia", [
         {"type": "horizontal-stack", "cards": [
             nowrite("sensor.komfovent_power_consumption", "Võimsus", vertical=True),
-            nowrite("sensor.ventilatsioon_sel_kuul", "Sel kuul", vertical=True),
-            nowrite("sensor.jarelkute_sel_kuul", "Järelküte sel kuul", color="red", vertical=True)]},
+            nowrite("sensor.ventilatsioon_sel_kuul", "Kuu kokku", vertical=True),
+            nowrite("sensor.jarelkute_sel_kuul", "Kuu järelküte", color="red", vertical=True)]},
         bars("Seade päevas, kWh", [("sensor.komfovent_total_ahu_energy", "Seade")], 31),
     ]),
 ]}
@@ -488,7 +502,7 @@ def roof(name, icon, service, color=None):
     return third(tile("cover.pergola_katus", name, icon=icon, color=color, hide_state=True,
                       vertical=True, tap_action=act, icon_tap_action=act))
 
-pergola = {"title": "Pergola", "path": "pergola", "icon": "mdi:awning-outline", "type": "sections", "max_columns": 2,
+pergola = {"title": "Pergola", "path": "pergola", "icon": "mdi:awning-outline", "type": "sections", "max_columns": 3,
  "badges": [
     {"type": "entity", "entity": "sensor.sademed_praegu", "name": "Sajab", "show_name": True, "show_state": True},
     {"type": "entity", "entity": "input_boolean.pergola_katuse_automaatika", "name": "Autom.", "show_name": True, "show_state": True},
@@ -571,38 +585,38 @@ susteem = {"title": "Süsteem", "path": "susteem", "icon": "mdi:home-assistant",
     ]),
     section("Telefon", [
         # SSID is left out: iOS only reports it with precise-location permission, so the tile sat on "unavailable".
-        {"type": "horizontal-stack", "cards": [
+        *row([
             *[nowrite(e, n.removesuffix(" on"), vertical=True) for e, n in PEOPLE[:1]],
             *([nowrite(PHONE + "_battery_level", "Aku", vertical=True),
                nowrite(PHONE + "_battery_state", "Laadimine", vertical=True),
-               nowrite(PHONE + "_connection_type", "Ühendus", vertical=True)] if PHONE else [])]},
+               nowrite(PHONE + "_connection_type", "Ühendus", vertical=True)] if PHONE else [])]),
     ]),
     section("Kaamerate põhivood", [
         # Full-resolution live streams as tiles; the same streams are zoomable on the Kaamerad tab.
-        {"type": "horizontal-stack", "cards": [tile("camera." + slug, n, vertical=True) for slug, n in CAMS]},
+        *row([tile("camera." + slug, n, vertical=True) for slug, n in CAMS]),
     ], column_span=2),
     section("Nord Pool toorandmed", [
         # 15-minute spot without fees, the 15-minute total, and how far the forecast reaches; Kodu uses hourly means because the meter bills hourly.
-        {"type": "horizontal-stack", "cards": [
+        *row([
             nowrite("sensor.nord_pool_ee_praegune_hind", "Börs praegu", vertical=True),
             nowrite("sensor.nord_pool_ee_jargmine_hind", "Börs järgmine", vertical=True),
             nowrite("sensor.elektri_hind_kokku", "Kokku, 15 min", vertical=True),
-            nowrite(FORECAST, "Prognoos katab", vertical=True)]},
-        {"type": "horizontal-stack", "cards": [
+            nowrite(FORECAST, "Prognoos katab", vertical=True)]),
+        *row([
             nowrite("sensor.nord_pool_ee_madalaim_hind", "Täna madalaim", vertical=True),
-            nowrite("sensor.nord_pool_ee_korgeim_hind", "Täna kõrgeim", vertical=True)]},
+            nowrite("sensor.nord_pool_ee_korgeim_hind", "Täna kõrgeim", vertical=True)]),
     ], column_span=2),
 ]}
 
 def mode_row(key, timer=False):
-    """One mode's settings as a row of vertical tiles: fans, setpoint, heater flag, optional timer. Taps open more-info to edit."""
+    """One mode's settings as grid cells of vertical tiles: fans, setpoint, heater flag, optional timer. Taps open more-info to edit."""
     # Short names: five vertical tiles in a row truncate "Sissepuhe %" on a phone, and the value already carries the unit.
     cards = [tile(f"number.komfovent_{key}_supply_flow", "Sisse", vertical=True),
              tile(f"number.komfovent_{key}_extract_flow", "Välja", vertical=True),
              tile(f"number.komfovent_{key}_temperature", "Sihttemp", vertical=True),
              confirm(f"switch.komfovent_{key}_electric_heater", "Järelküte", "Järelküte selles režiimis. Kindel?", color="red", vertical=True)]
     if timer: cards.append(tile(f"number.komfovent_{key}_timer", "Kestus min", vertical=True))
-    return {"type": "horizontal-stack", "cards": cards}
+    return row(cards)
 
 komfovent_seaded = {"title": "Ventilatsiooni seaded", "path": "komfovent-seaded", "icon": "mdi:tune", "type": "sections", "subview": True, "max_columns": 3, "sections": [
     section("Juhtimine", [
@@ -618,7 +632,7 @@ komfovent_seaded = {"title": "Ventilatsiooni seaded", "path": "komfovent-seaded"
     section("ECO", [
         tile("switch.komfovent_eco_mode", "ECO sees"),
         confirm("switch.komfovent_eco_heater_blocking", "Kütteblokeering", "Väljalülitamine lubab elektrilise järelkütte. Kindel?", color="red"),
-        confirm("switch.komfovent_eco_free_heating_cooling", "Suvine vaba jahutus", "Sees: soojusvaheti seisab, kui välisõhk on toast jahedam. Talvel peab olema väljas. Kindel?"),
+        confirm("switch.komfovent_eco_free_heating_cooling", "Vaba jahutus", "Suvine vaba jahutus. Sees: soojusvaheti seisab, kui välisõhk on toast jahedam. Talvel peab olema väljas. Kindel?"),
         tile("select.komfovent_eco_heat_recovery", "Soojustagastus"),  # reads back as unknown; tap opens more-info where the option can still be set
         tile("number.komfovent_eco_min_supply_temperature", "Min sissepuhe"),
         # 30 C since 2026-09-14, was 25. The ceiling applies in every mode, and with the exchanger
@@ -626,13 +640,13 @@ komfovent_seaded = {"title": "Ventilatsiooni seaded", "path": "komfovent-seaded"
         # ECO then had no lever left but to throttle the fans, down to 25 % during a sauna evening.
         tile("number.komfovent_eco_max_supply_temperature", "Max sissepuhe"),
     ]),
-    section("Tavaline", [mode_row("normal")]),
-    section("Köök", [mode_row("kitchen", timer=True)]),
-    section("Boost", [mode_row("boost")]),
-    section("Kamin", [mode_row("fireplace", timer=True)]),
-    section("Eemal", [mode_row("away")]),
+    section("Tavaline", mode_row("normal")),
+    section("Köök", mode_row("kitchen", timer=True)),
+    section("Boost", mode_row("boost")),
+    section("Kamin", mode_row("fireplace", timer=True)),
+    section("Eemal", mode_row("away")),
     section("Harva kasutatavad režiimid",
-        [note("Intensiivne"), mode_row("intensive"), note("Override"), mode_row("override", timer=True),
+        [note("Intensiivne"), *mode_row("intensive"), note("Override"), *mode_row("override", timer=True),
         {"type": "horizontal-stack", "cards": [
             tile("number.komfovent_override_delay_start", "Viide start", vertical=True),
             tile("number.komfovent_override_delay_stop", "Viide stopp", vertical=True)]},
@@ -681,5 +695,5 @@ async def main():
         r = await call(type="lovelace/config/save", url_path=URL, config=config)
         print("save:", "ok" if r.get("success") else r.get("error"))
         r = await call(type="lovelace/config", url_path=URL)
-        v = r["result"]["views"]; print("views:", [x["title"] for x in v], "| cards:", sum(len(c["cards"]) for x in v for c in x["sections"]))
+        v = r["result"]["views"]; print("views:", [x["title"] for x in v], "| cards:", sum(len(c["cards"]) for x in v for c in x.get("sections", [x])))
 asyncio.run(main())
