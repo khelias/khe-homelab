@@ -5,14 +5,24 @@
 # packages were not known when this was written; anything else falls back to the
 # last part of the name. Add apps as they show up in the streamer's history.
 template:
-  # Watching means on and not the screensaver: the streamer goes to ambient mode
-  # (dreamx) by itself after a few idle minutes, and that is not watch time.
+  # Watching means an app is in front. The home screen is not watch time: the streamer
+  # was expected to report ambient mode (dreamx) when idle, but it never has, idle stays
+  # on the launcher (50 min of it on 2026-09-24 with nobody watching). Search, settings
+  # and the launcher are the same kind of in-between screen. The idle list is repeated
+  # in the session log below.
   - binary_sensor:
       - name: "Teleri vaatamine"
         unique_id: google_tv_watching
         state: >
-          {{ states('media_player.google_tv_streamer') not in ['off', 'unavailable', 'unknown']
-             and state_attr('media_player.google_tv_streamer', 'app_id') != 'com.google.android.apps.tv.dreamx' }}
+          {{ states('sensor.teleri_app') not in ['Avaleht', 'Ekraanisäästja', 'Otsing', 'Seaded',
+             'Väljas', 'Sees', 'unknown', 'unavailable'] }}
+      # Any app outside the five named ones, so "Muu" is counted like them rather than as a
+      # remainder: a difference of two counters that update apart would go down and up.
+      - name: "Teleri muu äpp"
+        unique_id: google_tv_other_app
+        state: >
+          {{ is_state('binary_sensor.teleri_vaatamine', 'on') and states('sensor.teleri_app')
+             not in ['YouTube', 'Elisa Elamus', 'Jupiter', 'Go3', 'Stremio'] }}
   - sensor:
       - name: "Teleri äpp"
         unique_id: google_tv_app_label
@@ -24,6 +34,8 @@ template:
                'com.google.android.apps.tv.launcherx': 'Avaleht',
                'com.google.android.apps.tv.dreamx': 'Ekraanisäästja',
                'com.google.android.apps.mediashell': 'Cast',
+               'com.google.android.katniss': 'Otsing',
+               'com.android.tv.settings': 'Seaded',
                'com.google.android.youtube.tv': 'YouTube',
                'com.google.android.youtube.tvkids': 'YouTube Kids',
                'com.google.android.youtube.tvmusic': 'YouTube Music'} %}
@@ -33,10 +45,54 @@ template:
           {% set hit = parts | selectattr(0, 'in', a) | map(attribute=1) | list %}
           {{ exact[a] if a in exact else hit[0] if hit else (a.split('.') | last | capitalize) if a else 'Sees' }}{% endif %}
 
+  # Today's sessions for the Teler tab, as {app, start, end} with epoch seconds and end
+  # none while running. The raw label changes read as noise: Elisa, a 3 s voice search,
+  # Elisa again. So a return to the same app within 3 minutes continues its session.
+  # The state is the day the list belongs to; midnight starts a new list.
+  - trigger:
+      - trigger: state
+        entity_id: sensor.teleri_app
+        to: ~
+      - trigger: time
+        at: "00:00:00"
+    sensor:
+      - name: "Teleri seansid"
+        unique_id: google_tv_sessions
+        icon: mdi:format-list-bulleted
+        state: "{{ now().date() | string }}"
+        attributes:
+          seansid: >
+            {% set t = as_timestamp(now()) | int %}
+            {% set app = states('sensor.teleri_app') %}
+            {% set ns = namespace(s=(this.attributes.get('seansid') or []) if this.state == now().date() | string else []) %}
+            {% if ns.s and ns.s[-1].end is none %}{% set ns.s = ns.s[:-1] + [dict(ns.s[-1], end=t)] %}{% endif %}
+            {% if app not in ['Avaleht', 'Ekraanisäästja', 'Otsing', 'Seaded', 'Väljas', 'Sees', 'unknown', 'unavailable'] %}
+              {% if ns.s and ns.s[-1].app == app and t - ns.s[-1].end < 180 %}{% set ns.s = ns.s[:-1] + [dict(ns.s[-1], end=none)] %}
+              {% else %}{% set ns.s = ns.s + [{'app': app, 'start': t, 'end': none}] %}{% endif %}
+            {% endif %}
+            {{ ns.s }}
+
+  # The per-app "today" counters again, as total_increasing for the week chart. A daily max
+  # of the history_stats sensors is wrong: they reset only after midnight, so each day's
+  # max was the previous day's total. Summed per day, a reset is a new cycle and counts 0.
+  - sensor:
+      - {name: "YouTube vaadatud", unique_id: google_tv_youtube_counter, state: "{{ states('sensor.youtube_tana') }}",
+         availability: "{{ has_value('sensor.youtube_tana') }}", unit_of_measurement: h, device_class: duration, state_class: total_increasing}
+      - {name: "Elisa Elamus vaadatud", unique_id: google_tv_elisa_counter, state: "{{ states('sensor.elisa_elamus_tana') }}",
+         availability: "{{ has_value('sensor.elisa_elamus_tana') }}", unit_of_measurement: h, device_class: duration, state_class: total_increasing}
+      - {name: "Jupiter vaadatud", unique_id: google_tv_jupiter_counter, state: "{{ states('sensor.jupiter_tana') }}",
+         availability: "{{ has_value('sensor.jupiter_tana') }}", unit_of_measurement: h, device_class: duration, state_class: total_increasing}
+      - {name: "Go3 vaadatud", unique_id: google_tv_go3_counter, state: "{{ states('sensor.go3_tana') }}",
+         availability: "{{ has_value('sensor.go3_tana') }}", unit_of_measurement: h, device_class: duration, state_class: total_increasing}
+      - {name: "Stremio vaadatud", unique_id: google_tv_stremio_counter, state: "{{ states('sensor.stremio_tana') }}",
+         availability: "{{ has_value('sensor.stremio_tana') }}", unit_of_measurement: h, device_class: duration, state_class: total_increasing}
+      - {name: "Muu vaadatud", unique_id: google_tv_other_counter, state: "{{ states('sensor.muu_tana') }}",
+         availability: "{{ has_value('sensor.muu_tana') }}", unit_of_measurement: h, device_class: duration, state_class: total_increasing}
+
 # Watch time for the Teler tab: how long the TV was watched, and per app today. Counted
 # from the recorder, so it covers only what HA saw (history starts 2026-09-23,
-# when the streamer was paired). "Avaleht" counts, the home screen is on screen too;
-# the screensaver does not. The per-app list is the house's five main apps.
+# when the streamer was paired). Only time in an app counts, see "Teleri vaatamine".
+# The per-app list is the house's five main apps, "Muu" is every other app.
 sensor:
   - platform: history_stats
     name: "Teler sees täna"
@@ -105,8 +161,8 @@ sensor:
   - platform: history_stats
     name: "Muu täna"
     unique_id: google_tv_other_today
-    entity_id: sensor.teleri_app
-    state: ["Avaleht", "Cast"]
+    entity_id: binary_sensor.teleri_muu_app
+    state: "on"
     type: time
     start: "{{ today_at() }}"
     end: "{{ now() }}"

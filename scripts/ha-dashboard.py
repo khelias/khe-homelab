@@ -232,10 +232,12 @@ def tv_section():
 
 # Watch time, not an alarm, shaped like a phone's screen-time page: the day's total as one
 # number, the apps actually used today in order, the week as columns split by app, and
-# today's app changes with their times for "when". Apps at zero are left out; a first version showed eight
+# today's sessions with their times for "when". Apps at zero are left out; a first version showed eight
 # tiles that mostly read "0 t", two timelines too sparse to read and a statistics chart
 # that stays empty until the recorder's first hourly compile. The numbers are
-# history_stats sensors in packages/google_tv.yaml ("Muu" is the home screen and Cast).
+# history_stats sensors in packages/google_tv.yaml; only time in an app counts, the home
+# screen does not (the streamer idles there instead of in its screensaver), and "Muu" is
+# every app outside the five.
 # Nothing here can say what was on screen: the Android TV Remote protocol carries the
 # app, never a title (khe-meta, phase 8).
 TV_APPS = [("YouTube", "sensor.youtube_tana", "mdi:youtube", "#e53935"),
@@ -260,13 +262,28 @@ tv_today = {"type": "markdown", "grid_options": {"columns": "full"}, "content": 
     "{% for r in ns.rows | sort(attribute='h', reverse=true) %}"
     "<ha-icon icon=\"{{ r.i }}\"></ha-icon> **{{ r.n }}** {{ d(r.h) }}\n\n{% endfor %}"
     "{% if not ns.rows %}Täna pole veel vaadatud.{% endif %}")}
-# The week from long-term statistics: each app's "today" counter peaks at the day's total just
-# before midnight, so the daily max is that day, stacked by app. HA's own bar-stack, because
+# The week from long-term statistics, stacked by app: the per-day change of total_increasing
+# copies of the "today" counters. Their daily max read the day before, because the counters
+# reset only after midnight and the 00-01 hour still held yesterday's total. HA's own bar-stack, because
 # apexcharts-card sizes stacked columns on a time axis by the number of points across all
 # series (35 here), which left a 5 px column however it was configured. Statistics compile on
 # the hour, so a new counter's first column appears at the next full hour.
 tv_week = {"type": "statistics-graph", "chart_type": "bar-stack", "period": "day", "days_to_show": 7,
-           "stat_types": ["max"], "min_y_axis": 0, "entities": [{"entity": e, "name": n} for n, e, _, _ in TV_APPS]}
+           "stat_types": ["change"], "min_y_axis": 0,
+           "entities": [{"entity": e.replace("_tana", "_vaadatud"), "name": n} for n, e, _, _ in TV_APPS]}
+# Today's sessions, newest first, from the session log in packages/google_tv.yaml: an app, when
+# and how long, with a return to the same app within minutes folded in. Under a minute is left
+# out; the raw logbook listed every 4 s hop through the home screen.
+tv_sessions = {"type": "markdown", "grid_options": {"columns": "full"}, "content": DUR + (
+    "{% set s = state_attr('sensor.teleri_seansid', 'seansid') or [] "
+    "if states('sensor.teleri_seansid') == now().date() | string else [] %}"
+    "{% set ns = namespace(rows=[]) %}"
+    "{% for x in s | reverse %}{% set e = x.end or as_timestamp(now()) %}"
+    "{% if e - x.start >= 60 %}{% set ns.rows = ns.rows + ["
+    "'| ' ~ x.start | timestamp_custom('%H:%M') ~ '–' ~ (x.end | timestamp_custom('%H:%M') if x.end else 'praegu') "
+    "~ ' | ' ~ x.app ~ ' | ' ~ d((e - x.start) / 3600) ~ ' |']%}{% endif %}{% endfor %}"
+    "{% if ns.rows %}| Aeg | Äpp | Kestus |\n|:--|:--|--:|\n{{ ns.rows | join('\n') }}"
+    "{% else %}Täna pole veel vaadatud.{% endif %}")}
 teler = {"title": "Teler", "path": "teler", "icon": "mdi:television", "type": "sections", "max_columns": 2,
  # Pult opens the streamer's own controls (power, playback, volume) and names what is on now.
  "badges": [
@@ -288,9 +305,8 @@ teler = {"title": "Teler", "path": "teler", "icon": "mdi:television", "type": "s
     section("Täna", [tv_today], column_span=2),
     section("Nädal", [titled("Päevade kaupa, tundides", tv_week, columns="full")], column_span=2),
     # "When" as a list with times rather than a timeline: 40 minutes on a 24 h axis was an
-    # unlabelled sliver at the right edge. The logbook lists each app change with its time.
-    section("Täna ajas", [{"type": "logbook", "target": {"entity_id": ["sensor.teleri_app"]}, "hours_to_show": 24,
-                           "grid_options": {"columns": "full"}}], column_span=2),
+    # unlabelled sliver at the right edge.
+    section("Täna ajas", [tv_sessions], column_span=2),
 ]}
 
 # The two partitions, the same pair on Kodu and Valve. Name and state both stay:
