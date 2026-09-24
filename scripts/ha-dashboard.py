@@ -252,9 +252,10 @@ DUR = ("{% macro d(h) %}{% set m = (h | float(0) * 60) | round | int %}"
 # One card, the phone's screen-time shape: the day's total as the one big number and the apps
 # used today under it, longest first, zero apps left out. Yesterday and the week are the chart
 # below; what is on now is the Pult badge. A first version put all of that in the card too,
-# and it read as a paragraph rather than a number.
+# and it read as a paragraph rather than a number. The total is the apps' sum, so the two
+# cannot disagree; "Teler sees täna" recounts its whole day from history when redefined.
 tv_today = {"type": "markdown", "grid_options": {"columns": "full"}, "content": DUR + (
-    "# {{ d(states('sensor.teler_sees_tana')) }}\n\n"
+    "# {{ d(" + " + ".join(f"states('{e}') | float(0)" for _, e, _, _ in TV_APPS) + ") }}\n\n"
     "{% set ns = namespace(rows=[]) %}"
     "{% for n, e, i in " + repr([(n, e, i) for n, e, i, _ in TV_APPS]) + " %}"
     "{% set h = states(e) | float(0) %}{% if h * 60 >= 0.5 %}{% set ns.rows = ns.rows + [{'n': n, 'h': h, 'i': i}] %}{% endif %}"
