@@ -172,6 +172,8 @@ returns 403 for `/study/` and `/adventure/`.
 - Static SPA: bind mount `/srv/data/trips/app:/usr/share/nginx/html:ro`,
   SPA fallback to `/index.html`.
 - Source: `khelias/khe-trips` (private).
+- Share sites (one trip each, public by link) are served by landing at
+  `khe.ee/r/<slug>/`, not here; see "Landing page".
 - GH Actions runner: `/home/khe/actions-runner-trips`,
   systemd unit `actions.runner.khelias-khe-trips.trips-runner.service`.
 
@@ -271,6 +273,14 @@ returns 403 for `/study/` and `/adventure/`.
 ## Landing page
 
 - Static HTML at `khe.ee` (public), served by nginx alpine (pinned by Renovate).
+- `/r/<slug>/` serves khe-trips share sites from `/srv/data/trips/share`,
+  written by the khe-trips runner and mounted outside the html root
+  (`/srv/share/r`). An unknown slug, `/r` and `/r/` answer 404, not the
+  landing fallback. Everything under `/r/` is `Cache-Control: private` (assets
+  a week in the browser only), so Cloudflare never holds a copy and an
+  un-shared trip is gone at once. `/srv/data/trips/share` must exist, owned by
+  the runner user, before landing starts, or Docker creates it root-owned and
+  the khe-trips deploy can no longer write it.
 - Homepage dashboard moved to `dash.khe.ee` (CF Access protected).
 - `HOMEPAGE_DOMAIN=dash.khe.ee` in homepage `.env`; compose builds
   `HOMEPAGE_ALLOWED_HOSTS` from it plus `homepage:3000`, the Uptime Kuma

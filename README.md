@@ -61,7 +61,7 @@ Jellyfin and Immich machine-learning both use `/dev/dri` for Quick Sync accelera
 
 | | Service | Domain | What it does |
 |---|---------|--------|-------------|
-| 🌐 | **Landing Page** | `khe.ee` | Public family landing page |
+| 🌐 | **Landing Page** | `khe.ee` | Public family landing page; shared trips under `/r/` |
 | 🏠 | **Homepage** | `dash.khe.ee` | Service dashboard with live widgets (CF Access protected) |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/nextcloud.svg" width="22" /> | **Nextcloud** | `cloud.khe.ee` | Files, calendar, contacts (CalDAV/CardDAV), tuned PHP/PG/Redis |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/immich.svg" width="22" /> | **Immich** | `photos.khe.ee` | Photo library with ML tagging (Google Photos replacement) |

@@ -11,7 +11,7 @@ Tunnel routes directly to Docker containers. LAN traffic goes via NPM (split-hor
 
 | Domain              | CF Tunnel → (external)      | NPM → (LAN)                | Notes |
 |---------------------|-----------------------------|-----------------------------|-------|
-| khe.ee              | landing:80                  | landing:80                  | public |
+| khe.ee              | landing:80                  | landing:80                  | public; `/r/` = khe-trips share sites, public by design (no Access, no dashboard change) |
 | dash.khe.ee         | homepage:3000               | homepage:3000               | CF Access (external only) |
 | cloud.khe.ee        | nextcloud:80                | nextcloud:80                | NPM: 16G upload, 600s timeout |
 | vault.khe.ee        | vaultwarden:80              | vaultwarden:80              | |
