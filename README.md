@@ -12,21 +12,21 @@ graph TB
 
     Internet --> CF[Cloudflare Tunnel]
     VPN -->|subnet route<br/>192.168.0.0/24| LAN
-    AG[AdGuard Home<br/>split-horizon DNS] -.->|10 hosts<br/>*.khe.ee → 192.168.0.11| LAN
+    AG[AdGuard Home<br/>split-horizon DNS] -.->|*.khe.ee → 192.168.0.11| LAN
     LAN --> NPM[Nginx Proxy Manager<br/>wildcard *.khe.ee · LAN-only]
 
-    CF -->|15 public hostnames<br/>CF Access OTP on<br/>dash, n8n, openclaw, trips, draft| DVM
+    CF -->|public hostnames<br/>CF Access OTP on<br/>the private apps| DVM
     NPM --> DVM
 
-    subgraph DVM[Docker VM · 192.168.0.11 — 27 stacks · 43 containers]
+    subgraph DVM[Docker VM · 192.168.0.11]
         direction LR
         Core["<b>Core</b><br/>Homepage · Vaultwarden<br/>Dockge · Uptime Kuma"]
         Media["<b>Media</b><br/>Immich · Jellyfin<br/>Audiobookshelf"]
         Prod["<b>Productivity</b><br/>Nextcloud · Paperless-ngx"]
         AI["<b>AI</b><br/>Ollama · n8n · OpenClaw"]
-        Apps["<b>Apps</b><br/>Landing Page · games hub<br/>pages"]
+        Apps["<b>Apps</b><br/>Landing Page · games hub<br/>pages · trips"]
         Obs["<b>Observability</b><br/>Loki · Grafana<br/>Alloy · Alertmanager"]
-        Home["<b>Home</b><br/>Home Assistant"]
+        Home["<b>Home</b><br/>Home Assistant<br/>Mosquitto · PAI"]
     end
 
     DVM --> HDD[(ZFS Mirror · 2× 12TB<br/>NFS /srv)]
@@ -36,8 +36,10 @@ graph TB
 > NPM, AdGuard, and Cloudflare Tunnel also run on the same Docker VM (shown above in the ingress tier, not listed again inside Core).
 
 Two independent paths to the same containers:
-- **External** — Cloudflare Tunnel goes directly to each container (15 public hostnames). CF Access OTP gates `dash`, `n8n`, `openclaw`, `trips`, `draft`. Subject to Cloudflare's 100MB upload limit.
-- **LAN / Tailscale** — AdGuard rewrites 10 hostnames (`khe.ee`, `dash`, `cloud`, `vault`, `docs`, `photos`, `jellyfin`, `books`, `status`, `home`) to `192.168.0.11`, so devices hit NPM with the wildcard cert and no upload limit. `n8n`, `openclaw`, `games`, `pages`, `draft` have no LAN shortcut — always via CF.
+- **External** — Cloudflare Tunnel goes directly to each container. CF Access OTP gates the private apps. Subject to Cloudflare's 100MB upload limit.
+- **LAN / Tailscale** — AdGuard rewrites the LAN-served hostnames to `192.168.0.11`, so devices hit NPM with the wildcard cert and no upload limit. The Access-gated apps, games and pages have no LAN shortcut and always go through Cloudflare.
+
+Which hostname goes where, and which ones Access gates, is in [infrastructure/cloudflare.md](infrastructure/cloudflare.md).
 
 Proxmox VE (192.168.0.10) is the hypervisor; the Docker VM (192.168.0.11) is the only guest. Fast storage (NVMe) holds the VM root + DB volumes; bulk storage (ZFS mirror, NFS-mounted at `/srv`) holds photos, media, documents.
 
@@ -73,13 +75,13 @@ Jellyfin and Immich machine-learning both use `/dev/dri` for Quick Sync accelera
 | 🎮 | **games hub** | `games.khe.ee` | Launcher + khe-study (`/study/`), auto-deployed from GitHub |
 | 🗺️ | **trips** | `trips.khe.ee` | Private family trip atlas, CF Access protected, own GitHub runner |
 | 📝 | **pages** | `pages.khe.ee` | Quick-publish HTML pages; edited at `draft.khe.ee` (CF Access protected) |
-| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/ollama.svg" width="22" /> | Ollama | LAN only | Local AI models (qwen2.5:7b, CPU-only) |
+| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/ollama.svg" width="22" /> | Ollama | LAN only | Local AI models (CPU-only) |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/home-assistant.svg" width="22" /> | Home Assistant | `home.khe.ee` (LAN + Tailscale) | House automation: HVAC, grid metering and cameras over local protocols. Deliberately not on the tunnel; the house detail is in the private khe-meta repo |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/adguard-home.svg" width="22" /> | AdGuard Home | LAN + Tailscale | DNS ad-blocking on the LAN + split-horizon DNS; over Tailscale it answers only the `khe.ee` zone |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/dockge.svg" width="22" /> | Dockge | LAN only | Docker Compose management UI |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/nginx-proxy-manager.svg" width="22" /> | Nginx Proxy Manager | LAN only | Reverse proxy + wildcard SSL for LAN traffic |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/cloudflare.svg" width="22" /> | Cloudflare Tunnel | — | Secure external access (no open ports) |
-| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/grafana.svg" width="22" /> | Grafana + Loki + Alloy + Alertmanager | `192.168.0.11:3030` (LAN) | Log aggregation for every container, Telegram alerting via Loki ruler |
+| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/grafana.svg" width="22" /> | Grafana + Loki + Alloy + Alertmanager | LAN only | Log aggregation for every container, Telegram alerting via Loki ruler |
 
 ## Security & Access
 
@@ -87,7 +89,7 @@ Multiple independent layers — nothing on the router is exposed to the internet
 
 **External access — Cloudflare Tunnel**
 Zero inbound ports. Cloudflare terminates TLS and forwards to containers over an outbound-only tunnel.
-Sensitive services (Homepage, n8n, OpenClaw) sit behind **Cloudflare Access** with email OTP.
+Private apps (the dashboard, n8n, OpenClaw, trips, the pages editor) sit behind **Cloudflare Access** with email OTP.
 
 **Remote admin — Tailscale VPN**
 Docker VM runs Tailscale as a **subnet router** (`192.168.0.0/24`), so any Tailscale-connected
@@ -141,8 +143,8 @@ Operational work is kept to a minimum by pushing everything into code and cron.
   is version-controlled here. Rebuilding any service is `git pull && docker compose up -d`.
 - **Renovate** — watches every pinned image tag and opens PRs for updates (digests + changelogs).
 - **GitHub Actions self-hosted runners** — repo-specific runners on the Docker VM deploy
-  `khe-sites` (`khe.ee` and the games launcher), `khe-study`, and `khe-ai-adventure`
-  into `/srv/data/...` directories served by nginx.
+  `khe-sites` (`khe.ee` and the games launcher), `khe-study`, `khe-ai-adventure` and
+  `khe-trips` into `/srv/data/...` directories served by nginx.
 - **n8n weekly report** — generates internal homelab reports plus a small public
   portfolio metrics file; only `/srv/data/reports/khe/public` is served read-only
   by the public landing nginx at `/reports/`.
@@ -186,7 +188,7 @@ All external traffic goes through Cloudflare Tunnel — zero ports open on the r
 ./scripts/mount-nfs-in-vm.sh          # 7. Mount NFS shares at /srv
 ./scripts/harden-docker-vm.sh         # 8. UFW firewall, fail2ban, SSH hardening
 ./scripts/setup-tailscale.sh          # 9. Install Tailscale as subnet router
-./scripts/deploy.sh up                # 10. Start all 27 stacks
+./scripts/deploy.sh up                # 10. Start every stack
 ```
 
 ## Day-to-day
@@ -208,21 +210,14 @@ gh workflow run ops-status.yml --repo khelias/khe-homelab
 
 When something is broken, follow [docs/runbook.md](docs/runbook.md).
 
-## Project Structure
+## More
 
-```
-services/
-├── core/            NPM, AdGuard, Cloudflare, Vaultwarden, Dockge, Uptime Kuma, Homepage
-├── media/           Immich, Jellyfin, Audiobookshelf
-├── productivity/    Nextcloud, Paperless-ngx
-├── ai/              Ollama, n8n, OpenClaw (+ workspace/ for agent config)
-├── home/            Home Assistant
-├── apps/            Landing Page, games hub (launcher + khe-study), pages (quick-publish), trips
-└── observability/   Loki, Grafana, Alloy, Alertmanager
-
-infrastructure/      Proxmox, network, Cloudflare, and Tailscale documentation
-scripts/             Setup, deploy, backup, and hardening scripts
-```
+- [docs/runbook.md](docs/runbook.md) - what to do when something is broken
+- [docs/operational-notes.md](docs/operational-notes.md) - per-service quirks
+- [docs/service-choices.md](docs/service-choices.md) - why each service
+- [infrastructure/](infrastructure/) - Proxmox, network, Cloudflare, Tailscale, offsite backup
+- [SECURITY.md](SECURITY.md), [ROADMAP.md](ROADMAP.md)
+- [AGENTS.md](AGENTS.md) - layout, conventions and the Home Assistant procedure for working on the repo
 
 ---
 
