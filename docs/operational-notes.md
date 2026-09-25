@@ -470,6 +470,12 @@ until the hourly tick. A restart is safe, the package has a `start` trigger;
 only reload breaks it. An `event_template_reloaded` trigger does not fix it,
 the reload races the entities listening for it (core issues #65832, #101835).
 
+**A Nord Pool delivery date is a CET day**, 01:00-01:00 Estonian time, so
+`nordpool.get_prices_for_date` for today starts at 01:00. The forecast sensor
+also fetches yesterday and keeps slots from local midnight; without that the
+00:00 hour is missing and the price level goes blank every night until 01:04.
+The integration's own "tomorrow available" flag flips on the same CET clock.
+
 **Config changes need a restart.** The config dir is a bind mount, so editing
 YAML and running `deploy-stacks.sh` changes nothing in the running container.
 Validate, then restart:

@@ -68,6 +68,16 @@ template:
       - trigger: event
         event_type: khe_price_refresh
     actions:
+      # a Nord Pool delivery day is a CET day, 01:00-01:00 Estonian time, so
+      # the hour after local midnight belongs to yesterday's delivery date
+      - action: nordpool.get_prices_for_date
+        continue_on_error: true
+        data:
+          config_entry: 01M2AVBYMY0JB85Z9EM2D22QET
+          date: "{{ (now() - timedelta(days=1)).date() }}"
+          areas: [EE]
+          currency: EUR
+        response_variable: yesterday
       - action: nordpool.get_prices_for_date
         data:
           config_entry: 01M2AVBYMY0JB85Z9EM2D22QET
@@ -106,11 +116,15 @@ template:
           prices: >
             {% set ns = namespace(out=[]) %}
             {% set tmr = tomorrow.EE if tomorrow is defined and tomorrow.EE is defined else [] %}
+            {% set ytd = yesterday.EE if yesterday is defined and yesterday.EE is defined else [] %}
+            {% set d0 = today_at('00:00') | as_timestamp %}
+            {% set ns2 = namespace(rows=[]) %}
+            {% for x in ytd + today.EE + tmr if as_timestamp(x.start) >= d0 %}{% set ns2.rows = ns2.rows + [x] %}{% endfor %}
             {% set wdt = wd_today['binary_sensor.workday_sensor_ee'].workday %}
             {% set wdm = wd_tomorrow['binary_sensor.workday_sensor_ee'].workday %}
             {% set fees = 0.0084 + 0.00758 + 0.0021 + 0.00373 %}
             {# hourly meter: billing uses the plain average of the four 15-min prices, so average per hour #}
-            {% for slots in (today.EE + tmr) | batch(4) %}
+            {% for slots in ns2.rows | batch(4) %}
               {% set spot = (slots | map(attribute='price') | sum) / (slots | count) / 1000 %}
               {% set t = as_local(as_datetime(slots[0].start)) %}
               {% set wd = wdt if t.date() == now().date() else wdm %}
