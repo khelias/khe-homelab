@@ -24,6 +24,12 @@
       "labels": ["dependencies", "breaking"]
     },
     {
+      "description": "Home Assistant's monthly release (2026.9 -> 2026.10) is a minor to Renovate but carries breaking changes, so it waits for review in its own PR. Patches (2026.9.x) keep automerging. Placed after the automerge rule so it overrides it.",
+      "matchPackageNames": ["ghcr.io/home-assistant/home-assistant"],
+      "matchUpdateTypes": ["minor"],
+      "automerge": false
+    },
+    {
       "description": "Critical infrastructure: never automerge, collect every update type into one PR. Placed after the automerge rule so it overrides it, which keeps the package list in exactly one place.",
       "matchManagers": ["docker-compose", "dockerfile"],
       "matchUpdateTypes": ["patch", "minor", "major", "digest"],
