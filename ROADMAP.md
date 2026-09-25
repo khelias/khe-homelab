@@ -15,9 +15,6 @@ Direction and priorities for the homelab — what it should become, beyond curre
   now cover every long-running container. Watch Docker stats / service behavior
   and tune caps where Nextcloud, Immich, Paperless, Jellyfin, or Ollama show
   real workload pressure.
-- **Dockge socket-proxy live validation** — config now routes Dockge through
-  `docker-socket-proxy`; deploy it and test stack create/update/down/build so
-  the endpoint allowlist can be tightened further if Dockge permits it.
 - **Healthcheck cleanup** — standardise `start_period`, replace trivial checks
   (Nextcloud cron `stat`, Ollama `list`) with real probes.
 - **Immich: unused feature surface** — audited 2026-08-03, Tier 1 (multilingual

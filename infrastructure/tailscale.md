@@ -53,7 +53,6 @@ ssh khe@docker-vm
 https://192.168.0.10:8006
 
 # LAN-only services (via subnet routing)
-http://192.168.0.11:5001    # Dockge
 http://192.168.0.11:8080    # AdGuard Home
 http://192.168.0.11:81      # NPM admin
 ```

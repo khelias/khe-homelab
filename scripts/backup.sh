@@ -8,7 +8,7 @@
 #   - Immich: already mirrored to iCloud + Google Photos
 #   - Jellyfin / Audiobookshelf media: re-rippable
 #
-# Known risk: volumes containing live SQLite (uptime-kuma, npm, n8n, dockge,
+# Known risk: volumes containing live SQLite (uptime-kuma, npm, n8n,
 # audiobookshelf) are tarred while the writing process is running. SQLite
 # journal replay handles most crashes on restore, but a snapshot captured
 # mid-transaction is not guaranteed consistent. Acceptable for this homelab
@@ -153,7 +153,6 @@ NAMED_VOLUMES=(
   "uptime-kuma_uptime_kuma_data:uptime-kuma-data"
   "n8n_n8n_data:n8n-data"
   "adguard_adguard_work:adguard-work"
-  "dockge_dockge_data:dockge-data"
   "jellyfin_jellyfin_config:jellyfin-config"
   "audiobookshelf_audiobookshelf_config:audiobookshelf-config"
   "audiobookshelf_audiobookshelf_metadata:audiobookshelf-metadata"

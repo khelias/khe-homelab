@@ -20,7 +20,7 @@ graph TB
 
     subgraph DVM[Docker VM · 192.168.0.11]
         direction LR
-        Core["<b>Core</b><br/>Homepage · Vaultwarden<br/>Dockge · Uptime Kuma"]
+        Core["<b>Core</b><br/>Homepage · Vaultwarden<br/>Uptime Kuma"]
         Media["<b>Media</b><br/>Immich · Jellyfin<br/>Audiobookshelf"]
         Prod["<b>Productivity</b><br/>Nextcloud · Paperless-ngx"]
         AI["<b>AI</b><br/>Ollama · n8n"]
@@ -77,7 +77,6 @@ Jellyfin and Immich machine-learning both use `/dev/dri` for Quick Sync accelera
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/ollama.svg" width="22" /> | Ollama | LAN only | Local AI models (CPU-only) |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/home-assistant.svg" width="22" /> | Home Assistant | `home.khe.ee` (LAN + Tailscale) | House automation: HVAC, grid metering and cameras over local protocols. Deliberately not on the tunnel; the house detail is in the private khe-meta repo |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/adguard-home.svg" width="22" /> | AdGuard Home | LAN + Tailscale | DNS ad-blocking on the LAN + split-horizon DNS; over Tailscale it answers only the `khe.ee` zone |
-| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/dockge.svg" width="22" /> | Dockge | LAN only | Docker Compose management UI |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/nginx-proxy-manager.svg" width="22" /> | Nginx Proxy Manager | LAN only | Reverse proxy + wildcard SSL for LAN traffic |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/cloudflare.svg" width="22" /> | Cloudflare Tunnel | — | Secure external access (no open ports) |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/grafana.svg" width="22" /> | Grafana + Loki + Alloy + Alertmanager | LAN only | Log aggregation for every container, Telegram alerting via Loki ruler |
@@ -92,7 +91,7 @@ Private apps (the dashboard, n8n, trips, the pages editor) sit behind **Cloudfla
 
 **Remote admin — Tailscale VPN**
 Docker VM runs Tailscale as a **subnet router** (`192.168.0.0/24`), so any Tailscale-connected
-device gets full LAN access: Proxmox UI, Dockge, AdGuard, NPM admin, and SSH to the VM.
+device gets full LAN access: Proxmox UI, AdGuard, NPM admin, and SSH to the VM.
 Lets mobile devices bypass the Cloudflare 100MB upload limit — large Immich / Nextcloud
 uploads go directly to NPM over VPN.
 
@@ -104,7 +103,7 @@ every LAN service gets HTTPS without per-service certs. AdGuard does split-horiz
 **Host hardening**
 - SSH key-only auth on Docker VM (password login disabled)
 - UFW firewall + fail2ban on the VM
-- Dockge, autoheal and Alloy route Docker access through `docker-socket-proxy` instead of mounting `docker.sock` directly
+- autoheal and Alloy route Docker access through `docker-socket-proxy` instead of mounting `docker.sock` directly
 - All secrets in `.env` files on the VM, never committed
 
 ## Resilience

@@ -52,24 +52,19 @@ sudo apt-get install -y \
   jq \
   unzip
 
-# 7. Create local directories (not on NFS)
-echo "Creating local directory structure..."
-sudo mkdir -p /srv/dockge/stacks
-sudo chown -R "$USER:$USER" /srv/dockge
-
-# 8. Create shared Docker networks
+# 7. Create shared Docker networks
 # NOTE: proxy network is created by NPM's docker-compose.yml (it defines it)
 # Only create ai-internal here as it's referenced as external by multiple services
 echo "Creating shared Docker networks..."
 sudo docker network create ai-internal 2>/dev/null || true
 
-# 9. Disable systemd-resolved (frees port 53 for AdGuard Home)
+# 8. Disable systemd-resolved (frees port 53 for AdGuard Home)
 echo "Disabling systemd-resolved for AdGuard..."
 sudo systemctl disable --now systemd-resolved
 sudo rm -f /etc/resolv.conf
 echo "nameserver 192.168.0.1" | sudo tee /etc/resolv.conf > /dev/null
 
-# 10. Configure automatic security updates
+# 9. Configure automatic security updates
 echo "Setting up unattended upgrades..."
 sudo apt-get install -y unattended-upgrades
 sudo dpkg-reconfigure -plow unattended-upgrades

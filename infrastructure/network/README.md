@@ -31,7 +31,6 @@ duplicated here.
 | Service             | IP:Port                  |
 |---------------------|--------------------------|
 | AdGuard Home        | 192.168.0.11:8080        |
-| Dockge              | 192.168.0.11:5001        |
 | Nginx Proxy Manager | 192.168.0.11:81 (admin)  |
 | Proxmox             | 192.168.0.10:8006        |
 | Grafana             | 192.168.0.11:3030        |

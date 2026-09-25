@@ -10,7 +10,6 @@ DEPLOY_ORDER=(
   "core/adguard"
   "core/cloudflare-tunnel"
   "core/vaultwarden"
-  "core/dockge"
   "core/uptime-kuma"
   "core/homepage"
   "core/autoheal"

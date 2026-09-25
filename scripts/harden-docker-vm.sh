@@ -29,7 +29,6 @@ ALLOWED_PORTS=(
   8080  # AdGuard Admin
   3000  # Homepage
   3001  # Uptime Kuma
-  5001  # Dockge
   2283  # Immich
   8096  # Jellyfin
   8888  # Nextcloud
@@ -120,4 +119,4 @@ echo ""
 echo "Manual steps still needed:"
 echo "  1. Set up 2FA on Proxmox: Datacenter > Permissions > Two Factor"
 echo "  2. Set up SSH key auth before PasswordAuthentication takes effect"
-echo "  3. Review Dockge/Homepage Docker socket access"
+echo "  3. Review Homepage Docker socket access"

@@ -25,7 +25,7 @@ rules are not loaded into context on their own.
 
 ```
 services/
-  core/            NPM, AdGuard, Cloudflare Tunnel, Vaultwarden, Dockge,
+  core/            NPM, AdGuard, Cloudflare Tunnel, Vaultwarden,
                    Uptime Kuma, Homepage, autoheal
   media/           Immich, Jellyfin, Audiobookshelf
   productivity/    Nextcloud, Paperless-ngx

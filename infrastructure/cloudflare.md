@@ -26,7 +26,7 @@ Tunnel routes directly to Docker containers. LAN traffic goes via NPM (split-hor
 | draft.khe.ee        | draft:8080                  | — (CF Access)               | FileBrowser editor; CF Access OTP on all networks; **sole auth layer** (no app password, see service-choices.md); no AdGuard rewrite |
 | pages.khe.ee        | pages:80                    | — (CF only)                 | public; serves published pages read-only; no AdGuard rewrite |
 
-Not exposed via tunnel (LAN only): AdGuard (:8080), Dockge (:5001), NPM admin (:81), Proxmox (:8006)
+Not exposed via tunnel (LAN only): AdGuard (:8080), NPM admin (:81), Proxmox (:8006)
 
 ## Cloudflare Access
 

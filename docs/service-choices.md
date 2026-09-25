@@ -50,7 +50,6 @@ comparable, the one that scores better on these wins.
 | Workflow automation   | n8n                   | Medium     | 2026-05-05    |
 | Ad-hoc page publishing| FileBrowser (+ nginx) | Medium     | 2026-06-06    |
 | Uptime monitoring     | Uptime Kuma           | High       | 2026-05-05    |
-| Compose UI            | Dockge                | High       | 2026-05-05    |
 | Dashboard             | Homepage              | High       | 2026-05-05    |
 | Hypervisor            | Proxmox VE            | High       | 2026-05-05    |
 | Container auto-heal   | autoheal              | High       | 2026-05-05    |
@@ -535,18 +534,12 @@ homepage is hard to beat at this scale.
 
 ---
 
-## Compose UI — Dockge
+## Compose UI — none
 
-Successor to Portainer for the "I just want a UI for my Compose stacks"
-use case. Realistic alternatives are Portainer CE (more enterprise-shaped,
-heavier, agent model), Komodo (younger, ambitious), and Yacht (Compose-
-focused but smaller community). Dockge's value is its **explicit alignment
-with on-disk Compose files** — it edits real files in real directories,
-which means the GitOps model still works (everything in
-`services/<group>/<service>/docker-compose.yml`).
-
-**When we'd revisit:** Dockge stagnates; we adopt a stronger GitOps
-deploy pipeline that makes a UI redundant.
+Dockge was removed on 2026-09-25: the push-to-deploy pipeline made a UI
+redundant, it had been unreachable for a month without anyone missing it,
+and its socket proxy with `POST: 1` was a root-equivalent control surface
+outside git. Compose stacks change only through this repo.
 
 ---
 
