@@ -535,9 +535,13 @@ So the device definition is tracked at
 `config/tuya_local_devices/nordin_eco_pergola.yaml` and copied into place from
 inside the container by `shell_command.sync_tuya_local_devices`
 (`config/packages/pergola.yaml`), which an automation runs on every Home
-Assistant start. After updating tuya-local, restart HA twice, or call that
-action by hand and then restart: the first copy lands too late for the config
-entries of that boot.
+Assistant start. The copy lands too late for the config entries of that boot,
+and a reload does not rescue them: 2026.9.2 bumped the entry version, the
+migration failed on the missing file and left both entries in
+`migration_error`, which only a restart clears (2026-09-25). So the automation
+restarts HA once whenever the copy changed a file; the second boot finds the
+file identical and does not restart again. Updating tuya-local therefore costs
+one restart more than the one HACS asks for, and it happens by itself.
 
 Device ids, local keys and LAN addresses are not in this repo; the local keys
 live in `.storage` and the addresses in khe-meta's

@@ -6,11 +6,14 @@
 #
 # The tracked copy lives in /config/tuya_local_devices. It has to be put back
 # from inside the container: the HACS folder is owned by root and the deploy
-# runner is not.
+# runner is not. Prints 1 when it had to copy anything, so the restore rule
+# restarts only after a wipe and cannot loop.
 shell_command:
   sync_tuya_local_devices: >-
-    /bin/sh -c "cp -v -f /config/tuya_local_devices/*.yaml
-    /config/custom_components/tuya_local/devices/"
+    /bin/sh -c 'changed=0; for f in /config/tuya_local_devices/*.yaml;
+    do t=/config/custom_components/tuya_local/devices/${f##*/};
+    cmp -s "$f" "$t" || { cp -f "$f" "$t" && changed=1; }; done;
+    echo $changed'
 
 # met.no is a grid forecast and it missed a real shower over the house on
 # 2026-09-20: partlycloudy and 0.0 mm for the next six hours while it was
@@ -286,15 +289,17 @@ automation:
         event: start
     actions:
       - action: shell_command.sync_tuya_local_devices
+        response_variable: sync
       # The copy lands after the config entries have already read the old
-      # folder, so reload them or the repair only takes effect one restart
-      # later.
-      - delay: "00:00:05"
-      - action: homeassistant.reload_config_entry
-        target:
-          entity_id:
-            - cover.pergola_parem
-            - cover.pergola_vasak
+      # folder. A reload is not enough: when the update also bumps the entry
+      # version, the migration fails on the missing file and leaves the
+      # entries in migration_error, which only a restart clears (2026.9.2 on
+      # 2026-09-25).
+      - if:
+          - condition: template
+            value_template: "{{ sync.stdout | trim == '1' }}"
+        then:
+          - action: homeassistant.restart
 
 # The two pergolas are one roof and one run of lighting as far as the terrace
 # is concerned, so the groups are what the dashboard and the automations use;
