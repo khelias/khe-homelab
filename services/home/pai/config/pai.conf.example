@@ -1,6 +1,6 @@
 # PAI (Paradox Alarm Interface) - Paradox SP6000 through the IP150+ module.
 #
-# Copy to pai.conf on the VM and fill in the three secrets. pai.conf is
+# Copy to pai.conf on the VM and fill in every CHANGEME. pai.conf is
 # gitignored: this repo is public and these credentials disarm the house.
 #
 #   cp pai.conf.example pai.conf && chmod 600 pai.conf
@@ -13,13 +13,12 @@ LOGGING_LEVEL_CONSOLE = 20            # INFO; set 10 for DEBUG while diagnosing
 
 # -- Panel ------------------------------------------------------------------
 CONNECTION_TYPE = 'IP'
-IP_CONNECTION_HOST = '192.168.0.240'
+IP_CONNECTION_HOST = 'CHANGEME'       # the IP150+ module's LAN address
 IP_CONNECTION_PORT = 10000
 IP_CONNECTION_PASSWORD = 'CHANGEME'   # IP150+ module password, factory 'paradox'
 PASSWORD = 'CHANGEME'                 # panel PC password, factory '0000'
 
-# Keep PASSWORD quoted. Verified 2026-09-14: the installer left both Paradox
-# passwords at factory defaults, which is also why they belong in SECURITY.md.
+# Keep PASSWORD quoted.
 #
 # The module holds one connection at a time. While PAI is up neither BabyWare
 # nor the BlueEye app can connect, and vice versa - stop PAI before using them.
