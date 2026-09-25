@@ -73,3 +73,5 @@ __pycache__/
 # Proxmox exports
 *.vma
 *.vma.zst
+
+.claude/worktrees/
