@@ -49,9 +49,11 @@ CI (`validate.yml`) runs `bash -n scripts/*.sh` and
    vars, a `.env.example`. Live `.env` files are gitignored.
 2. **Public repo: nothing secret or identifying.** No `.env` files, keys,
    tokens, bcrypt or crypt hashes, MAC addresses or device identifiers. The
-   gitleaks pre-commit hook enforces it (`./scripts/install-hooks.sh` after
-   cloning). A false positive gets an exclusion in `.gitleaks.toml`, never
-   `--no-verify`.
+   gitleaks pre-commit hook enforces it for secrets (`./scripts/install-hooks.sh`
+   after cloning). A false positive gets an exclusion in `.gitleaks.toml`, never
+   `--no-verify`. Personal-data patterns (MAC and LAN addresses, coordinates,
+   e-mail, phone) are caught by the khe workspace commit gate, rules in its
+   `.claude/hooks/pii-rules.toml`; names and street addresses by nobody.
 3. **Pin image versions**, no `:latest`. The one exception is
    `games-adventure-proxy:latest`, built and tagged on the VM by the
    khe-ai-adventure runner; its version lives in that repo's workflow.

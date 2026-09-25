@@ -13,7 +13,7 @@ LOGGING_LEVEL_CONSOLE = 20            # INFO; set 10 for DEBUG while diagnosing
 
 # -- Panel ------------------------------------------------------------------
 CONNECTION_TYPE = 'IP'
-IP_CONNECTION_HOST = 'CHANGEME'       # the IP150+ module's LAN address
+IP_CONNECTION_HOST = 'CHANGEME'       # IP150+ LAN address, in khe-meta house docs
 IP_CONNECTION_PORT = 10000
 IP_CONNECTION_PASSWORD = 'CHANGEME'   # IP150+ module password, factory 'paradox'
 PASSWORD = 'CHANGEME'                 # panel PC password, factory '0000'
