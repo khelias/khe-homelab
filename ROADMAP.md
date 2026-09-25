@@ -6,8 +6,9 @@ Direction and priorities for the homelab — what it should become, beyond curre
 
 - **House automation** — the active work since 2026-09-08 and the only area
   with its own plan: phases, dashboard and the energy work are in the private
-  `khe-meta` repo under `house/`. Everything is
-  read-only today. The next step that changes the house is phase 6
+  `khe-meta` repo under `house/`. Heating and ventilation are
+  read-only today; only the pergola package acts (rain closes the roof,
+  evening light). The next step that changes the house is phase 6
   (spot-price-aware heating), which also forces a `SECURITY.md` update because
   it gives this host write access to the heat pump and ventilation.
 - **Resource-limit tuning from metrics** — initial `deploy.resources.limits`
@@ -53,9 +54,10 @@ Direction and priorities for the homelab — what it should become, beyond curre
 - **Bootstrap script for full rebuild** — one entry point that takes a fresh
   Proxmox host to a fully working homelab. The 10-step setup is scripted already
   but has no orchestrator handling the reboot points.
-- **Disaster recovery runbook + tested restore** — actually restore a Postgres dump
-  into a spare container and verify. Today we trust the backup script to work
-  without evidence it does under pressure.
+- **Disaster recovery runbook from a rebuild rehearsal** — the tested restore is
+  done (`restore-verify.yml` restores a Postgres dump from R2 every week). What
+  is left is rebuilding the host once for real and writing the runbook from it;
+  tracked in the estate roadmap in `khe-meta` (1.3).
 
 ## Long-term (when app-heavy projects arrive)
 
@@ -67,6 +69,122 @@ Direction and priorities for the homelab — what it should become, beyond curre
   painful upgrade, not after.
 - **Authentik / Authelia SSO** — once RAM upgrade lands, consolidate auth across
   services instead of each one managing its own.
+
+## Ambitions
+
+Directions that take several seasons, not sessions. None is committed; each
+has a first step that is worth doing on its own and says what it waits for.
+The sections above come first.
+
+- **A house that runs itself.** A thermal model of the house fitted to the
+  measurements Home Assistant already records, and predictive control that
+  schedules the heat pump and ventilation against the weather forecast and
+  the next day's electricity price, with a saving that can be stated per
+  heating season. It is the long form of phase 6 above.
+  - *Why here:* the inputs are already in the stack: a weather forecast
+    entity, the day-ahead price sensors in `energy_price.yaml` and the house
+    energy readings. Devices, measurements and the model's inputs are
+    documented in the private house documentation in `khe-meta`, not here.
+  - *First step:* check that every series the model needs survives long
+    enough. The recorder keeps raw history for 30 days, so anything older
+    exists only as HA long-term statistics, and only for entities that
+    carry a `state_class`. Then fit a simple model offline and compare its
+    prediction with a week it has not seen.
+  - *Waits for:* phase 6 working in its rule-based form, and one full
+    heating season under the current schedule as the baseline. Without a
+    weather-normalised baseline there is no saving to claim.
+  - *Risk and cost:* the first write access this host gets to heating.
+    Control has to fail back to the devices' own schedules when HA or the VM
+    is down, a manual override has to win over the optimiser, and the
+    security model in `SECURITY.md` and the README changes in the same
+    commit. Comfort and compressor cycling are real costs; the saving is
+    unverified until the baseline exists, and may not repay the weekends.
+- **Automated rebuild day.** Once a quarter, a workflow builds the whole
+  homelab from git and the R2 backups on an empty VM, checks the services
+  come up, and records time-to-restore. The number and its trend go on the
+  public architecture page (`khe.ee/architecture`, planned in `khe-meta`).
+  - *Why here:* the pieces exist. The VM is created by cloud-init, a push
+    is the deploy, and `restore-verify.yml` already restores one Postgres
+    dump from R2 every week. This extends that from one database to the
+    whole stack.
+  - *First step:* the manual rebuild rehearsal and DR runbook tracked in
+    the estate roadmap in `khe-meta`, then the bootstrap script from the
+    medium-term list above. Time the manual run; that is the first number.
+  - *Waits for:* the rehearsal fixes, and room to run a second VM. The host
+    has 32GB and the Docker VM takes 24GB, so a full parallel rebuild needs
+    the RAM upgrade, a reduced stack, or a short-lived cloud VM.
+  - *Risk and cost:* a rebuild VM must never talk to the live Cloudflare
+    tunnel, Telegram bot or house devices, so it runs with isolated
+    credentials. What it restores is config, databases and small user data;
+    Immich originals and media are not in the backup (see below), so the
+    number describes that scope, not a full restore.
+- **Second site.** A small node at a relative's home, reached over
+  Tailscale, holding a second restic repository of this homelab's backups
+  and, in return, theirs. Later it could serve the public static sites
+  warm when this one is down.
+  - *Why here:* R2 is the only offsite copy today. A second copy under our
+    own control makes 3-2-1 independent of one provider and one account,
+    and makes large data (Immich originals) affordable to keep offsite.
+  - *First step:* a second `restic` repository on any spare disk outside
+    the house, fed by the same `offsite-backup.sh` run, with the same
+    `restic check`.
+  - *Waits for:* a willing host household and a low-power machine.
+  - *Risk and cost:* hardware and electricity at someone else's home, and
+    support calls when their router changes. For the static sites the
+    Cloudflare Pages fallback in the estate roadmap is cheaper; the case for
+    a second site is data, not availability.
+- **Agent-operated homelab.** Scheduled agents read Loki alerts, Renovate
+  PRs held for review and Uptime Kuma state, diagnose, and prepare a fix as
+  a branch or a written proposal. The operator reads, approves and pushes;
+  the boundary that the operator runs anything touching the host stays.
+  - *Why here:* `ops-status.yml` gives a diagnostic snapshot without SSH,
+    Loki holds the logs and Renovate auto-merges the routine bumps, so what
+    is left for a human is the judgement calls. OpenClaw was removed on
+    2026-09-25 because its socket proxy let an LLM agent read every
+    container's env; an agent here reads through those same read-only
+    windows and never gets the Docker socket.
+  - *First step:* a weekly triage note (the n8n weekly report is the
+    natural carrier) listing each alert and held PR with a proposed action.
+    Measure how many proposals the operator accepts unchanged.
+  - *Waits for:* Prometheus metrics (estate roadmap), so diagnoses rest on
+    more than logs.
+  - *Risk and cost:* logs, changelogs and PR bodies are untrusted text an
+    agent reads, so prompt injection is the main threat. Agents get no
+    write path beyond a branch or a note, and a workflow still never takes
+    a shell command as input. Model cost if a hosted model does the work;
+    the local 7B model is unverified for this kind of diagnosis.
+- **Local AI serving for the apps.** Serve khe-ai-adventure's narration
+  from Ollama here instead of a hosted API, so a game costs nothing per
+  play.
+  - *Why here:* Ollama is already deployed with an OpenAI-compatible API.
+  - *Honest state:* it is CPU-only, capped at 10G RAM and 6 CPUs inside an
+    8-vCPU, 24GB VM, and runs `qwen2.5:7b`. khe-ai-adventure's own roadmap
+    keeps local models out of the live path until latency, Estonian quality
+    and structured-output reliability are competitive, and nothing measured
+    says a 7B CPU model is. On this hardware the answer is most likely no.
+  - *First step:* replay a recorded game's prompts against the local model
+    and score it with the adventure repo's model matrix: turn latency,
+    schema retries, Estonian editor corrections.
+  - *Waits for:* the RTX-class GPU under Hardware, and a measured per-game
+    API cost from the proxy logs to compare against.
+  - *Risk and cost:* a GPU costs money and draws power around the clock,
+    which may exceed the API bill of a low-volume party game. Worth doing
+    only if the GPU is bought for Immich and Ollama anyway.
+- **Family data the homelab can stand behind alone.** Today `backup.sh`
+  skips Immich originals because they are mirrored to iCloud and Google
+  Photos. The ambition is the reverse: the homelab holds the primary copy
+  with its own offsite backup, and the third-party mirrors become optional.
+  - *Why here:* Immich, Nextcloud and Paperless already replace the cloud
+    services; only the backup does not yet trust them to.
+  - *First step:* measure the size of Immich originals and price keeping
+    them offsite (R2 beyond its free 10 GB, or the second site).
+  - *Waits for:* the Immich config-secrets and SMTP items above, before
+    family accounts rely on it, and the upload-backup assumption in the
+    Immich list being retired.
+  - *Risk and cost:* until the offsite copy exists and restore-verify
+    covers it, dropping a mirror would make this box the only copy of the
+    family photo archive. The payoff is independence, and money only if a
+    cloud subscription is actually cancelled.
 
 ## Hardware
 
