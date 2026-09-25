@@ -272,7 +272,9 @@ returns 403 for `/study/` and `/adventure/`.
 
 - Static HTML at `khe.ee` (public), served by nginx alpine (pinned by Renovate).
 - Homepage dashboard moved to `dash.khe.ee` (CF Access protected).
-- `HOMEPAGE_ALLOWED_HOSTS=dash.khe.ee` in homepage `.env`.
+- `HOMEPAGE_DOMAIN=dash.khe.ee` in homepage `.env`; compose builds
+  `HOMEPAGE_ALLOWED_HOSTS` from it plus `homepage:3000`, the Uptime Kuma
+  monitor URL. Homepage v2 answers 400 to any other Host, the IP included.
 
 ## Pages (FileBrowser editor + nginx)
 

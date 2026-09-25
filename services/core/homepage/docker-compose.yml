@@ -10,7 +10,8 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /srv:/srv:ro
     environment:
-      - HOMEPAGE_ALLOWED_HOSTS=${HOMEPAGE_DOMAIN}
+      # homepage:3000 is the Uptime Kuma monitor's URL; any other Host gets a 400.
+      - HOMEPAGE_ALLOWED_HOSTS=${HOMEPAGE_DOMAIN},homepage:3000
       - TZ=Europe/Tallinn
       # AdGuard Home
       - HOMEPAGE_VAR_ADGUARD_USERNAME=${ADGUARD_USERNAME}
