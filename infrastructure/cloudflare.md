@@ -22,7 +22,6 @@ Tunnel routes directly to Docker containers. LAN traffic goes via NPM (split-hor
 | n8n.khe.ee          | n8n:5678                    | — (CF Access)               | CF Access OTP on all networks |
 | status.khe.ee       | uptime-kuma:3001            | uptime-kuma:3001            | |
 | games.khe.ee        | study-game:80 (→ games)     | — (CF only)                 | no AdGuard rewrite; alias in games compose until route updated to games:80 |
-| openclaw.khe.ee     | openclaw:18789              | — (CF Access)               | CF Access OTP on all networks |
 | trips.khe.ee        | trips:80                    | — (CF Access)               | CF Access OTP on all networks; no AdGuard rewrite |
 | draft.khe.ee        | draft:8080                  | — (CF Access)               | FileBrowser editor; CF Access OTP on all networks; **sole auth layer** (no app password, see service-choices.md); no AdGuard rewrite |
 | pages.khe.ee        | pages:80                    | — (CF only)                 | public; serves published pages read-only; no AdGuard rewrite |
@@ -38,11 +37,10 @@ Identity: One-time PIN via email (no OAuth setup needed).
 |--------------|---------|-----------------|
 | KHE Dashboard | dash.khe.ee | Email allowlist + Require Country=EE |
 | n8n          | n8n.khe.ee  | Email allowlist + Require Country=EE |
-| OpenClaw     | openclaw.khe.ee | Email allowlist + Require Country=EE |
 | KHE Trips    | trips.khe.ee | Email allowlist + Require Country=EE |
 | KHE Pages    | draft.khe.ee | Email allowlist + Require Country=EE |
 
-All five apps share a single reusable policy (edit once → applies to all).
+All four apps share a single reusable policy (edit once → applies to all).
 Policy combines `Include: Email = owner` AND `Require: Countries = Estonia`.
 Owner traveling abroad connects via Tailscale → egresses through VM's EE IP → passes both checks.
 If Tailscale is down while abroad, access is blocked — intentional two-factor (identity + location).
@@ -54,7 +52,7 @@ editor outright.
 ## Custom Login Page
 
 Zero Trust → Reusable components → Custom pages → Access login page.
-Applies to all Access-protected apps (dash, n8n, openclaw, trips, draft).
+Applies to all Access-protected apps (dash, n8n, trips, draft).
 
 | Field | Value |
 |-------|-------|

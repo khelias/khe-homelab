@@ -23,7 +23,7 @@ graph TB
         Core["<b>Core</b><br/>Homepage · Vaultwarden<br/>Dockge · Uptime Kuma"]
         Media["<b>Media</b><br/>Immich · Jellyfin<br/>Audiobookshelf"]
         Prod["<b>Productivity</b><br/>Nextcloud · Paperless-ngx"]
-        AI["<b>AI</b><br/>Ollama · n8n · OpenClaw"]
+        AI["<b>AI</b><br/>Ollama · n8n"]
         Apps["<b>Apps</b><br/>Landing Page · games hub<br/>pages · trips"]
         Obs["<b>Observability</b><br/>Loki · Grafana<br/>Alloy · Alertmanager"]
         Home["<b>Home</b><br/>Home Assistant<br/>Mosquitto · PAI"]
@@ -71,7 +71,6 @@ Jellyfin and Immich machine-learning both use `/dev/dri` for Quick Sync accelera
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/audiobookshelf.svg" width="22" /> | **Audiobookshelf** | `books.khe.ee` | Audiobooks and podcasts |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/n8n.svg" width="22" /> | **n8n** | `n8n.khe.ee` | Workflow automation and weekly homelab report generation (CF Access protected) |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/uptime-kuma.svg" width="22" /> | **Uptime Kuma** | `status.khe.ee` | Service monitoring and alerts |
-| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/claude-ai.svg" width="22" /> | **OpenClaw** | `openclaw.khe.ee` | AI devops agent with sandboxed Docker access (CF Access protected) |
 | 🎮 | **games hub** | `games.khe.ee` | Launcher + khe-study (`/study/`), auto-deployed from GitHub |
 | 🗺️ | **trips** | `trips.khe.ee` | Private family trip atlas, CF Access protected, own GitHub runner |
 | 📝 | **pages** | `pages.khe.ee` | Quick-publish HTML pages; edited at `draft.khe.ee` (CF Access protected) |
@@ -89,7 +88,7 @@ Multiple independent layers — nothing on the router is exposed to the internet
 
 **External access — Cloudflare Tunnel**
 Zero inbound ports. Cloudflare terminates TLS and forwards to containers over an outbound-only tunnel.
-Private apps (the dashboard, n8n, OpenClaw, trips, the pages editor) sit behind **Cloudflare Access** with email OTP.
+Private apps (the dashboard, n8n, trips, the pages editor) sit behind **Cloudflare Access** with email OTP.
 
 **Remote admin — Tailscale VPN**
 Docker VM runs Tailscale as a **subnet router** (`192.168.0.0/24`), so any Tailscale-connected
@@ -105,7 +104,7 @@ every LAN service gets HTTPS without per-service certs. AdGuard does split-horiz
 **Host hardening**
 - SSH key-only auth on Docker VM (password login disabled)
 - UFW firewall + fail2ban on the VM
-- OpenClaw and Dockge route Docker access through `docker-socket-proxy` instead of mounting `docker.sock` directly
+- Dockge, autoheal and Alloy route Docker access through `docker-socket-proxy` instead of mounting `docker.sock` directly
 - All secrets in `.env` files on the VM, never committed
 
 ## Resilience
@@ -118,7 +117,7 @@ Five layers, each catching what the others miss:
    VM and Proxmox boots it back up. Conservative config: only pings the device,
    no load/memory/network checks (those cause false-positive reboots on blips).
 2. **Unhealthy container — autoheal sidecar.** `willfarrell/autoheal` talks to a
-   narrow-scope `docker-socket-proxy` (same pattern OpenClaw uses) and restarts
+   narrow-scope `docker-socket-proxy` and restarts
    any container whose Docker healthcheck reports `unhealthy`. Fills the gap
    left by `restart: unless-stopped`, which only reacts to full crashes. This
    caught a stuck immich-ml worker the day it was deployed.
@@ -127,8 +126,8 @@ Five layers, each catching what the others miss:
    database, AI, and document workloads get larger caps than static web
    services. This keeps one bad process from consuming the whole 32GB VM.
 4. **Service down — Uptime Kuma + Telegram push.** Every service has a Kuma
-   HTTP/DNS monitor; all notify the same Telegram bot (`@khe_homelab_bot`,
-   shared with OpenClaw). Alert lands on the owner's phone within ~90s. Kuma
+   HTTP/DNS monitor; all notify the same Telegram bot (`@khe_homelab_bot`).
+   Alert lands on the owner's phone within ~90s. Kuma
    DB is in `backup.sh`, so monitor + notification config survives a VM rebuild.
 5. **Whole homelab down — external UptimeRobot.** Pings `khe.ee` every 5 min
    from outside the home network, pushes to the UptimeRobot iOS app. The only
@@ -139,7 +138,7 @@ Five layers, each catching what the others miss:
 
 Operational work is kept to a minimum by pushing everything into code and cron.
 
-- **GitOps** — every `docker-compose.yml`, Homepage config, AdGuard config, and OpenClaw agent workspace
+- **GitOps** — every `docker-compose.yml`, Homepage config and AdGuard config
   is version-controlled here. Rebuilding any service is `git pull && docker compose up -d`.
 - **Renovate** — watches every pinned image tag and opens PRs for updates (digests + changelogs).
 - **GitHub Actions self-hosted runners** — repo-specific runners on the Docker VM deploy

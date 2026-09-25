@@ -11,8 +11,8 @@ file in every session is wasteful; the entries are independent.
   patches against the live YAML. Wholesale replacement wipes admin bcrypt +
   active sessions.
 - **Per-service rewrites only**, no wildcard. 9 hostnames resolve to
-  `192.168.0.11`. `openclaw.khe.ee` and `games.khe.ee` intentionally omitted -
-  they resolve via Cloudflare for HTTPS.
+  `192.168.0.11`. `games.khe.ee` is intentionally omitted - it resolves via
+  Cloudflare for HTTPS.
 - **Router DHCP DNS: `192.168.0.11` ONLY**, no secondary. A "fallback" DNS
   triggers happy-eyeballs racing - clients query both in parallel and CF
   always wins, so ad/tracker filtering silently bypasses AdGuard for ~80%+
@@ -50,7 +50,7 @@ file in every session is wasteful; the entries are independent.
 - **Admin UI**: `http://192.168.0.11:81`, creds in VM `.env`.
 - **CF API token for DNS-01** is stored inside NPM's database
   (`npm_data` volume), not in repo.
-- **Not behind NPM**: `n8n`, `openclaw`, `games` (CF Access / CF-only routing).
+- **Not behind NPM**: `n8n`, `games` (CF Access / CF-only routing).
 
 ## Cloudflare Tunnel + Access
 
@@ -61,7 +61,7 @@ file in every session is wasteful; the entries are independent.
   applies to LAN traffic only** - split-horizon DNS sends LAN clients to NPM,
   external clients bypass it entirely.
 - Access policies (email OTP) protect: `dash.khe.ee`, `n8n.khe.ee`,
-  `openclaw.khe.ee`, `trips.khe.ee`.
+  `trips.khe.ee`, `draft.khe.ee`.
 - `khe.ee` is fully public (landing page).
 - **Healthcheck must be `cloudflared tunnel ready`, not `cloudflared version`.**
   The old check only proved the binary could execute, so it stayed green through
@@ -123,27 +123,6 @@ file in every session is wasteful; the entries are independent.
   - Audiobookshelf: read `token` column from `users` table in `absdatabase.sqlite`
   - Nextcloud: `docker exec nextcloud php occ user:add-app-password admin`
 
-## OpenClaw
-
-- Token auth (`mode: token`) + device pairing required on first connect.
-- **Approve new browser**:
-  - `docker exec openclaw node openclaw.mjs devices list`
-  - `docker exec openclaw node openclaw.mjs devices approve <request-id>`
-- Gateway token in `openclaw_config` volume (`openclaw.json`).
-- Model: `qwen2.5:7b` via Ollama on `ai-internal` network.
-- **Docker access** via `docker-socket-proxy` (tecnativa) on `socket-proxy`
-  internal network. `POST=0`, `ALLOW_RESTARTS=1` (read-only + restart/stop/start).
-  `DOCKER_HOST=tcp://docker-socket-proxy:2375` routes Docker CLI through proxy.
-  `docker-ce-cli` installed in custom image.
-- Agent workspace: `services/ai/openclaw/workspace/` (git-tracked bind mount).
-  `SOUL.md` (personality), `USER.md` (homelab context), `AGENTS.md` (safety).
-- `docker-essentials` skill installed (ClawHub) for container management.
-- **`bonjour` (mDNS) plugin disabled** via `plugins.deny: ["bonjour"]` in
-  `openclaw.json`. CIAO probing fails on bridge networks and crashes the
-  gateway in a restart loop. Re-apply if the volume is rebuilt.
-- `trustedProxies` not configured - CF tunnel seen as untrusted proxy
-  (cosmetic warning only).
-
 ## Games hub (launcher + study + adventure)
 
 Stack: `services/apps/games/` (nginx + adventure-proxy).
@@ -189,7 +168,7 @@ returns 403 for `/study/` and `/adventure/`.
 - `trips.khe.ee` -> `trips:80` via CF Tunnel (no AdGuard rewrite, CF only
   for HTTPS).
 - CF Access protected with the shared `Email + Country=EE` policy
-  (same as dash, n8n, openclaw).
+  (same as dash, n8n, draft).
 - Static SPA: bind mount `/srv/data/trips/app:/usr/share/nginx/html:ro`,
   SPA fallback to `/index.html`.
 - Source: `khelias/khe-trips` (private).

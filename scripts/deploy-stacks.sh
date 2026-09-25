@@ -23,7 +23,6 @@ DEPLOY_ORDER=(
   "home/pai"
   "ai/ollama"
   "ai/n8n"
-  "ai/openclaw"
   "apps/landing"
   "apps/games"
   "apps/pages"

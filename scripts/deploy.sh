@@ -22,7 +22,6 @@ DEPLOY_ORDER=(
   "home/homeassistant"
   "ai/ollama"
   "ai/n8n"
-  "ai/openclaw"
   "apps/landing"
   "apps/games"
   "apps/pages"

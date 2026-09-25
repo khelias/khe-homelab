@@ -154,7 +154,6 @@ NAMED_VOLUMES=(
   "n8n_n8n_data:n8n-data"
   "adguard_adguard_work:adguard-work"
   "dockge_dockge_data:dockge-data"
-  "openclaw_openclaw_config:openclaw-config"
   "jellyfin_jellyfin_config:jellyfin-config"
   "audiobookshelf_audiobookshelf_config:audiobookshelf-config"
   "audiobookshelf_audiobookshelf_metadata:audiobookshelf-metadata"

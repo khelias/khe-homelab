@@ -64,7 +64,7 @@ dns:
   cache_optimistic: true
 filtering:
   rewrites:
-    # openclaw.khe.ee and games.khe.ee intentionally omitted — resolve via Cloudflare (CF Access / HTTPS needed)
+    # games.khe.ee intentionally omitted - resolve via Cloudflare (HTTPS needed)
     # n8n.khe.ee omitted — CF Access OTP protection must apply on LAN too
     - domain: khe.ee
       answer: 192.168.0.11

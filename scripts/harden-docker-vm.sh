@@ -37,7 +37,6 @@ ALLOWED_PORTS=(
   5678  # n8n
   11434 # Ollama
   13378 # Audiobookshelf
-  18789 # OpenClaw
   8123  # Home Assistant
 )
 

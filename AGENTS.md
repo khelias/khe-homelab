@@ -2,7 +2,7 @@
 
 Family homelab as code: one Proxmox host, one Debian 13 VM running Docker
 Compose stacks for cloud, media, AI and home services. Every compose file,
-AdGuard, Homepage and OpenClaw config lives here. This file holds rules and
+AdGuard and Homepage config lives here. This file holds rules and
 pointers; the reference lives in:
 
 - [README.md](README.md) - architecture, services table, security model,
@@ -29,7 +29,7 @@ services/
                    Uptime Kuma, Homepage, autoheal
   media/           Immich, Jellyfin, Audiobookshelf
   productivity/    Nextcloud, Paperless-ngx
-  ai/              Ollama, n8n, OpenClaw (+ workspace/ for agent config)
+  ai/              Ollama, n8n
   home/            Home Assistant, Mosquitto, PAI (Paradox alarm)
   apps/            landing, games, pages, trips
   observability/   Loki, Grafana, Alloy, Alertmanager (one stack)

@@ -168,8 +168,8 @@ friction during high-churn periods.
 
 - **`khe.ee` DNS already on Cloudflare** — choosing CF Tunnel means one
   vendor, one auth surface, one set of certs (CF edge cert).
-- **CF Access** gates `dash.khe.ee`, `n8n.khe.ee`, `openclaw.khe.ee`,
-  `trips.khe.ee` with email OTP. Replacing this with self-hosted
+- **CF Access** gates `dash.khe.ee`, `n8n.khe.ee`, `trips.khe.ee`,
+  `draft.khe.ee` with email OTP. Replacing this with self-hosted
   equivalents (Authelia, Authentik) is real work for a 4-route gate.
 - **Zero open ports** on the home router — single biggest win for
   attack-surface reduction.
@@ -354,8 +354,8 @@ Nextcloud is the **right** choice given the breadth of needs, but:
 - **`ollama pull` and a model is running** — Ollama abstracts the
   GGUF-download-and-config dance that llama.cpp leaves to the user.
   Iterating on which model fits the iGPU is a 2-minute exercise.
-- **Stable OpenAI-compatible endpoint** — n8n + OpenClaw both speak that
-  protocol. Swapping models doesn't churn the integration layer.
+- **Stable OpenAI-compatible endpoint** — n8n speaks that protocol.
+  Swapping models doesn't churn the integration layer.
 - **Single container, model files on the ZFS mirror** — fits the layout.
 
 ### When we'd revisit

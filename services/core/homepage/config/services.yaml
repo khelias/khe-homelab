@@ -74,12 +74,6 @@
         description: qwen2.5:7b · CPU
         server: my-docker
         container: ollama
-    - OpenClaw:
-        icon: mdi-robot-outline
-        href: https://openclaw.khe.ee
-        description: Skippy
-        server: my-docker
-        container: openclaw
 
 - Kodu:
     - Home Assistant:
