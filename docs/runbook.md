@@ -110,6 +110,36 @@ This prunes unused Docker images and build cache. It never touches volumes, so
 application data is safe. Set `aggressive=true` only if the normal run did not
 free enough.
 
+## Symptom: every deploy fails on `git pull --ff-only`
+
+The VM checkout `/home/khe/homelab` has local changes, almost always files
+copied in by hand for a quick test. Deploy refuses to pull over them, and
+every later push fails in the same way until the tree is clean. On the VM:
+
+```bash
+cd /home/khe/homelab && git status --short
+```
+
+Stash tracked changes (`git stash push -m drift`), remove the stray untracked
+files one by one, then `git pull --ff-only` and rerun the deploy:
+
+```bash
+gh workflow run deploy.yml --repo khelias/khe-homelab -f mode=changed
+```
+
+To test something before committing, copy it to `/tmp` on the VM, not into
+the checkout. The runner's own work directory under `actions-runner-homelab/`
+is not the deploy checkout.
+
+## After `main` was rewritten
+
+A history rewrite is an operator decision (khe-meta ADR-006). Do not re-clone
+the VM checkout, because the gitignored `.env` files would go with it. Check
+first that the rewrite kept the file tree: compare `git rev-parse
+HEAD^{tree}` on the VM with the new `origin/main^{tree}`. If they match,
+`git fetch origin && git reset --hard origin/main` on the VM leaves every
+tracked file and every `.env` as it was.
+
 ## OS updates and reboots
 
 Security updates install themselves through `unattended-upgrades`; nobody needs

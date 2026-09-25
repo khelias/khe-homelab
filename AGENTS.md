@@ -18,6 +18,8 @@ pointers; the reference lives in:
 House documentation (HA rollout, dashboard layout, HVAC protocols, energy)
 is in the private `khe-meta` repo under `house/`: it names devices, LAN
 addresses and metering data. This repo keeps the container and ops layer.
+Read `house/home-assistant-plan.md` before analysing house data: its method
+rules are not loaded into context on their own.
 
 ## Layout
 
@@ -75,6 +77,25 @@ CI (`validate.yml`) runs `bash -n scripts/*.sh` and
 - On the VM: `./scripts/deploy.sh status|pull|up|down`, `./scripts/backup.sh`
   (Postgres dumps, config snapshots, HA recorder). Per service:
   `cd services/<group>/<service> && docker compose up -d`.
+- **A push to `main` is the deploy.** `deploy.yml` runs when `services/**`,
+  `scripts/deploy.sh`, `scripts/deploy-stacks.sh` or the workflow changes:
+  the runner pulls `/home/khe/homelab` with `git pull --ff-only` and deploys
+  the stacks changed since `.deploy/last-successful-sha`. A manual deploy
+  after that push is a no-op. One is needed only for changes outside the
+  paths filter or when CI is down, and then it is `gh workflow run
+  deploy.yml` (inputs `mode`, `stack`, `dry_run`).
+- **Check the branch before writing.** The VM pulls `main`, and finished work
+  sometimes sits on a feature branch for weeks. A push to the wrong branch
+  shows up as "Already up to date" on the VM and "Unknown stack" from the
+  deploy.
+- **Operations go through `workflow_dispatch`** on the homelab runner:
+  `ops-status.yml` for diagnostics ([runbook](docs/runbook.md)), `deploy.yml`
+  for deploys (the operator's call). A workflow never takes a shell command
+  as input; that would be SSH under another name. Narrow, pre-written actions
+  only.
+- **Fork PRs can reach the runner.** Fork PR approval stays at
+  `all_external_contributors`, and a fork run is approved only after reading
+  its `.github/workflows/` diff (khe-meta ADR-006).
 
 ## Working on Home Assistant
 
@@ -95,7 +116,10 @@ HA is operated through its API: not the UI, not SSH.
   stops every deploy after it.
 - **YAML platforms need a restart, not a reload:** `input_*`, `rest:`,
   `shell_command:` and the group `cover:`/`light:` platforms. Automations and
-  templates reload.
+  templates reload, but a template reload blanks the trigger-based price
+  sensors until the hourly tick: follow every `template/reload` at once with
+  `POST /api/events/khe_price_refresh`
+  ([notes](docs/operational-notes.md#home-assistant)).
 - **Helpers come up at their minimum.** Set the first value through the API;
   `initial:` would overwrite the household's choice on every restart.
 - **The dashboard is generated** by `scripts/ha-dashboard.py`, and HA adds
@@ -103,5 +127,13 @@ HA is operated through its API: not the UI, not SSH.
   rerunning, diff the generator's output against the live config: exec the
   script up to `async def main`, dump `config`, compare with a WebSocket
   `lovelace/config` read.
+- **Keep the house idiom in a new view**, and read two existing views first.
+  A row is a `horizontal-stack` of 2-4 vertical tiles or `third()`, never a
+  lone full-width tile; full width is for charts, forecast cards and alerts.
+  Each number appears once (turn off a forecast card's `show_current` when a
+  tile already carries the value). Badge labels are short and still say what
+  they control. The front page holds what is done daily; per-side controls,
+  rare settings and diagnostics go on a `subview` behind a "Seaded" badge. A
+  `note()` truncates to one line, so longer text needs a markdown card.
 - Read the integration's section in `docs/operational-notes.md` before
   touching it.

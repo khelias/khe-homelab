@@ -511,6 +511,12 @@ entity ids embed the metering point EIC; they were renamed in the entity
 registry to `sensor.maja_*`, `binary_sensor.maja_andmed_varsked` and
 `button.maja_*` so the dashboard generator can reference them in this public
 repo. A fresh install of the integration would recreate the EIC-based ids.
+Options can also be set over REST through
+`/api/config/config_entries/options/flow`, but a change made while the
+initial backfill is still running gets overwritten; run `backfill_history`
+afterwards. The fork has no releases, so HACS sees a new commit only after
+`hacs/repository/refresh` (WebSocket); download the update in the HACS UI
+after that.
 
 **Pergola via Tuya Local (since 2026-09-20).** The two motorised pergolas are
 Tuya WiFi devices (protocol 3.5). Tuya's cloud only declares three datapoints
