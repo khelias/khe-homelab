@@ -54,9 +54,10 @@ CI (`validate.yml`) runs `bash -n scripts/*.sh` and
    `--no-verify`. Personal-data patterns (MAC and LAN addresses, coordinates,
    e-mail, phone) are caught by the khe workspace commit gate, rules in its
    `.claude/hooks/pii-rules.toml`; names and street addresses by nobody.
-3. **Pin image versions**, no `:latest`. The one exception is
-   `games-adventure-proxy:latest`, built and tagged on the VM by the
-   khe-ai-adventure runner; its version lives in that repo's workflow.
+3. **Pin image versions**, no `:latest`. Images the estate builds itself
+   (`ghcr.io/khelias/*`, khe-meta ADR-008) are pinned as
+   `:main@sha256:<digest>`: CI publishes them, and Renovate moves the digest
+   in one automerged PR per app (rule at the end of `renovate.json`).
 4. **State in named volumes or bind mounts under `/srv/data/<service>/`**,
    never `/home` or arbitrary paths.
 5. **Ingress through the shared `proxy` network** for NPM; separate networks
@@ -86,6 +87,12 @@ CI (`validate.yml`) runs `bash -n scripts/*.sh` and
   after that push is a no-op. One is needed only for changes outside the
   paths filter or when CI is down, and then it is `gh workflow run
   deploy.yml` (inputs `mode`, `stack`, `dry_run`).
+- **Rolling back an estate app** is a git change here. Pin every image of
+  the app to the same `sha-<full commit>@sha256:<digest>` (the `sha-` tag of
+  a commit never moves, so Renovate leaves the pin alone) and push. The way
+  back is `:main@sha256:` with the current digest from an anonymous manifest
+  fetch of `ghcr.io/v2/khelias/<image>/manifests/main`. `homelab-status.sh`
+  prints the revision each estate container runs.
 - **Check the branch before writing.** The VM pulls `main`, and finished work
   sometimes sits on a feature branch for weeks. A push to the wrong branch
   shows up as "Already up to date" on the VM and "Unknown stack" from the

@@ -71,7 +71,7 @@ Jellyfin and Immich machine-learning both use `/dev/dri` for Quick Sync accelera
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/audiobookshelf.svg" width="22" /> | **Audiobookshelf** | `books.khe.ee` | Audiobooks and podcasts |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/n8n.svg" width="22" /> | **n8n** | `n8n.khe.ee` | Workflow automation and weekly homelab report generation (CF Access protected) |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/uptime-kuma.svg" width="22" /> | **Uptime Kuma** | `status.khe.ee` | Service monitoring and alerts |
-| 🎮 | **games hub** | `games.khe.ee` | Launcher + khe-study (`/study/`), auto-deployed from GitHub |
+| 🎮 | **games hub** | `games.khe.ee` | Launcher, khe-study (`/study/`) and khe-ai-adventure (`/adventure/`), auto-deployed from GitHub |
 | 🗺️ | **trips** | `trips.khe.ee` | Private family trip atlas, CF Access protected, own GitHub runner |
 | 📝 | **pages** | `pages.khe.ee` | Quick-publish HTML pages; edited at `draft.khe.ee` (CF Access protected) |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/ollama.svg" width="22" /> | Ollama | LAN only | Local AI models (CPU-only) |
@@ -141,8 +141,10 @@ Operational work is kept to a minimum by pushing everything into code and cron.
   is version-controlled here. Rebuilding any service is `git pull && docker compose up -d`.
 - **Renovate** — watches every pinned image tag and opens PRs for updates (digests + changelogs).
 - **GitHub Actions self-hosted runners** — repo-specific runners on the Docker VM deploy
-  `khe-sites` (`khe.ee` and the games launcher), `khe-study`, `khe-ai-adventure` and
-  `khe-trips` into `/srv/data/...` directories served by nginx.
+  `khe-sites` (`khe.ee` and the games launcher), `khe-study` and `khe-trips` into
+  `/srv/data/...` directories served by nginx.
+- **Estate images**: `khe-ai-adventure` is built in GitHub-hosted CI and published to
+  GHCR; this repo pins the digests and Renovate moves them, so its deploy is a merge here.
 - **n8n weekly report** — generates internal homelab reports plus a small public
   portfolio metrics file; only `/srv/data/reports/khe/public` is served read-only
   by the public landing nginx at `/reports/`.

@@ -7,11 +7,11 @@ services:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - /srv/data/games/launcher:/usr/share/nginx/html:ro
       - /srv/data/games/study:/srv/data/games/study:ro
-      - /srv/data/games/adventure/app:/srv/data/games/adventure:ro
     networks:
       - proxy
       - games-internal
     depends_on:
+      - adventure-web
       - adventure-proxy
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:80"]
@@ -24,10 +24,32 @@ services:
           memory: 256M
           cpus: '0.50'
 
+  # khe-ai-adventure publishes both images from one commit (ADR-008 in
+  # khe-meta). Keep the two pins on the same commit; Renovate moves them
+  # together in one PR.
+  adventure-web:
+    image: ghcr.io/khelias/khe-ai-adventure-web:main@sha256:fb750c6320970ef6ac279d8224bdb974282c3bad6433dd89e0506ea42d4fa3e1
+    container_name: adventure-web
+    restart: unless-stopped
+    environment:
+      - API_SECRET=${API_SECRET:-}
+      - TZ=Europe/Tallinn
+    networks:
+      - games-internal
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.25'
+
   adventure-proxy:
-    # Image built by khe-ai-adventure's GitHub Actions runner on this VM
-    # (see that repo's .github/workflows/deploy.yml → "Build proxy image").
-    image: games-adventure-proxy:latest
+    image: ghcr.io/khelias/khe-ai-adventure-proxy:main@sha256:a9ae09bc4d1ca5c01b24b895303988dfbc123bf0d1355817a030567e3344e846
     container_name: adventure-proxy
     restart: unless-stopped
     environment:

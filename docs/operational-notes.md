@@ -125,12 +125,12 @@ file in every session is wasteful; the entries are independent.
 
 ## Games hub (launcher + study + adventure)
 
-Stack: `services/apps/games/` (nginx + adventure-proxy).
+Stack: `services/apps/games/` (nginx + adventure-web + adventure-proxy).
 
 - `/` -> launcher (`khe-sites` repo deploys to `/srv/data/games/launcher/`)
 - `/study/` -> `khe-study` (`/srv/data/games/study/`, GH Actions runner deploys here)
-- `/adventure/` -> `khe-ai-adventure` (`/srv/data/games/adventure/app/`, GH Actions runner)
-- `/adventure/api/` -> `adventure-proxy` container
+- `/adventure/` -> `adventure-web` container (`khe-ai-adventure` web image)
+- `/adventure/api/` -> `adventure-proxy` container, prefix stripped
 - CF tunnel route `games.khe.ee` -> `games:80` (direct, no alias).
 
 **Vite base path** for sub-app deployments:
@@ -138,25 +138,30 @@ Stack: `services/apps/games/` (nginx + adventure-proxy).
 - `khe-study`: `vite { base: '/study/' }`, BrowserRouter `basename="/study"`
 - `khe-ai-adventure`: same pattern with `/adventure/`
 
-**Adventure proxy build chain** (lives in `khe-ai-adventure`, not here):
+**Adventure images** (built in `khe-ai-adventure` CI, khe-meta ADR-008):
 
-- That repo's runner builds the proxy image as `games-adventure-proxy:latest`.
-- `khe-homelab` compose references the image by tag, no build context.
-- Source: `khe-ai-adventure/proxy/server.js`.
+- `ghcr.io/khelias/khe-ai-adventure-web` and `-proxy`, public packages,
+  pinned here as `:main@sha256:`. Renovate moves both pins in one PR.
+- The web image writes `/adventure/config.js` at start from `API_SECRET`,
+  from the same games `.env` as the proxy. Rotating the key is an `.env`
+  change and a recreate, no rebuild.
+- The games nginx resolves both upstreams per request (`resolver
+  127.0.0.11`), because every deploy recreates both containers.
 
 **Per-repo runners on the VM**:
 
 - `/home/khe/actions-runner` - khe-study
-- `/home/khe/actions-runner-adventure` - khe-ai-adventure
+- `/home/khe/actions-runner-adventure` - khe-ai-adventure (no job since the
+  images moved to CI)
 - `/home/khe/actions-runner-sites` - khe-sites
 - `/home/khe/actions-runner-trips` - khe-trips
 
-**nginx mount nesting**: study/adventure are bind-mounted **outside** the
-launcher root and served via per-location `root`. Do NOT nest these mounts
-under `/usr/share/nginx/html` - nginx then sees launcher placeholders and
-returns 403 for `/study/` and `/adventure/`.
+**nginx mount nesting**: study is bind-mounted **outside** the launcher root
+and served via a per-location `root`. Do NOT nest it under
+`/usr/share/nginx/html` - nginx then sees launcher placeholders and returns
+403 for `/study/`.
 
-**Networks**: `games-internal` (nginx <-> adventure-proxy) + `proxy`
+**Networks**: `games-internal` (nginx <-> adventure-web, adventure-proxy) + `proxy`
 (CF tunnel -> nginx).
 
 **API keys**: `GEMINI_API_KEY` + `ANTHROPIC_API_KEY` in

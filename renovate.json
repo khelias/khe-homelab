@@ -52,6 +52,14 @@
       "automerge": false,
       "groupName": "critical infrastructure",
       "groupSlug": "critical-updates"
+    },
+    {
+      "description": "Estate images deploy khe-ai-adventure: its web and proxy images come from one commit and move in one PR, as soon as a new digest appears. Top priority so the PR concurrency limit never holds a deploy behind updates that wait for review. A rollback pin on a sha- tag has a digest that never moves, so Renovate leaves it alone.",
+      "matchPackageNames": ["ghcr.io/khelias/khe-ai-adventure-*"],
+      "groupName": "khe-ai-adventure",
+      "schedule": ["at any time"],
+      "prPriority": 10,
+      "automerge": true
     }
   ]
 }

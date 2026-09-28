@@ -153,6 +153,33 @@ else
 fi
 echo
 
+echo "Estate images"
+# Images built by the estate's own repos carry OCI labels (ADR-008 in
+# khe-meta). The revision shows which commit is live without a shell, and two
+# containers of one app must show the same one.
+if docker info >/dev/null 2>&1; then
+  n_estate=0; estate_revs=""
+  while read -r cname; do
+    [ -z "$cname" ] && continue
+    fields="$(docker inspect --format '{{index .Config.Labels "org.opencontainers.image.source"}}|{{index .Config.Labels "org.opencontainers.image.revision"}}|{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$cname" 2>/dev/null)"
+    IFS='|' read -r src rev hstate <<< "$fields"
+    case "$src" in
+      https://github.com/khelias/*) ;;
+      *) continue ;;
+    esac
+    n_estate=$((n_estate + 1))
+    line="${cname} ${hstate} ${rev:-no-revision} (${src#https://github.com/})"
+    [ "$hstate" = "healthy" ] && ok "$line" || warn "$line"
+    estate_revs="${estate_revs}${src} ${rev:-no-revision}"$'\n'
+  done < <(docker ps --format '{{.Names}}' 2>/dev/null)
+  [ "$n_estate" -eq 0 ] && warn "no running container carries a khelias image source label"
+  while read -r src; do
+    [ -z "$src" ] && continue
+    fail "${src#https://github.com/} runs more than one revision; pin its images to the same commit"
+  done < <(printf '%s' "${estate_revs:-}" | sort -u | awk '{ print $1 }' | uniq -d)
+fi
+echo
+
 echo "Cloudflare tunnel checks"
 tunnel_state="$(docker ps --filter "name=^${TUNNEL_CONTAINER}$" --format '{{.State}}' 2>/dev/null)"
 if [ "$tunnel_state" = "running" ]; then
