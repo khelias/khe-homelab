@@ -7,16 +7,18 @@ groups:
   - name: adventure-proxy
     interval: 1m
     rules:
+      # The proxy logs failures as "proxy: error" (budget 429s included) and
+      # "proxy: upstream timeout", never as "ERROR".
       - alert: AdventureProxyErrorBurst
         expr: |
           sum by (container_name) (
-            count_over_time({container_name="adventure-proxy"} |= "ERROR" [5m])
+            count_over_time({container_name="adventure-proxy"} |~ "proxy: (error|upstream timeout)" [5m])
           ) > 3
         for: 2m
         labels:
           severity: warning
         annotations:
-          summary: "adventure-proxy logged >3 ERROR lines in 5 minutes"
+          summary: "adventure-proxy logged >3 error or upstream timeout lines in 5 minutes"
 
   - name: containers
     interval: 1m
