@@ -40,7 +40,7 @@ scripts/           setup, deploy, backup, hardening, validate-compose,
 ```
 
 Image tags live in each `docker-compose.yml`; Renovate opens the bump PRs.
-CI (`validate.yml`) runs `bash -n scripts/*.sh` and
+CI (`validate.yml`) runs `bash -n` on each `scripts/*.sh` and
 `scripts/validate-compose.sh`.
 
 ## Rules
