@@ -278,6 +278,12 @@ and served via a per-location `root`. Do NOT nest it under
 ## Landing page
 
 - Static HTML at `khe.ee` (public), served by nginx alpine (pinned by Renovate).
+- Security headers (HSTS, nosniff, referrer, permissions, a CSP with no
+  third-party hosts but Cloudflare Web Analytics) are set at server level and
+  repeated in `/reports/` and the static-asset location, since a location
+  with its own `add_header` inherits none. HSTS has no `includeSubDomains`:
+  the apex policy must not pin LAN-only names. `/r/` keeps its own set.
+  `absolute_redirect off`, so `/privacy` -> `/privacy/` stays on https.
 - `/r/<slug>/` serves khe-trips share sites from `/srv/data/trips/share`,
   written by the khe-trips runner and mounted outside the html root
   (`/srv/share/r`). An unknown slug, `/r` and `/r/` answer 404, not the
