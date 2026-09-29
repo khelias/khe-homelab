@@ -66,18 +66,40 @@ Logo is a standalone SVG matching the landing page monogram (indigo 15% → viol
 
 ## WAF Custom Rules
 
-Security → Security rules → Custom rules. Free plan: 5 rule slots, 3 in use.
+Security → Security rules → Custom rules. Free plan: 5 rule slots, 4 in use.
 
 | # | Name | Expression | Action | Purpose |
 |---|------|-----------|--------|---------|
 | 1 | Block known scanner paths | `(http.request.uri.path contains "/.env") or (.../.git/) or (.../wp-login) or (.../wp-admin) or (.../wp-content) or (.../xmlrpc.php) or (.../phpmyadmin) or (.../.aws/) or (.../.ssh/)` | Block | Drops WP/PHP/env scanner noise before origin |
 | 2 | Challenge high-risk countries | `(ip.geoip.country in {"RU" "CN" "KP" "IR" "BY"}) and (http.host ne "khe.ee")` | Managed Challenge | CAPTCHA for bots; apex exempted so UptimeRobot still works |
 | 3 | Challenge non-browser UAs on public apps | `(http.host in {"photos" "cloud" "books" "jellyfin" "docs" "vault" "status" ".khe.ee"}) and (lower(http.user_agent) contains "curl"/"wget"/"python-requests"/"go-http-client"/"scrapy" or http.user_agent eq "")` | Managed Challenge | Stops naive scraper CLIs on non-Access-protected subdomains; mobile apps send their own UAs so unaffected |
+| 4 | Block Vaultwarden admin | `(http.host eq "vault.khe.ee") and starts_with(http.request.uri.path, "/admin")` | Block | The admin panel is never needed from the internet; LAN reaches it through NPM, which the tunnel never touches. `ADMIN_TOKEN` stays an argon2 hash as the second layer |
 
 Also enabled:
 - Bot Fight Mode: ON (+ JS Detections)
 - Block AI bots: "Block on all pages" (stops GPTBot/ClaudeBot/etc. training crawlers)
 - Security Level: automated ("always protected" — the old slider was removed by CF)
+
+## Rate limiting rules
+
+Security → Security rules → Rate limiting rules. Free plan: 1 rule, counted
+per IP over a fixed 10 s period with a 10 s block, and the expression can
+only use the path (no hostname). Optional; the nginx `limit_req` in
+`services/apps/games/nginx.conf` is the per-visitor limit either way.
+
+| Name | Expression | Threshold | Action | Purpose |
+|------|-----------|-----------|--------|---------|
+| Adventure API flood | `starts_with(http.request.uri.path, "/adventure/api/")` | 10 requests / 10 s | Block 10 s | Stops a flood at the edge before it reaches the tunnel; a game sends one request per turn, so players never hit it. Only games.khe.ee serves that path |
+
+## SSL/TLS
+
+SSL/TLS → Edge Certificates.
+
+- Always Use HTTPS: ON (zone-wide). Every `http://` request gets a 301 to
+  `https://` at the edge, before the tunnel.
+- HSTS is not set here. khe.ee sends it from the landing nginx without
+  `includeSubDomains`, so the apex policy does not pin LAN-only names;
+  games.khe.ee and pages.khe.ee send their own.
 
 ## DNS
 
