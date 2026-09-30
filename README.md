@@ -139,7 +139,7 @@ Operational work is kept to a minimum by pushing everything into code and cron.
 
 - **GitOps** — every `docker-compose.yml`, Homepage config and AdGuard config
   is version-controlled here. Rebuilding any service is `git pull && docker compose up -d`.
-- **Renovate** — watches every pinned image tag and opens PRs for updates (digests + changelogs).
+- **Renovate** — watches every pinned image tag except the estate's own and opens PRs for updates (digests + changelogs).
 - **GitHub Actions self-hosted runners** — repo-specific runners on the Docker VM deploy
   `khe-sites` (`khe.ee` and the games launcher), `khe-study` and `khe-trips` into
   `/srv/data/...` directories served by nginx.
