@@ -147,8 +147,8 @@ publishes both images, the `Pin homelab` job opens (or updates) the PR from
 `deploy/khe-ai-adventure` here with the new digests and turns on auto-merge,
 `validate.yml` passes, the PR merges and `deploy.yml` recreates both
 containers. Push to live took under 7 minutes the first time (khe-meta
-ADR-008 "Observed"). Step 1's "Estate images" section
-shows the commit each container runs.
+ADR-008 "Observed"). Step 1's "Estate images" section shows the commit each
+container runs.
 
 When it stalls, look in this order:
 
@@ -170,9 +170,32 @@ so pushes to adventure do not deploy until the pins go back to
 branch the App pushed to, changes something other than its own `:main@`
 digests. The pin script never does that, so treat it as a compromised
 adventure repo or App key: close the PR, do not merge it by hand, and rotate
-the App's private key. **A red "Estate images are attested and paired"** on
+the App's private key (below). **A red "Estate images are attested and paired"** on
 any PR means a pinned `ghcr.io/khelias/*` digest was not built by its repo's
 `ci.yml` on `main`, or the images of one repo come from different commits.
+
+**Rotating the pin App's key.** GitHub App keys do not expire, so this is
+done on suspicion, not on a schedule: a red guard step, a lost or compromised
+machine, or a `.pem` left somewhere it should not be.
+
+1. On <https://github.com/settings/apps/khe-adventure-pins>, "Generate a
+   private key". The old key keeps working until it is deleted, so deploys do
+   not stop in between.
+2. Store the new key in the adventure environment:
+
+   ```bash
+   gh secret set HOMELAB_PIN_PRIVATE_KEY -R khelias/khe-ai-adventure --env homelab-pin < <new .pem>
+   ```
+
+3. Prove it: rerun the `Pin homelab` job of the latest adventure CI run
+   (`gh run rerun <run-id> --repo khelias/khe-ai-adventure --job <job-id>`).
+   GHCR's `main` is still that commit, so the job mints a token with the new
+   key and ends with the "already current" notice, changing nothing.
+4. Delete the old key on the App page. Move the new `.pem` to wherever keys
+   are kept and remove it from the download folder.
+
+On a suspected compromise, delete the old key first and accept that pins
+stop until step 2 is done.
 
 ## OS updates and reboots
 
