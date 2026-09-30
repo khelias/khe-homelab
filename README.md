@@ -144,7 +144,8 @@ Operational work is kept to a minimum by pushing everything into code and cron.
   `khe-sites` (`khe.ee` and the games launcher), `khe-study` and `khe-trips` into
   `/srv/data/...` directories served by nginx.
 - **Estate images**: `khe-ai-adventure` is built in GitHub-hosted CI and published to
-  GHCR; this repo pins the digests and Renovate moves them, so its deploy is a merge here.
+  GHCR; this repo pins the digests and the app's CI moves them in an automerged pin PR,
+  so its deploy is a merge here, minutes after the push.
 - **n8n weekly report** — generates internal homelab reports plus a small public
   portfolio metrics file; only `/srv/data/reports/khe/public` is served read-only
   by the public landing nginx at `/reports/`.

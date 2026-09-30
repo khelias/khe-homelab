@@ -16,6 +16,9 @@ jobs:
   validate:
     name: Compose and Dockerfile validation
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      attestations: read
 
     steps:
       - name: Checkout
@@ -23,13 +26,100 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Every script below runs from .base/, the base branch as merged
+      # (HEAD^1 of the PR merge commit), against the PR tree in $PWD. A PR's own
+      # scripts are data only, so a PR cannot weaken the checks it is held to.
+      - name: Base branch scripts
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" = pull_request ]; then base=HEAD^1; else base=HEAD; fi
+          git worktree add --detach .base "$base"
+
+      # A pin App (khe-meta ADR-008) may only move its own image digests, one
+      # line for one line. This lives in the workflow file because the Apps
+      # have no Workflows permission and so cannot change it. One line per App:
+      # login, the compose file it pins, and its image name pattern (ERE).
+      # A dispatch run on a branch the App touched fails, since its green
+      # check would otherwise stand in for the PR run on the same commit.
+      - name: Pin App PRs change pins only
+        env:
+          PIN_APPS: |
+            khe-adventure-pins[bot] services/apps/games/docker-compose.yml ghcr\.io/khelias/khe-ai-adventure-(web|proxy)
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          EVENT: ${{ github.event_name }}
+          HEAD_REF: ${{ github.head_ref || github.ref_name }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          SENDER: ${{ github.event.sender.login }}
+        run: |
+          set -euo pipefail
+          fail() { echo "::error::$*"; exit 1; }
+          while read -r login file image; do
+            [ -n "$login" ] || continue
+            if [ "$EVENT" != pull_request ] && [ "$HEAD_REF" = main ]; then
+              continue
+            fi
+            if [ "$PR_AUTHOR" != "$login" ] && [ "$SENDER" != "$login" ]; then
+              # Any App activity on the head ref counts: overwriting someone
+              # else's branch is a force_push, which a push filter would miss.
+              hits="$(gh api -X GET "repos/$REPO/activity" -f ref="refs/heads/$HEAD_REF" \
+                -f actor="$login" -f per_page=100 --jq 'length')" \
+                || fail "activity lookup for $login on $HEAD_REF failed"
+              [[ "$hits" =~ ^[0-9]+$ ]] || fail "activity lookup for $login returned '$hits'"
+              if [ "$hits" -eq 0 ]; then
+                echo "$login: not involved"
+                continue
+              fi
+            fi
+            [ "$EVENT" = pull_request ] \
+              || fail "$login has pushed to $HEAD_REF; validate it through its PR, not a dispatch run"
+            echo "$login is involved: checking the diff"
+
+            files="$(git diff --no-renames --name-only HEAD^1 HEAD)"
+            [ "$files" = "$file" ] || fail "$login may change only $file; this PR changes: $(tr '\n' ' ' <<< "$files")"
+
+            diff="$(git diff --no-renames -U0 HEAD^1 HEAD -- "$file")"
+            line_re="^ +image: ${image}:main@sha256:[0-9a-f]{64}\$"
+            expect=hunk
+            hunks=0
+            while IFS= read -r l; do
+              case "$expect" in
+                hunk)
+                  [[ "$l" =~ ^@@\ -[0-9]+(,1)?\ \+[0-9]+(,1)?\ @@ ]] \
+                    || fail "not a one-line-for-one-line change: $l"
+                  expect=old ;;
+                old)
+                  [[ "$l" == -* ]] || fail "expected a removed line, got: $l"
+                  old="${l#-}"
+                  expect=new ;;
+                new)
+                  [[ "$l" == +* ]] || fail "expected an added line, got: $l"
+                  new="${l#+}"
+                  [[ "$old" =~ $line_re && "$new" =~ $line_re ]] \
+                    || fail "only ${image}:main@sha256: pins may change: '$old' -> '$new'"
+                  [ "${old%@sha256:*}" = "${new%@sha256:*}" ] \
+                    || fail "the line changed beyond its digest: '$old' -> '$new'"
+                  hunks=$((hunks + 1))
+                  expect=hunk ;;
+              esac
+            done <<< "$(printf '%s\n' "$diff" | sed -n '/^@@/,$p')"
+            [ "$expect" = hunk ] && [ "$hunks" -gt 0 ] || fail "incomplete or empty diff"
+            echo "$login: $hunks digest change(s), nothing else"
+          done <<< "$PIN_APPS"
+
+      - name: Estate images are attested and paired
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: .base/scripts/verify-estate-pins.sh
+
       - name: Shell syntax
         run: rc=0; for f in scripts/*.sh; do bash -n "$f" || rc=1; done; exit $rc
 
       - name: Validate changed service configs
         if: github.event_name == 'pull_request'
-        run: ./scripts/validate-compose.sh changed "${{ github.event.pull_request.base.sha }}" "${{ github.sha }}"
+        run: .base/scripts/validate-compose.sh changed HEAD^1 HEAD
 
       - name: Validate all service configs
         if: github.event_name != 'pull_request'
-        run: ./scripts/validate-compose.sh all
+        run: .base/scripts/validate-compose.sh all

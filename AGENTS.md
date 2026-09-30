@@ -39,9 +39,11 @@ scripts/           setup, deploy, backup, hardening, validate-compose,
                    ha-ws.py (HA WebSocket commands from the CLI)
 ```
 
-Image tags live in each `docker-compose.yml`; Renovate opens the bump PRs.
-CI (`validate.yml`) runs `bash -n` on each `scripts/*.sh` and
-`scripts/validate-compose.sh`.
+Image tags live in each `docker-compose.yml`; Renovate opens the bump PRs,
+except for the estate's own images (rule 3). CI (`validate.yml`, the required
+check) runs the pin App guard, `scripts/verify-estate-pins.sh`, `bash -n` on
+each `scripts/*.sh` and `scripts/validate-compose.sh`, every script from the
+base branch against the PR tree.
 
 ## Rules
 
@@ -56,8 +58,13 @@ CI (`validate.yml`) runs `bash -n` on each `scripts/*.sh` and
    `.claude/hooks/pii-rules.toml`; names and street addresses by nobody.
 3. **Pin image versions**, no `:latest`. Images the estate builds itself
    (`ghcr.io/khelias/*`, khe-meta ADR-008) are pinned as
-   `:main@sha256:<digest>`: CI publishes them, and Renovate moves the digest
-   in one automerged PR per app (rule at the end of `renovate.json`).
+   `:main@sha256:<digest>`. The app's CI publishes them and then opens a pin
+   PR here through a per-repo GitHub App (`khe-adventure-pins`) with
+   auto-merge; Renovate is disabled for them (`renovate.json`). An App PR is
+   safe to automerge because `validate.yml` lets the App change nothing but
+   its own `:main@` digests, one line for one line, and
+   `verify-estate-pins.sh` requires every pinned digest to be attested by its
+   repo's `ci.yml` on main, all images of a repo from one commit.
 4. **State in named volumes or bind mounts under `/srv/data/<service>/`**,
    never `/home` or arbitrary paths.
 5. **Ingress through the shared `proxy` network** for NPM; separate networks
@@ -88,11 +95,12 @@ CI (`validate.yml`) runs `bash -n` on each `scripts/*.sh` and
   paths filter or when CI is down, and then it is `gh workflow run
   deploy.yml` (inputs `mode`, `stack`, `dry_run`).
 - **Rolling back an estate app** is a git change here. Pin every image of
-  the app to the same `sha-<full commit>@sha256:<digest>` (the `sha-` tag of
-  a commit never moves, so Renovate leaves the pin alone) and push. The way
-  back is `:main@sha256:` with the current digest from an anonymous manifest
-  fetch of `ghcr.io/v2/khelias/<image>/manifests/main`. `homelab-status.sh`
-  prints the revision each estate container runs.
+  the app to the same `sha-<full commit>@sha256:<digest>` and push. The pin
+  job skips a `sha-` pin, so the rollback stays until the operator returns
+  the pins to `:main@sha256:<current>`, the digest from an anonymous
+  manifest fetch of `ghcr.io/v2/khelias/<image>/manifests/main`; the next
+  app push then moves them again. `homelab-status.sh` prints the revision
+  each estate container runs.
 - **Check the branch before writing.** The VM pulls `main`, and finished work
   sometimes sits on a feature branch for weeks. A push to the wrong branch
   shows up as "Already up to date" on the VM and "Unknown stack" from the

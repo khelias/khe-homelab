@@ -25,8 +25,8 @@ services:
           cpus: '0.50'
 
   # khe-ai-adventure publishes both images from one commit (ADR-008 in
-  # khe-meta). Keep the two pins on the same commit; Renovate moves them
-  # together in one PR.
+  # khe-meta). Keep the two pins on the same commit; adventure's CI moves
+  # them together in one pin PR.
   adventure-web:
     image: ghcr.io/khelias/khe-ai-adventure-web:main@sha256:8782e5b3528e561ad3d7702b18003ba42d313f4784fd91a84ad18e81c0318873
     container_name: adventure-web

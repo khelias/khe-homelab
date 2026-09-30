@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+# The tree in $PWD, not the script's own: validate.yml runs the base branch's
+# copy of this script against the PR checkout.
+ROOT_DIR="$PWD"
 SERVICES_DIR="$ROOT_DIR/services"
 CREATED_ENV_FILES=()
 
@@ -108,6 +110,11 @@ validate_stack() {
 }
 
 main() {
+  if [ ! -d "$SERVICES_DIR" ]; then
+    echo "Run from the repository root: no services/ in $ROOT_DIR." >&2
+    exit 1
+  fi
+
   if [ "$#" -lt 1 ]; then
     usage >&2
     exit 1

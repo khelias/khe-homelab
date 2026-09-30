@@ -140,6 +140,39 @@ HEAD^{tree}` on the VM with the new `origin/main^{tree}`. If they match,
 `git fetch origin && git reset --hard origin/main` on the VM leaves every
 tracked file and every `.env` as it was.
 
+## Estate app deploy
+
+A push to `main` of `khe-ai-adventure` deploys itself: its CI builds and
+publishes both images, the `Pin homelab` job opens (or updates) the PR from
+`deploy/khe-ai-adventure` here with the new digests and turns on auto-merge,
+`validate.yml` passes, the PR merges and `deploy.yml` recreates both
+containers. Push to live is expected in 7-8 minutes. Step 1's "Estate images" section
+shows the commit each container runs.
+
+When it stalls, look in this order:
+
+1. The adventure CI run for the push, job `Pin homelab`. A notice there
+   explains a skip: no App secrets, `:main` has moved to a newer commit, a pin
+   is a `sha-` rollback, or the pins are already current. A failed job is
+   rerun with `gh run rerun <run-id> --repo khelias/khe-ai-adventure --failed`;
+   it is safe, because it only ever pins what `:main` points at.
+2. The open PR from `deploy/khe-ai-adventure`, its `Compose and Dockerfile
+   validation` log.
+3. The `deploy.yml` run for the merge.
+
+**Rollback:** pin both images to the same `sha-<full commit>@sha256:<digest>`
+([AGENTS.md](../AGENTS.md)) and push. The pin job leaves a `sha-` pin alone,
+so pushes to adventure do not deploy until the pins go back to
+`:main@sha256:<current>`.
+
+**A red "Pin App PRs change pins only" step** means the pin App's PR, or a
+branch the App pushed to, changes something other than its own `:main@`
+digests. The pin script never does that, so treat it as a compromised
+adventure repo or App key: close the PR, do not merge it by hand, and rotate
+the App's private key. **A red "Estate images are attested and paired"** on
+any PR means a pinned `ghcr.io/khelias/*` digest was not built by its repo's
+`ci.yml` on `main`, or the images of one repo come from different commits.
+
 ## OS updates and reboots
 
 Security updates install themselves through `unattended-upgrades`; nobody needs

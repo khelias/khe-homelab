@@ -141,7 +141,10 @@ Stack: `services/apps/games/` (nginx + adventure-web + adventure-proxy).
 **Adventure images** (built in `khe-ai-adventure` CI, khe-meta ADR-008):
 
 - `ghcr.io/khelias/khe-ai-adventure-web` and `-proxy`, public packages,
-  pinned here as `:main@sha256:`. Renovate moves both pins in one PR.
+  pinned here as `:main@sha256:`. After each publish, adventure's CI moves
+  both pins in one PR through the `khe-adventure-pins` App, and the PR
+  automerges once `validate.yml` passes ([runbook](runbook.md#estate-app-deploy)).
+  Renovate does not touch these images.
 - The web image writes `/adventure/config.js` at start from `API_SECRET`,
   from the same games `.env` as the proxy. Rotating the key is an `.env`
   change and a recreate, no rebuild.
