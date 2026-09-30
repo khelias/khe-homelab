@@ -146,7 +146,8 @@ A push to `main` of `khe-ai-adventure` deploys itself: its CI builds and
 publishes both images, the `Pin homelab` job opens (or updates) the PR from
 `deploy/khe-ai-adventure` here with the new digests and turns on auto-merge,
 `validate.yml` passes, the PR merges and `deploy.yml` recreates both
-containers. Push to live is expected in 7-8 minutes. Step 1's "Estate images" section
+containers. Push to live took under 7 minutes the first time (khe-meta
+ADR-008 "Observed"). Step 1's "Estate images" section
 shows the commit each container runs.
 
 When it stalls, look in this order:
