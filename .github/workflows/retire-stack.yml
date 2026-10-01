@@ -33,6 +33,14 @@ jobs:
     timeout-minutes: 10
 
     steps:
+      # The script decides "gone from git" from this checkout, so a branch
+      # that deletes a stack main still deploys would retire a live stack.
+      - name: Require main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::dispatch retire-stack.yml from main, not ${GITHUB_REF}"
+          exit 1
+
       # Full history: the script refuses a project this repo never had.
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7

@@ -151,8 +151,11 @@ tracked file and every `.env` as it was.
 Delete its directory in git and push; the deploy skips a stack that is gone,
 so its containers, volumes and networks stay until you dispatch
 `retire-stack.yml` with `project` set and `apply` false, read the plan, then
-dispatch it again with `apply` true. Run the printed `sudo rm -rf` lines for
-bind-mounted data on the VM yourself, after checking each path.
+dispatch it again with `apply` true. Dispatch from `main`: the workflow
+refuses another ref. Run the printed lines on the VM yourself, after checking
+each path: the stack directory git left behind (it holds the `.env`) and
+bind-mounted data under `/srv/data/<project>/`. Other bind sources print as
+`keep`.
 
 ## Estate app deploy
 

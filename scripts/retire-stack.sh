@@ -11,8 +11,9 @@
 # that has no services/*/<project>/docker-compose.yml in this checkout.
 # homelab-status.sh reports the same list.
 #
-# Bind-mount sources are only printed, as sudo lines for the operator: the
-# runner has no sudo, and some sit on the shared NFS data set.
+# The stack's leftover directory and its bind-mount sources under
+# /srv/data/<project>/ are only printed, as lines for the operator: the runner
+# has no sudo, and some sit on the shared NFS data set.
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -89,6 +90,7 @@ volumes="$(docker volume ls -q --filter "$filter")"
 networks="$(docker network ls --filter "$filter" --format '{{.Name}}')"
 images=""
 binds=""
+workdirs=""
 while read -r id; do
   [ -n "$id" ] || continue
   workdir="$(docker inspect --format "{{index .Config.Labels \"${PROJECT_LABEL}.working_dir\"}}" "$id")"
@@ -97,11 +99,13 @@ while read -r id; do
     "$WORKDIR_ROOT"*) ;;
     *) refuse "a container of ${project} was started from ${workdir:-an unknown directory}, outside ${WORKDIR_ROOT}" ;;
   esac
+  workdirs="${workdirs}${workdir}"$'\n'
   images="${images}$(docker inspect --format '{{.Image}}' "$id")"$'\n'
   binds="${binds}$(docker inspect --format '{{range .Mounts}}{{if eq .Type "bind"}}{{.Source}}{{"\n"}}{{end}}{{end}}' "$id")"$'\n'
 done <<< "$containers"
 images="$(printf '%s' "$images" | sed '/^$/d' | sort -u)"
 binds="$(printf '%s' "$binds" | sed '/^$/d' | sort -u)"
+workdirs="$(printf '%s' "$workdirs" | sed '/^$/d' | sort -u)"
 
 [ -n "${containers}${volumes}${networks}" ] || refuse "nothing labelled ${PROJECT_LABEL}=${project} on this host"
 
@@ -110,12 +114,25 @@ show_container() {
 }
 show() { printf '  %-10s %s\n' "$1" "$2"; }
 show_image() { printf '  image      %.12s\n' "${1#sha256:}"; }
+# Only the stack's own state is offered for removal: rule 4 puts it under
+# /srv/data/<project>/, and anything else (shared media, the Docker socket,
+# /var/lib/docker) may belong to other stacks. A bind inside the stack
+# directory goes with that directory's line.
 show_bind() {
+  local workdir
+  while read -r workdir; do
+    case "$1" in "$workdir"|"$workdir"/*) return 0 ;; esac
+  done <<< "$workdirs"
   case "$1" in
-    /var/run/*|/run/*|/etc/*|/proc/*|/sys/*|/dev/*|/usr/*|/lib/*|/boot/*)
-      printf '  keep: %s (system path)\n' "$1" ;;
-    *) printf '  sudo rm -rf %q\n' "$1" ;;
+    *..*) printf '  keep: %s\n' "$1" ;;
+    "/srv/data/${project}"|"/srv/data/${project}/"*) printf '  sudo rm -rf %q\n' "$1" ;;
+    *) printf '  keep: %s (not under /srv/data/%s/)\n' "$1" "$project" ;;
   esac
+}
+# git pull leaves the stack directory behind while it holds a gitignored .env
+# or data.
+show_workdir() {
+  if [ -d "$1" ]; then printf '  rm -rf %q (left in the checkout, holds its .env)\n' "$1"; fi
 }
 
 echo "Plan for ${project}"
@@ -123,8 +140,9 @@ each "$containers" show_container
 each "$images" show_image
 each "$volumes" show volume
 each "$networks" show network
-if [ -n "$binds" ]; then
-  echo "Bind mounts, never removed here; check each before running its line:"
+if [ -n "${binds}${workdirs}" ]; then
+  echo "Files on the VM, never removed here; check each before running its line:"
+  each "$workdirs" show_workdir
   each "$binds" show_bind
 fi
 
@@ -135,8 +153,17 @@ fi
 
 failed=0
 remove() { "$@" >/dev/null || failed=1; }
+# Removing by id fails for an image with several tags or digests even when
+# nothing uses it, so drop each reference first; Docker still refuses one a
+# container uses.
 remove_image() {
-  docker image rm "$1" >/dev/null 2>&1 || printf '  note: image %.12s kept (still in use)\n' "${1#sha256:}"
+  local ref
+  while read -r ref; do
+    if [ -n "$ref" ]; then docker image rm "$ref" >/dev/null 2>&1 || true; fi
+  done < <(docker image inspect --format '{{range .RepoTags}}{{.}}{{"\n"}}{{end}}{{range .RepoDigests}}{{.}}{{"\n"}}{{end}}' "$1" 2>/dev/null)
+  if docker image inspect "$1" >/dev/null 2>&1; then
+    docker image rm "$1" >/dev/null 2>&1 || printf '  note: image %.12s kept (still in use)\n' "${1#sha256:}"
+  fi
 }
 each "$containers" remove docker rm -f
 each "$networks" remove docker network rm
