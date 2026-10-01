@@ -701,6 +701,13 @@ addresses, so they live in the private `khe-meta` repo under
   `?status=up&msg=OK&ping=` suffix can be pasted along; the script strips it.
 - The push retries for about five minutes: the host's boot run fires while
   VM 100 and Kuma are still starting. A failed push changes nothing locally.
+- The file is written before the push, so a missing file and a monitor that
+  never had a beat together mean the timer is not installed on that machine,
+  not a path or Kuma problem: both machines see the same
+  `/srv/data/reports/khe/internal/`. On the host that was the case until
+  2026-10-01: `setup-proxmox-updates.sh` had never run there, since the host
+  had no checkout. It now runs from `/root/khe-homelab`
+  ([runbook](runbook.md#os-updates-and-reboots)).
 
 ## Tailscale
 

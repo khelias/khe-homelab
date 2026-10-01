@@ -252,8 +252,28 @@ install -d -m 700 /etc/khe
 read -rs U && printf 'OS_STATUS_PUSH_URL=%s\n' "$U" > /etc/khe/os-status.env && chmod 600 /etc/khe/os-status.env && unset U
 ```
 
-Then `scripts/setup-vm-updates.sh` or `scripts/setup-proxmox-updates.sh`; the
-monitor has a beat within a minute.
+Then the setup script; the monitor has a beat within a minute. On the VM it
+runs from the deploy checkout:
+
+```bash
+sudo /home/khe/homelab/scripts/setup-vm-updates.sh
+```
+
+The host runs it from a clone of the public repo in `/root/khe-homelab`
+(made once with `git clone --depth 1
+https://github.com/khelias/khe-homelab.git /root/khe-homelab`):
+
+```bash
+git -C /root/khe-homelab pull --ff-only
+```
+
+```bash
+bash /root/khe-homelab/scripts/setup-proxmox-updates.sh
+```
+
+`--install` copies `os-status.sh` to `/usr/local/sbin/khe-os-status`, so on
+both machines a change to the script takes effect only when the setup script
+runs again.
 
 **The monthly catch-up**, when a Kuma OS updates monitor is down or step 1
 shows updates or a reboot due.
