@@ -82,16 +82,48 @@
     },
     {
       "parameters": {
+        "operation": "read",
+        "fileSelector": "/reports/internal/os-status-*.json",
+        "options": {
+          "dataPropertyName": "data"
+        }
+      },
+      "id": "3f0c6a52-8d7e-4b1f-9a64-2f1c5e7d9b10",
+      "name": "Read OS Status Files",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        -160,
+        0
+      ],
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Files from scripts/os-status.sh on the Proxmox host and the Docker VM. A\n// missing, unreadable or stale file is reported as null, never as an error,\n// so the analytics part of the report still runs; read failures are listed\n// in errors so a broken read does not pass for a missing file.\nconst maxAgeMs = 48 * 60 * 60 * 1000;\nconst status = { host: null, vm: null, errors: [] };\nconst items = $input.all();\n\nasync function readText(i) {\n  try {\n    return (await this.helpers.getBinaryDataBuffer(i, 'data')).toString('utf8');\n  } catch (error) {\n    const inline = items[i].binary.data.data;\n    if (typeof inline === 'string' && !inline.startsWith('filesystem')) {\n      return Buffer.from(inline, 'base64').toString('utf8');\n    }\n    throw error;\n  }\n}\n\nfor (let i = 0; i < items.length; i++) {\n  if (!items[i].binary?.data) {\n    if (items[i].json?.error) status.errors.push(String(items[i].json.error));\n    continue;\n  }\n  const fileName = items[i].binary.data.fileName ?? `file ${i}`;\n  let parsed;\n  try {\n    parsed = JSON.parse(await readText.call(this, i));\n  } catch (error) {\n    status.errors.push(`${fileName}: ${error.message}`);\n    continue;\n  }\n  const key = parsed.role === 'pve-host' ? 'host' : parsed.role === 'vm' ? 'vm' : null;\n  if (!key) continue;\n  const ageMs = Date.now() - Date.parse(parsed.generatedAt);\n  if (!(ageMs < maxAgeMs)) continue;\n  status[key] = {\n    generatedAt: parsed.generatedAt,\n    os: parsed.os,\n    pveVersion: parsed.pveVersion,\n    runningKernel: parsed.runningKernel,\n    newestKernel: parsed.newestKernel,\n    rebootRequired: parsed.rebootRequired === true,\n    pendingUpdates: Number(parsed.pendingUpdates ?? 0)\n  };\n}\n\nreturn [{ json: status }];"
+      },
+      "id": "a6d2e4f1-5b7c-4c3e-8f19-7e0b2d4c6a83",
+      "name": "Parse OS Status",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        100,
+        0
+      ]
+    },
+    {
+      "parameters": {
         "mode": "runOnceForAllItems",
         "language": "javaScript",
-        "jsCode": "const source = $input.first().json;\nif (source.errors?.length) {\n  throw new Error(`Cloudflare GraphQL error: ${JSON.stringify(source.errors)}`);\n}\n\nconst account = source.data?.viewer?.accounts?.[0] ?? {};\nconst meta = $('Build Cloudflare Query').first().json;\n\nfunction totals(rows) {\n  const row = Array.isArray(rows) ? rows[0] : undefined;\n  return {\n    pageViews: Number(row?.count ?? 0),\n    visits: Number(row?.sum?.visits ?? 0)\n  };\n}\n\nfunction topPages(rows) {\n  return (Array.isArray(rows) ? rows : [])\n    .map((row) => ({\n      path: row?.dimensions?.requestPath || '/',\n      pageViews: Number(row?.count ?? 0),\n      visits: Number(row?.sum?.visits ?? 0)\n    }))\n    .filter((row) => row.pageViews > 0);\n}\n\nreturn [{\n  json: {\n    generatedAt: meta.generatedAt,\n    period: meta.period,\n    sites: [\n      {\n        host: 'khe.ee',\n        ...totals(account.kheTotal),\n        topPages: topPages(account.kheTopPages)\n      },\n      {\n        host: 'games.khe.ee',\n        ...totals(account.gamesTotal),\n        topPages: topPages(account.gamesTopPages)\n      }\n    ],\n    uptimeSummary: {\n      source: 'manual',\n      publicServicesHealthy: null\n    },\n    visibility: 'internal',\n    notes: [\n      'Internal operational report. Do not publish this raw file.',\n      'Public portfolio metrics are written separately from an allowlist.'\n    ]\n  }\n}];"
+        "jsCode": "const source = $('Fetch Cloudflare Analytics').first().json;\nif (source.errors?.length) {\n  throw new Error(`Cloudflare GraphQL error: ${JSON.stringify(source.errors)}`);\n}\n\nconst account = source.data?.viewer?.accounts?.[0] ?? {};\nconst meta = $('Build Cloudflare Query').first().json;\n\nfunction totals(rows) {\n  const row = Array.isArray(rows) ? rows[0] : undefined;\n  return {\n    pageViews: Number(row?.count ?? 0),\n    visits: Number(row?.sum?.visits ?? 0)\n  };\n}\n\nfunction topPages(rows) {\n  return (Array.isArray(rows) ? rows : [])\n    .map((row) => ({\n      path: row?.dimensions?.requestPath || '/',\n      pageViews: Number(row?.count ?? 0),\n      visits: Number(row?.sum?.visits ?? 0)\n    }))\n    .filter((row) => row.pageViews > 0);\n}\n\nreturn [{\n  json: {\n    generatedAt: meta.generatedAt,\n    period: meta.period,\n    sites: [\n      {\n        host: 'khe.ee',\n        ...totals(account.kheTotal),\n        topPages: topPages(account.kheTopPages)\n      },\n      {\n        host: 'games.khe.ee',\n        ...totals(account.gamesTotal),\n        topPages: topPages(account.gamesTopPages)\n      }\n    ],\n    osUpdates: $('Parse OS Status').first().json,\n    uptimeSummary: {\n      source: 'manual',\n      publicServicesHealthy: null\n    },\n    visibility: 'internal',\n    notes: [\n      'Internal operational report. Do not publish this raw file.',\n      'Public portfolio metrics are written separately from an allowlist.'\n    ]\n  }\n}];"
       },
       "id": "8573aa14-ec76-4266-b473-49f7973633e2",
       "name": "Build Internal Report",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -160,
+        360,
         -120
       ]
     },
@@ -111,7 +143,7 @@
       "type": "n8n-nodes-base.convertToFile",
       "typeVersion": 1.1,
       "position": [
-        100,
+        620,
         -120
       ]
     },
@@ -127,7 +159,7 @@
       "type": "n8n-nodes-base.readWriteFile",
       "typeVersion": 1.1,
       "position": [
-        360,
+        880,
         -120
       ]
     },
@@ -135,14 +167,14 @@
       "parameters": {
         "mode": "runOnceForAllItems",
         "language": "javaScript",
-        "jsCode": "const source = $input.first().json;\nif (source.errors?.length) {\n  throw new Error(`Cloudflare GraphQL error: ${JSON.stringify(source.errors)}`);\n}\n\nconst account = source.data?.viewer?.accounts?.[0] ?? {};\nconst meta = $('Build Cloudflare Query').first().json;\n\nfunction totals(rows) {\n  const row = Array.isArray(rows) ? rows[0] : undefined;\n  return {\n    pageViews: Number(row?.count ?? 0),\n    visits: Number(row?.sum?.visits ?? 0)\n  };\n}\n\nreturn [{\n  json: {\n    generatedAt: meta.generatedAt,\n    periodDays: meta.period.days,\n    sites: [\n      {\n        host: 'khe.ee',\n        ...totals(account.kheTotal)\n      },\n      {\n        host: 'games.khe.ee',\n        ...totals(account.gamesTotal)\n      }\n    ],\n    source: 'Cloudflare Web Analytics + n8n'\n  }\n}];"
+        "jsCode": "const source = $('Fetch Cloudflare Analytics').first().json;\nif (source.errors?.length) {\n  throw new Error(`Cloudflare GraphQL error: ${JSON.stringify(source.errors)}`);\n}\n\nconst account = source.data?.viewer?.accounts?.[0] ?? {};\nconst meta = $('Build Cloudflare Query').first().json;\n\nfunction totals(rows) {\n  const row = Array.isArray(rows) ? rows[0] : undefined;\n  return {\n    pageViews: Number(row?.count ?? 0),\n    visits: Number(row?.sum?.visits ?? 0)\n  };\n}\n\nreturn [{\n  json: {\n    generatedAt: meta.generatedAt,\n    periodDays: meta.period.days,\n    sites: [\n      {\n        host: 'khe.ee',\n        ...totals(account.kheTotal)\n      },\n      {\n        host: 'games.khe.ee',\n        ...totals(account.gamesTotal)\n      }\n    ],\n    source: 'Cloudflare Web Analytics + n8n'\n  }\n}];"
       },
       "id": "0b11d7a9-2d4d-4d14-8b3d-e319a9f1572b",
       "name": "Build Public Metrics",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -160,
+        360,
         140
       ]
     },
@@ -162,7 +194,7 @@
       "type": "n8n-nodes-base.convertToFile",
       "typeVersion": 1.1,
       "position": [
-        100,
+        620,
         140
       ]
     },
@@ -178,7 +210,7 @@
       "type": "n8n-nodes-base.readWriteFile",
       "typeVersion": 1.1,
       "position": [
-        360,
+        880,
         140
       ]
     },
@@ -186,14 +218,14 @@
       "parameters": {
         "mode": "runOnceForAllItems",
         "language": "javaScript",
-        "jsCode": "const report = $input.first().json;\nconst generatedAt = new Date(report.generatedAt).toLocaleString('et-EE', {\n  timeZone: 'Europe/Tallinn',\n  dateStyle: 'medium',\n  timeStyle: 'short'\n});\n\nconst lines = [\n  'Weekly homelab report',\n  `Generated: ${generatedAt}`,\n  `Period: last ${report.periodDays} days`,\n  '',\n  ...report.sites.map((site) => `${site.host}: ${site.visits} visits, ${site.pageViews} page views`),\n  '',\n  'Public metrics: https://khe.ee/reports/portfolio-metrics.json'\n];\n\nreturn [{\n  json: {\n    text: lines.join('\\n')\n  }\n}];"
+        "jsCode": "const report = $input.first().json;\nconst os = $('Parse OS Status').first().json;\n\nfunction osLine(label, status) {\n  if (!status) return `${label}: not reported`;\n  const parts = [];\n  if (status.pendingUpdates > 0) parts.push(`${status.pendingUpdates} updates`);\n  if (status.rebootRequired) {\n    parts.push(status.newestKernel && status.newestKernel !== status.runningKernel\n      ? `reboot due (${status.runningKernel} -> ${status.newestKernel})`\n      : 'reboot due');\n  }\n  return `${label}: ${parts.length ? parts.join(', ') : 'up to date'}`;\n}\nconst generatedAt = new Date(report.generatedAt).toLocaleString('et-EE', {\n  timeZone: 'Europe/Tallinn',\n  dateStyle: 'medium',\n  timeStyle: 'short'\n});\n\nconst lines = [\n  'Weekly homelab report',\n  `Generated: ${generatedAt}`,\n  `Period: last ${report.periodDays} days`,\n  '',\n  ...report.sites.map((site) => `${site.host}: ${site.visits} visits, ${site.pageViews} page views`),\n  '',\n  osLine('Proxmox', os.host),\n  osLine('Docker VM', os.vm),\n  ...(os.errors?.length ? [`OS status: ${os.errors.length} file(s) unreadable, see the internal report`] : []),\n  '',\n  'Public metrics: https://khe.ee/reports/portfolio-metrics.json'\n];\n\nreturn [{\n  json: {\n    text: lines.join('\\n')\n  }\n}];"
       },
       "id": "fe89daed-5e86-43cb-b991-0cfdcdbefc7e",
       "name": "Build Telegram Summary",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        100,
+        620,
         360
       ]
     },
@@ -213,7 +245,7 @@
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        360,
+        880,
         360
       ],
       "disabled": true
@@ -246,12 +278,7 @@
       "main": [
         [
           {
-            "node": "Build Internal Report",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Build Public Metrics",
+            "node": "Read OS Status Files",
             "type": "main",
             "index": 0
           }
@@ -312,6 +339,33 @@
         [
           {
             "node": "Send Telegram Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read OS Status Files": {
+      "main": [
+        [
+          {
+            "node": "Parse OS Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse OS Status": {
+      "main": [
+        [
+          {
+            "node": "Build Internal Report",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Build Public Metrics",
             "type": "main",
             "index": 0
           }

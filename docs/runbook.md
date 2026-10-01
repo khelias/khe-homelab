@@ -26,7 +26,8 @@ gh run view <run-id> --repo khelias/khe-homelab --log
 ```
 
 This is read-only and safe to run at any time, as often as you like. It reports
-host resources, pending OS updates, LAN IP and gateway, DNS, outbound
+host resources, the NFS mounts, pending OS updates and due reboots on the VM
+and the Proxmox host, LAN IP and gateway, DNS, outbound
 connectivity, container health, OOM kills, and whether the public side actually
 works through Cloudflare.
 
@@ -199,14 +200,62 @@ stop until step 2 is done.
 
 ## OS updates and reboots
 
-Security updates install themselves through `unattended-upgrades`; nobody needs
-to act. Two things do need a human:
+What updates itself, on both machines through `unattended-upgrades` and never
+with an automatic reboot:
 
-- **Pending non-security updates.** Step 1 reports the count. Not urgent.
-- **`OS reboot required`.** A kernel or libc update is installed but not active
-  until reboot. Step 1 reports this too. Reboot at a quiet moment over SSH
-  (`ssh khe@docker-vm`, via Tailscale) or from the Proxmox console. Containers
-  come back on their own, since every stack uses `restart: unless-stopped`.
+- **Docker VM:** Debian security updates (Debian's default origins). Docker CE
+  and Tailscale come from their own repositories and wait for the monthly
+  catch-up.
+- **Proxmox host:** Debian security updates only
+  (`/etc/apt/apt.conf.d/52khe-security-only`, written by
+  `scripts/setup-proxmox-updates.sh`). Proxmox packages and kernels are
+  upgraded by hand.
+
+**How you know.** `scripts/os-status.sh` runs daily at 07:00 and five minutes
+after each boot (`khe-os-status.timer`) on both machines and writes
+`os-status-pve-host.json` and `os-status-vm.json` into
+`/srv/data/reports/khe/internal/`. Step 1's "OS updates" section and the
+Monday Telegram report ("Proxmox: ...", "Docker VM: ...") read them: pending
+updates, a due reboot, or "not reported" when a file is missing or older than
+48 h. On the host a due reboot means the newest installed kernel is not the
+running one, so a kernel pinned to an older version reads as "reboot due"
+until it is unpinned.
+
+**The monthly catch-up**, when the Telegram lines show updates or a reboot due.
+A night after 23:00: AdGuard is the LAN's only DNS, so the reboots take the
+whole household offline for about ten minutes. SSH from the LAN, not over
+Tailscale, and work inside `tmux` on each machine, one block at a time:
+
+1. host: `qm snapshot 100 pre-update-$(date +%F)`
+2. VM: `sudo apt update`, then `sudo apt full-upgrade` (Docker and Tailscale
+   restart during it; the LAN session and `tmux` survive)
+3. host: `apt update`, then `apt full-upgrade` (never `apt upgrade` on
+   Proxmox, it can leave the system half-upgraded)
+4. host: `qm shutdown 100 --timeout 300`, then `qm status 100` reads `stopped`
+5. host: `qm config 100 | grep onboot` reads `onboot: 1`, then `reboot`
+6. Step 1 once the VM is up: no reboot due, nothing pending, both NFS mounts
+   OK. A day later, if nothing misbehaved: `qm delsnapshot 100
+   pre-update-<date>`.
+
+Never `zpool upgrade` in this window: a pool upgraded for the new kernel's ZFS
+cannot be imported by the older kernel a rollback would boot.
+
+**All containers down after a boot.** Docker waits for the NFS mounts
+(`RequiresMountsFor=/srv/data /srv/backups`, from `scripts/setup-vm-updates.sh`)
+rather than starting on the VM disk's empty `/srv/data`. If the host's NFS
+server was not up in time, Docker does not start at all. Step 1 shows `/srv/data
+is not mounted` and the Docker daemon unreachable. Once the host is up, on the
+VM: `sudo mount -a && sudo systemctl start docker`. Unmounting `/srv/data` by
+hand stops Docker too, for the same reason.
+
+**The host does not come back on a new kernel.** The host's screen shows only
+the GRUB menu: `i915` is blacklisted and the iGPU is bound to `vfio-pci`, so
+the console goes dark after boot. With a monitor and keyboard on the host,
+pick the previous kernel under "Advanced options" in GRUB. Once it is up,
+`proxmox-boot-tool kernel pin <version>` keeps it, and
+`proxmox-boot-tool kernel unpin` releases it when a fixed kernel lands. If VM
+100 is not running five minutes after the host is back, read its task log in
+the web UI.
 
 ## Before you restore from backup
 

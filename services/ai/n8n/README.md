@@ -60,14 +60,23 @@ The importable workflow lives at:
 services/ai/n8n/workflows/weekly-homelab-report.json
 ```
 
-Import it on the Docker VM:
+Import it on the Docker VM. Importing over an existing copy replaces it with
+the template, so the account ID, credentials and Telegram settings below are
+gone afterwards. Export the live workflow first, as a backup and to read the
+old settings from:
+
+```bash
+docker exec n8n n8n export:workflow --all --output=/tmp/workflows-backup.json
+docker cp n8n:/tmp/workflows-backup.json /home/khe/n8n-workflows-backup-$(date +%F).json
+```
 
 ```bash
 docker cp /home/khe/homelab/services/ai/n8n/workflows/weekly-homelab-report.json n8n:/tmp/weekly-homelab-report.json
 docker exec n8n n8n import:workflow --input=/tmp/weekly-homelab-report.json
 ```
 
-After import, open n8n and configure:
+After every import, open n8n, redo each step below, then activate the workflow
+and run it once by hand:
 
 - `Build Cloudflare Query`: replace `replace-with-cloudflare-account-id` with the Cloudflare account ID.
 - `Fetch Cloudflare Analytics`: assign the `Cloudflare Analytics API` HTTP Header Auth credential.
@@ -88,29 +97,40 @@ The workflow uses these nodes:
    - Auth: the Cloudflare HTTP Header Auth credential above
    - Header: `Content-Type: application/json`
    - Body: JSON
-4. Code: Build reports
-   - Build a full internal report for your own review.
+4. Read/Write Files from Disk: Read OS Status Files
+   - Reads `/reports/internal/os-status-*.json`, written daily by
+     `scripts/os-status.sh` on the Proxmox host and the Docker VM.
+   - Always outputs data and continues on error, so a missing file does not
+     stop the report.
+5. Code: Parse OS Status
+   - Turns the files into `{host, vm}`; a missing, unreadable or older than
+     48 h file becomes `null` and reads "not reported".
+6. Code: Build reports
+   - Build a full internal report for your own review, including the OS
+     update state from step 5.
    - Build a public portfolio summary from a strict allowlist.
    - Do not include IP addresses, user agents, or visitor-level data.
-5. Convert to File
+7. Convert to File
    - Operation: Convert to JSON
    - File name: `weekly-homelab.json`
    - Format JSON: on
-6. Read/Write Files from Disk
+8. Read/Write Files from Disk
    - Operation: Write File to Disk
    - File path and name: `/reports/internal/weekly-homelab.json`
    - Input binary field: `data`
-7. Convert to File
+9. Convert to File
    - Operation: Convert to JSON
    - File name: `portfolio-metrics.json`
    - Format JSON: on
-8. Read/Write Files from Disk
+10. Read/Write Files from Disk
    - Operation: Write File to Disk
    - File path and name: `/reports/public/portfolio-metrics.json`
    - Input binary field: `data`
-9. Code: Build Telegram Summary
-   - Builds a short text summary from the public allowlisted metrics.
-10. Telegram: Send Telegram Summary
+11. Code: Build Telegram Summary
+   - Builds a short text summary from the public allowlisted metrics, plus
+     one line each for the Proxmox host and the Docker VM: pending updates and
+     a due reboot, or "up to date".
+12. Telegram: Send Telegram Summary
    - Sends the short summary to the configured chat.
    - Disabled in the template until credential and chat ID are configured.
 

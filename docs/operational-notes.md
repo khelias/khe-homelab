@@ -116,7 +116,9 @@ file in every session is wasteful; the entries are independent.
   (git-tracked bind mount).
 - API keys in VM `.env` only, never committed.
 - **Regenerate API keys** from scratch:
-  - Proxmox: `pveum user token add root@pam homepage --privsep=0`
+  - Proxmox: a privilege-separated token of the read-only `monitor@pve` user
+    ([Proxmox API tokens](../infrastructure/proxmox/README.md#api-tokens)),
+    never a `root@pam` token
   - Paperless: `docker exec paperless python3 manage.py drf_create_token admin`
   - Immich: insert into `api_key` table (helper in `scripts/`)
   - Jellyfin: insert into `ApiKeys` table in `jellyfin.db`

@@ -44,3 +44,8 @@ sudo mkdir -p /srv/data/{immich/upload,nextcloud,paperless/{media,consume,export
 sudo chown -R "$USER:$USER" /srv/data
 
 echo "NFS mounts ready. Docker services can now use /srv/data/*"
+
+# 7. Docker after the NFS mounts, unattended upgrades, OS status timer
+SETUP_UPDATES="$(dirname "$0")/setup-vm-updates.sh"
+[ -f "$SETUP_UPDATES" ] || { echo "Missing $SETUP_UPDATES" >&2; exit 1; }
+sudo bash "$SETUP_UPDATES"

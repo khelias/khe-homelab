@@ -18,6 +18,9 @@ TUNNEL_CONTAINER="${HOMELAB_TUNNEL_CONTAINER:-cloudflare-tunnel}"
 EDGE_PROBE_HOST="${HOMELAB_EDGE_PROBE_HOST:-khe.ee}"
 DISK_WARN_PERCENT="${HOMELAB_DISK_WARN_PERCENT:-85}"
 MEM_WARN_PERCENT="${HOMELAB_MEM_WARN_PERCENT:-90}"
+# Written daily by scripts/os-status.sh on the Proxmox host and on this VM.
+STATUS_DIR="${HOMELAB_STATUS_DIR:-/srv/data/reports/khe/internal}"
+STATUS_MAX_AGE_HOURS="${HOMELAB_STATUS_MAX_AGE_HOURS:-48}"
 
 # WAF custom rule 3 challenges CLI user agents, so an honest browser UA is
 # required or every edge probe comes back 403 and the diagnosis goes wrong.
@@ -30,6 +33,85 @@ fail() { printf '  FAIL  %s\n' "$1"; problems=$((problems + 1)); }
 warn() { printf '  WARN  %s\n' "$1"; warnings=$((warnings + 1)); }
 ok()   { printf '  OK    %s\n' "$1"; }
 
+summary() {
+  echo "Summary"
+  printf '  %d failure(s), %d warning(s)\n' "$problems" "$warnings"
+  if [ "$problems" -gt 0 ]; then
+    echo "  Status: PROBLEMS FOUND"
+    exit 1
+  fi
+  echo "  Status: healthy"
+}
+
+# The status files are flat, one key per line, written by os-status.sh, so a
+# sed lookup is enough and the runner needs no JSON tool.
+status_field() {
+  sed -n "s/^ *\"$2\": *//p" "$1" 2>/dev/null | head -n 1 | tr -d '",'
+}
+
+# live=yes for this VM: the host checks above already read its state directly,
+# so its file only proves the path the weekly report depends on.
+os_update_line() {
+  local label="$1" file="$2" live="$3" epoch age_h pending reboot running newest pve detail
+  if [ ! -f "$file" ]; then
+    warn "${label}: not reported (no ${file##*/})"
+    return
+  fi
+  epoch="$(status_field "$file" generatedEpoch)"
+  case "$epoch" in
+    ''|*[!0-9]*) warn "${label}: not reported (${file##*/} unreadable)"; return ;;
+  esac
+  age_h=$(( ($(date +%s) - epoch) / 3600 ))
+  if [ "$age_h" -ge "$STATUS_MAX_AGE_HOURS" ]; then
+    warn "${label}: not reported for ${age_h} h (${file##*/} is stale)"
+    return
+  fi
+  pending="$(status_field "$file" pendingUpdates)"
+  reboot="$(status_field "$file" rebootRequired)"
+  running="$(status_field "$file" runningKernel)"
+  newest="$(status_field "$file" newestKernel)"
+  pve="$(status_field "$file" pveVersion)"
+  case "$pending" in
+    ''|*[!0-9]*) warn "${label}: not reported (${file##*/} unreadable)"; return ;;
+  esac
+  detail="kernel ${running}"
+  [ -n "$pve" ] && [ "$pve" != null ] && detail="pve ${pve}, ${detail}"
+
+  if [ "$live" = yes ]; then
+    local due="no reboot due"
+    [ "$reboot" = true ] && due="reboot due"
+    printf '  INFO  %s: %s pending, %s (%s, reported %d h ago)\n' \
+      "$label" "$pending" "$due" "$detail" "$age_h"
+    return
+  fi
+  if [ "$reboot" = true ]; then
+    if [ -n "$newest" ] && [ "$newest" != "$running" ]; then
+      warn "${label}: reboot due (${running} -> ${newest})"
+    else
+      warn "${label}: reboot due"
+    fi
+  fi
+  if [ "$pending" -gt 0 ]; then
+    warn "${label}: ${pending} update(s) pending"
+  fi
+  if [ "$reboot" != true ] && [ "$pending" -eq 0 ]; then
+    ok "${label}: up to date (${detail})"
+  fi
+}
+
+os_updates_section() {
+  echo "OS updates"
+  os_update_line "Proxmox host" "${STATUS_DIR}/os-status-pve-host.json" no
+  os_update_line "Docker VM" "${STATUS_DIR}/os-status-vm.json" yes
+  echo
+}
+
+if [ "${HOMELAB_STATUS_ONLY:-}" = osupdates ]; then
+  os_updates_section
+  summary
+  exit 0
+fi
+
 echo "::group::Host"
 printf 'uptime:   %s\n' "$(uptime -p 2>/dev/null || echo unknown)"
 printf 'kernel:   %s\n' "$(uname -r)"
@@ -37,7 +119,7 @@ printf 'load:     %s\n' "$(cut -d' ' -f1-3 /proc/loadavg 2>/dev/null || echo unk
 echo
 free -h 2>/dev/null
 echo
-df -h / /srv 2>/dev/null
+df -h / /srv/data /srv/backups 2>/dev/null
 echo "::endgroup::"
 
 echo "Host checks"
@@ -47,6 +129,16 @@ if [ -n "$root_pct" ] && [ "$root_pct" -ge "$DISK_WARN_PERCENT" ]; then
 else
   ok "root filesystem ${root_pct:-?}% full"
 fi
+
+# Unmounted, these are plain directories on the VM disk and containers would
+# write into them unnoticed.
+for mnt in /srv/data /srv/backups; do
+  if mountpoint -q "$mnt" 2>/dev/null; then
+    ok "${mnt} mounted"
+  else
+    fail "${mnt} is not mounted (NFS from the Proxmox host)"
+  fi
+done
 
 mem_pct="$(free 2>/dev/null | awk '/^Mem:/ { printf "%d", ($2 - $7) / $2 * 100 }')"
 if [ -n "$mem_pct" ] && [ "$mem_pct" -ge "$MEM_WARN_PERCENT" ]; then
@@ -69,6 +161,8 @@ else
   ok "OS packages up to date"
 fi
 echo
+
+os_updates_section
 
 echo "Network checks"
 lan_ips="$(hostname -I 2>/dev/null | tr ' ' '\n' | grep -E '^192\.168\.' | tr '\n' ' ')"
@@ -222,10 +316,4 @@ else
 fi
 echo
 
-echo "Summary"
-printf '  %d failure(s), %d warning(s)\n' "$problems" "$warnings"
-if [ "$problems" -gt 0 ]; then
-  echo "  Status: PROBLEMS FOUND"
-  exit 1
-fi
-echo "  Status: healthy"
+summary

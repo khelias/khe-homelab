@@ -178,7 +178,7 @@ All external traffic goes through Cloudflare Tunnel — zero ports open on the r
 
 ```bash
 # On Proxmox host
-./scripts/proxmox-post-install.sh     # 1. Disable enterprise repo, install tools, enable IOMMU
+./scripts/proxmox-post-install.sh     # 1. Disable enterprise repo, tools, security updates, IOMMU
 ./scripts/setup-igpu-passthrough.sh   # 2. Bind Intel iGPU to vfio-pci for QSV (reboot after)
 ./scripts/create-zfs-pool.sh          # 3. Create ZFS mirror from 2x 12TB HDDs
 ./scripts/create-docker-vm.sh         # 4. Create Debian 13 VM (cloud-init, fully automated)
@@ -186,7 +186,7 @@ All external traffic goes through Cloudflare Tunnel — zero ports open on the r
 
 # Inside Docker VM (ssh khe@192.168.0.11)
 ./scripts/setup-docker-host.sh        # 6. Install Docker + real kernel + firmware (reboot after)
-./scripts/mount-nfs-in-vm.sh          # 7. Mount NFS shares at /srv
+./scripts/mount-nfs-in-vm.sh          # 7. Mount NFS shares at /srv, Docker waits for them
 ./scripts/harden-docker-vm.sh         # 8. UFW firewall, fail2ban, SSH hardening
 ./scripts/setup-tailscale.sh          # 9. Install Tailscale as subnet router
 ./scripts/deploy.sh up                # 10. Start every stack

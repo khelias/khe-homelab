@@ -64,6 +64,32 @@ Configured for `root@pam` (2026-04-15):
 
 Setup: Datacenter → Permissions → Two Factor Authentication → Add TOTP / Recovery Keys
 
+## Updates
+Debian security updates install themselves (`unattended-upgrades`, limited to
+the Debian security origin); Proxmox packages and kernels are upgraded by hand
+in a monthly catch-up, and nothing reboots on its own. Guests start after the
+NFS server (`pve-guests.service` drop-in), so the Docker VM never mounts an
+export that is not there yet. A daily timer writes the host's update state for
+ops-status and the weekly report. Set up by `../../scripts/setup-proxmox-updates.sh`
+(called from the post-install script); the procedure and the kernel rollback
+are in [docs/runbook.md](../../docs/runbook.md#os-updates-and-reboots).
+
+## API tokens
+Read-only consumers use the `monitor@pve` user with the `PVEAuditor` role on
+`/`, and one privilege-separated token per consumer, also `PVEAuditor`:
+
+```bash
+pveum user add monitor@pve --comment "read-only"
+pveum acl modify / --users monitor@pve --roles PVEAuditor
+pveum user token add monitor@pve <consumer> --privsep 1
+pveum acl modify / --tokens 'monitor@pve!<consumer>' --roles PVEAuditor
+```
+
+The token secret goes straight into that consumer's `.env` on the VM. Current
+consumers: `homepage` (the Proxmox widget). `root@pam` gets no tokens; the
+Homepage token it held until October 2026 is replaced and removed in
+`khe-meta/plans/flickering-crunching-sparkle.md` step 4.
+
 ## VM Provisioning
 VMs are created using Debian 13 (Trixie) cloud images with cloud-init (no interactive installer).
 Cloud-init configures: hostname, static IP, SSH keys, user account.
