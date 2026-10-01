@@ -14,25 +14,30 @@ Two rules before anything else:
 
 ## Step 1: always start here
 
+The status snapshot runs every 5 minutes on the VM (`khe-homelab-status.timer`)
+and lands in Loki. To get a fresh one now:
+
 ```bash
 gh workflow run ops-status.yml --repo khelias/khe-homelab
 ```
 
-Wait about a minute, then read the result:
-
-```bash
-gh run list --repo khelias/khe-homelab --workflow ops-status.yml --limit 1
-gh run view <run-id> --repo khelias/khe-homelab --log
-```
+Wait about a minute. The run log shows only the summary (failure and warning
+counts), because this repo's Actions logs are public. Read the whole snapshot
+in Grafana, Explore, Loki, query `{job="homelab-status"}` over the last
+15 minutes: each run starts with a `run <UTC time>` line. An agent reads the
+same through mcp-grafana. If Grafana or Loki is down, the file is
+`/var/lib/khe-status/status.log` on the VM.
 
 This is read-only and safe to run at any time, as often as you like. It reports
 host resources, the NFS mounts, pending OS updates and due reboots on the VM
 and the Proxmox host, LAN IP and gateway, DNS, outbound
-connectivity, container health, OOM kills, and whether the public side actually
-works through Cloudflare.
+connectivity, container health, OOM kills, compose projects whose stack is
+gone from git, and whether the public side actually works through Cloudflare.
 
-If it will not run at all, the runner is offline, which itself is a finding:
-jump to "Nothing responds" below.
+If the workflow will not run at all, the runner is offline, which itself is a
+finding: jump to "Nothing responds" below. If it fails saying
+`/var/lib/khe-status` is not writable, run
+`sudo /home/khe/homelab/scripts/setup-status-timer.sh` on the VM once.
 
 ## Symptom: public sites are down, but the LAN works
 

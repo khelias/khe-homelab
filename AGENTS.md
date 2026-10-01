@@ -86,12 +86,14 @@ base branch against the PR tree.
   (Postgres dumps, config snapshots, HA recorder). Per service:
   `cd services/<group>/<service> && docker compose up -d`.
 - **A push to `main` is the deploy.** `deploy.yml` runs when `services/**`,
-  `scripts/deploy.sh`, `scripts/deploy-stacks.sh` or the workflow changes:
-  the runner pulls `/home/khe/homelab` with `git pull --ff-only` and deploys
-  the stacks changed since `.deploy/last-successful-sha`. A manual deploy
-  after that push is a no-op. One is needed only for changes outside the
-  paths filter or when CI is down, and then it is `gh workflow run
-  deploy.yml` (inputs `mode`, `stack`, `dry_run`).
+  `scripts/deploy.sh`, `scripts/deploy-stacks.sh`, `scripts/homelab-status.sh`,
+  `scripts/retire-stack.sh` (the status timer runs both from the VM
+  checkout) or the workflow changes: the runner pulls `/home/khe/homelab`
+  with `git pull --ff-only` and deploys the stacks changed since
+  `.deploy/last-successful-sha`. A manual deploy after that push is a no-op.
+  One is needed only for changes outside the paths filter or when CI is
+  down, and then it is `gh workflow run deploy.yml` (inputs `mode`, `stack`,
+  `dry_run`).
 - **Rolling back an estate app** is a git change here. Pin every image of
   the app to the same `sha-<full commit>@sha256:<digest>` and push. The pin
   job skips a `sha-` pin, so the rollback stays until the operator returns
@@ -104,12 +106,20 @@ base branch against the PR tree.
   shows up as "Already up to date" on the VM and "Unknown stack" from the
   deploy.
 - **Operations go through `workflow_dispatch`** on the homelab runner:
-  `ops-status.yml` for diagnostics ([runbook](docs/runbook.md)), `deploy.yml`
-  for deploys (the operator's call), `retire-stack.yml` to remove what a
-  stack deleted from git leaves on the VM (the agent dispatches it only with
-  `apply=false`; `apply=true` is the operator's call). A workflow never takes
-  a shell command as input; that would be SSH under another name. Narrow,
-  pre-written actions only.
+  `ops-status.yml` refreshes the status snapshot ([runbook](docs/runbook.md)),
+  `deploy.yml` deploys (the operator's call), `retire-stack.yml` removes what
+  a stack deleted from git leaves on the VM (the agent dispatches it only
+  with `apply=false`; `apply=true` is the operator's call). A workflow never
+  takes a shell command as input; that would be SSH under another name.
+  Narrow, pre-written actions only.
+- **The agent reads the VM through Loki**, with the official mcp-grafana
+  server (`scripts/mcp-grafana.sh`, read-only, Grafana Viewer token in
+  `~/.config/khe/grafana-token`): container logs, and `{job="homelab-status"}`
+  for the `homelab-status.sh` snapshot that the `khe-homelab-status` timer
+  writes every 5 min. This repo's Actions logs are public, so `ops-status.yml`
+  prints only the summary. Loki has no per-stream access control, so
+  Vaultwarden, Home Assistant, Immich and trips logs are reachable too: query
+  only what the task needs, and never quote personal data or tokens from them.
 - **Fork PRs can reach the runner.** Fork PR approval stays at
   `all_external_contributors`, and a fork run is approved only after reading
   its `.github/workflows/` diff (khe-meta ADR-006).

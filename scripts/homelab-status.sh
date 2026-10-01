@@ -1,10 +1,19 @@
 #!/usr/bin/env bash
-# Read-only health snapshot of the Docker VM. Runs on the self-hosted runner
-# and is the agent-facing diagnostic channel, since ssh is unavailable.
+# Read-only health snapshot of the Docker VM, the agent's diagnostic channel
+# since ssh is unavailable.
 #
-# Output discipline: this repo is PUBLIC, so Actions run logs are world-readable.
-# Emit only aggregated facts already documented in the repo (container names,
-# ports, the VM's RFC1918 addresses). Never emit raw container logs, full
+#   homelab-status.sh              print the snapshot
+#   homelab-status.sh --log FILE   append it to FILE, rotating FILE to FILE.1
+#                                  past 1 MB
+#
+# The khe-homelab-status timer (scripts/setup-status-timer.sh) runs it every
+# 5 min with --log, Alloy tails the file into Loki, and the agent reads it
+# there. ops-status.yml uses --log too and prints only the summary, because
+# this repo is PUBLIC and Actions run logs are world-readable.
+#
+# Output discipline: Loki content enters AI conversations, so emit only
+# aggregated facts already documented in the repo (container names, ports,
+# the VM's RFC1918 addresses). Never emit raw container logs, full
 # `docker inspect` output, environment variables, or per-visitor data. A
 # single `--format`ed field such as health status is fine; a whole object is not.
 #
@@ -26,12 +35,39 @@ STATUS_MAX_AGE_HOURS="${HOMELAB_STATUS_MAX_AGE_HOURS:-48}"
 # required or every edge probe comes back 403 and the diagnosis goes wrong.
 BROWSER_UA='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36'
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LOG_MAX_BYTES=1048576
+
+if [ "$#" -gt 0 ]; then
+  if [ "$1" != --log ] || [ -z "${2:-}" ] || [ "$#" -ne 2 ]; then
+    echo "usage: $0 [--log FILE]" >&2
+    exit 2
+  fi
+  log_file="$2"
+  # The timer and ops-status share one file: the lock keeps runs from
+  # interleaving and rotation from racing a writer. Rotation is a rename, never
+  # a copy: Alloy reads a new inode from offset 0 and stamps lines at read
+  # time, so copied lines would reappear in Loki as current.
+  exec 9>>"${log_file}.lock" || exit 1
+  flock 9 || exit 1
+  if [ -f "$log_file" ] && [ "$(stat -c %s "$log_file")" -gt "$LOG_MAX_BYTES" ]; then
+    mv -f "$log_file" "${log_file}.1"
+  fi
+  exec >>"$log_file" 2>&1 || exit 1
+fi
+
 problems=0
 warnings=0
 
 fail() { printf '  FAIL  %s\n' "$1"; problems=$((problems + 1)); }
 warn() { printf '  WARN  %s\n' "$1"; warnings=$((warnings + 1)); }
 ok()   { printf '  OK    %s\n' "$1"; }
+
+# Workflow commands are noise anywhere but a live Actions log.
+use_groups=false
+if [ "${GITHUB_ACTIONS:-}" = true ] && [ -z "${log_file:-}" ]; then use_groups=true; fi
+group()    { if [ "$use_groups" = true ]; then echo "::group::$1"; fi; }
+endgroup() { if [ "$use_groups" = true ]; then echo "::endgroup::"; fi; }
 
 summary() {
   echo "Summary"
@@ -113,13 +149,15 @@ os_updates_section() {
   echo
 }
 
+echo "run $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
 if [ "${HOMELAB_STATUS_ONLY:-}" = osupdates ]; then
   os_updates_section
   summary
   exit 0
 fi
 
-echo "::group::Host"
+group Host
 printf 'uptime:   %s\n' "$(uptime -p 2>/dev/null || echo unknown)"
 printf 'kernel:   %s\n' "$(uname -r)"
 printf 'load:     %s\n' "$(cut -d' ' -f1-3 /proc/loadavg 2>/dev/null || echo unknown)"
@@ -127,7 +165,7 @@ echo
 free -h 2>/dev/null
 echo
 df -h / /srv/data /srv/backups 2>/dev/null
-echo "::endgroup::"
+endgroup
 
 echo "Host checks"
 root_pct="$(df -P / 2>/dev/null | awk 'NR == 2 { gsub("%", "", $5); print $5 }')"
@@ -213,7 +251,7 @@ else
   ok "${running}/${total} containers running"
 
   unhealthy="$(docker ps --filter health=unhealthy --format '{{.Names}}' 2>/dev/null | tr '\n' ' ')"
-  [ -n "$unhealthy" ] && fail "unhealthy: ${unhealthy}" || ok "no unhealthy containers"
+  if [ -n "$unhealthy" ]; then fail "unhealthy: ${unhealthy}"; else ok "no unhealthy containers"; fi
 
   # "not unhealthy" covers both healthy and still-starting, which is too coarse
   # to verify a healthcheck change: a container in start_period looks identical
@@ -234,7 +272,7 @@ else
   [ -n "$starting_names" ] && printf '  INFO  starting: %s\n' "$starting_names"
 
   restarting="$(docker ps --filter status=restarting --format '{{.Names}}' 2>/dev/null | tr '\n' ' ')"
-  [ -n "$restarting" ] && fail "restarting: ${restarting}" || ok "no restart loops"
+  if [ -n "$restarting" ]; then fail "restarting: ${restarting}"; else ok "no restart loops"; fi
 
   stopped="$(docker ps -a --filter status=exited --format '{{.Names}}' 2>/dev/null | tr '\n' ' ')"
   [ -n "$stopped" ] && warn "exited: ${stopped}"
@@ -250,7 +288,7 @@ else
       [ -n "${count:-}" ] && [ "$count" -gt 0 ] && oom_hits="${oom_hits}${cname}=${count} "
     done
   done < <(docker ps --format '{{.ID}} {{.Names}}' 2>/dev/null)
-  [ -n "$oom_hits" ] && warn "cgroup OOM kills since start: ${oom_hits}" || ok "no cgroup OOM kills"
+  if [ -n "$oom_hits" ]; then warn "cgroup OOM kills since start: ${oom_hits}"; else ok "no cgroup OOM kills"; fi
 fi
 echo
 
@@ -270,7 +308,7 @@ if docker info >/dev/null 2>&1; then
     esac
     n_estate=$((n_estate + 1))
     line="${cname} ${hstate} ${rev:-no-revision} (${src#https://github.com/})"
-    [ "$hstate" = "healthy" ] && ok "$line" || warn "$line"
+    if [ "$hstate" = "healthy" ]; then ok "$line"; else warn "$line"; fi
     estate_revs="${estate_revs}${src} ${rev:-no-revision}"$'\n'
   done < <(docker ps --format '{{.Names}}' 2>/dev/null)
   [ "$n_estate" -eq 0 ] && warn "no running container carries a khelias image source label"
@@ -278,6 +316,20 @@ if docker info >/dev/null 2>&1; then
     [ -z "$src" ] && continue
     fail "${src#https://github.com/} runs more than one revision; pin its images to the same commit"
   done < <(printf '%s' "${estate_revs:-}" | sort -u | awk '{ print $1 }' | uniq -d)
+fi
+echo
+
+echo "Orphan compose projects"
+# A stack deleted from git is skipped by deploy-stacks.sh, so its containers
+# and volumes stay until retire-stack.yml removes them.
+if docker info >/dev/null 2>&1; then
+  n_orphans=0
+  while read -r project; do
+    [ -z "$project" ] && continue
+    n_orphans=$((n_orphans + 1))
+    warn "${project}: no services/*/${project}/docker-compose.yml; retire it with retire-stack.yml"
+  done < <("${SCRIPT_DIR}/retire-stack.sh" 2>/dev/null)
+  [ "$n_orphans" -eq 0 ] && ok "every compose project has a compose file in the checkout"
 fi
 echo
 

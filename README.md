@@ -195,7 +195,9 @@ All external traffic goes through Cloudflare Tunnel — zero ports open on the r
 ./scripts/ha-dashboard.py    # Regenerate the Home Assistant Overview dashboard
 ```
 
-Health snapshot without touching the VM, via the self-hosted runner:
+Health snapshot without touching the VM: a timer writes it every 5 min into
+Loki (`{job="homelab-status"}` in Grafana Explore), and this refreshes it now,
+printing only the summary since Actions logs here are public:
 
 ```bash
 gh workflow run ops-status.yml --repo khelias/khe-homelab

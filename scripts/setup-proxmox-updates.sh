@@ -4,7 +4,7 @@
 # Debian security updates install themselves; Proxmox packages and kernels
 # stay manual (the monthly procedure in docs/runbook.md). Nothing reboots on
 # its own. Also orders guest start after the NFS export and installs the
-# daily OS status file that ops-status reads and the push to its Uptime Kuma
+# daily OS status file that the status snapshot reads and the push to its Uptime Kuma
 # monitor.
 set -euo pipefail
 
@@ -67,7 +67,10 @@ bash "$HERE/os-status.sh" --install "$STATUS_FILE"
 
 echo ""
 echo "=== Done ==="
-systemctl show pve-guests -p After | sed 's/^After=//' | tr ' ' '\n' | grep -x 'nfs-server.service' >/dev/null \
-  && echo "  pve-guests starts after nfs-server.service" \
-  || { echo "FAIL: pve-guests is not ordered after nfs-server.service" >&2; exit 1; }
+if systemctl show pve-guests -p After | sed 's/^After=//' | tr ' ' '\n' | grep -x 'nfs-server.service' >/dev/null; then
+  echo "  pve-guests starts after nfs-server.service"
+else
+  echo "FAIL: pve-guests is not ordered after nfs-server.service" >&2
+  exit 1
+fi
 systemctl list-timers khe-os-status.timer --no-pager | head -n 2

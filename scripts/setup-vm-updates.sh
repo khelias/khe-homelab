@@ -5,7 +5,7 @@
 #
 # Keeps Docker from starting before the NFS mounts, makes sure security
 # updates install themselves, and installs the daily OS status file that
-# ops-status reads and the push to its Uptime Kuma monitor.
+# the status snapshot reads and the push to its Uptime Kuma monitor.
 set -euo pipefail
 
 STATUS_FILE=/srv/data/reports/khe/internal/os-status-vm.json

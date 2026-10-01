@@ -43,3 +43,5 @@ the required `validate.yml` check:
   of role Viewer in `~/.config/khe/grafana-token` (mode 600, never in git).
   Grafana answers on the LAN only. Loki itself has `auth_enabled: false` and
   is reachable only on the `observability` Docker network, through Grafana.
+- **Public Actions logs** get only aggregate output: `ops-status.yml` prints
+  the snapshot's summary, and the snapshot itself goes to Loki.

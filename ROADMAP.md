@@ -142,8 +142,9 @@ The sections above come first.
   PRs held for review and Uptime Kuma state, diagnose, and prepare a fix as
   a branch or a written proposal. The operator reads, approves and pushes;
   the boundary that the operator runs anything touching the host stays.
-  - *Why here:* `ops-status.yml` gives a diagnostic snapshot without SSH,
-    Loki holds the logs and Renovate auto-merges the routine bumps, so what
+  - *Why here:* the status snapshot and every container's logs are in Loki,
+    which an agent reads read-only through mcp-grafana without SSH, and
+    Renovate auto-merges the routine bumps, so what
     is left for a human is the judgement calls. OpenClaw was removed on
     2026-09-25 because its socket proxy let an LLM agent read every
     container's env; an agent here reads through those same read-only
@@ -155,7 +156,10 @@ The sections above come first.
   - *Waits for:* Prometheus metrics (estate roadmap), so diagnoses rest on
     more than logs.
   - *Risk and cost:* logs, changelogs and PR bodies are untrusted text an
-    agent reads, so prompt injection is the main threat. Agents get no
+    agent reads, so prompt injection is the main threat. Loki OSS has no
+    per-stream access control, so the Vaultwarden, Home Assistant, Immich
+    and trips logs are within reach; the agent queries only the containers a task
+    needs and never quotes personal data or tokens from them. Agents get no
     write path beyond a branch or a note, and a workflow still never takes
     a shell command as input. Model cost if a hosted model does the work;
     no local model runs here since Ollama was removed on 2026-10-01.

@@ -78,7 +78,7 @@ file in every session is wasteful; the entries are independent.
 - **A tunnel outage is invisible to Uptime Kuma.** Kuma runs on this VM and reaches
   services over the LAN through NPM, which tunnel traffic never touches, so internal
   monitors stay green while the public side is entirely down. Detecting it needs an
-  external monitor, or the edge probe in `ops-status.yml`, which forces the
+  external monitor, or the edge probe in the status snapshot (`homelab-status.sh`), which forces the
   Cloudflare address via `curl --resolve` and sends a browser User-Agent to avoid
   WAF custom rule 3.
 - **CF error 1033 on every hostname** means the tunnel is not registered with the

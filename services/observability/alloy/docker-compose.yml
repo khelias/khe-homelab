@@ -58,6 +58,8 @@ services:
     volumes:
       - ./config/config.alloy:/etc/alloy/config.alloy:ro
       - alloy_data:/var/lib/alloy/data
+      # The status snapshot from scripts/homelab-status.sh --log.
+      - /var/lib/khe-status:/khe-status:ro
     networks:
       - observability
       - alloy-socket

@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# Writes this machine's OS update state as a small JSON file for ops-status
-# (homelab-status.sh) and pushes it to an Uptime Kuma push monitor: down when a
+# Writes this machine's OS update state as a small JSON file for the status
+# snapshot (homelab-status.sh) and pushes it to an Uptime Kuma push monitor: down when a
 # reboot is due or an update has been pending for 30 days, up otherwise. Runs
 # daily from the khe-os-status timer on the Proxmox host and on the Docker VM.
 #
 #   os-status.sh <output.json>             write the status file once
 #   os-status.sh --install <output.json>   install this script and its timer
 #
-# Values are version strings, booleans, integers and null only: the file is
-# read by a public repo's Actions log.
+# Values are version strings, booleans, integers and null only: the snapshot
+# that reads the file goes to Loki and into AI conversations.
 #
 # The push URL is OS_STATUS_PUSH_URL in the config file; without it nothing is
 # pushed. Setup: docs/operational-notes.md#os-update-heartbeats.
@@ -32,7 +32,7 @@ install_timer() {
   install -m 755 "$0" /usr/local/sbin/khe-os-status
   cat > /etc/systemd/system/khe-os-status.service <<EOF
 [Unit]
-Description=Write the OS update status for ops-status and Uptime Kuma
+Description=Write the OS update status for the status snapshot and Uptime Kuma
 # ZFS datasets have no mount unit for RequiresMountsFor to wait on; on the VM
 # zfs-mount.service does not exist and the line is a no-op.
 After=zfs-mount.service

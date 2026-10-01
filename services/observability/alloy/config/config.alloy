@@ -41,7 +41,24 @@ loki.source.docker "containers" {
 	forward_to    = [loki.write.local.receiver]
 }
 
-// 4. Push to the in-cluster Loki via its native push API. Loki has
+// 4. The VM status snapshot that the khe-homelab-status timer appends to
+//    (scripts/setup-status-timer.sh). Only status.log: status.log.1 is the
+//    rotated copy and already shipped. No cluster label, so its FAIL and
+//    WARN lines stay out of the ContainerHardCrash rule and the overview
+//    dashboard, which select {cluster="homelab"}.
+local.file_match "homelab_status" {
+	path_targets = [{
+		"__path__" = "/khe-status/status.log",
+		"job"      = "homelab-status",
+	}]
+}
+
+loki.source.file "homelab_status" {
+	targets    = local.file_match.homelab_status.targets
+	forward_to = [loki.write.local.receiver]
+}
+
+// 5. Push to the in-cluster Loki via its native push API. Loki has
 //    auth_enabled: false, so we don't need a tenant header — Loki
 //    defaults to the "fake" tenant.
 loki.write "local" {
@@ -50,7 +67,7 @@ loki.write "local" {
 	}
 }
 
-// 5. Expose Alloy's own component graph + health on :12345 for
+// 6. Expose Alloy's own component graph + health on :12345 for
 //    debugging. Bound only to the observability network, not the
 //    LAN — no host port mapping in compose.
 livedebugging {
