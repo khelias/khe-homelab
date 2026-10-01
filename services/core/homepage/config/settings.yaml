@@ -4,12 +4,12 @@ color: zinc
 headerStyle: underlined
 useEqualHeights: true
 layout:
-  Pilv:
+  Igapäev:
     style: row
-    columns: 3
-  Meedia:
+    columns: 4
+  Veeb:
     style: row
-    columns: 3
+    columns: 4
   Infra:
     style: row
     columns: 3

@@ -1,12 +1,4 @@
-- Pilv:
-    - Vaultwarden:
-        icon: vaultwarden
-        href: https://vault.khe.ee
-        description: Paroolihaldur
-        server: my-docker
-        container: vaultwarden
-
-- Meedia:
+- Igapäev:
     - Immich:
         icon: immich
         href: https://photos.khe.ee
@@ -18,14 +10,50 @@
           url: http://immich-server:2283
           key: "{{HOMEPAGE_VAR_IMMICH_API_KEY}}"
           version: 2
-
-- Kodu:
+    - Vaultwarden:
+        icon: vaultwarden
+        href: https://vault.khe.ee
+        description: Paroolihaldur
+        server: my-docker
+        container: vaultwarden
     - Home Assistant:
         icon: home-assistant
         href: https://home.khe.ee
         description: Kodu automaatika
         server: my-docker
         container: homeassistant
+    - Trips:
+        icon: mdi-map-marker-path
+        href: https://trips.khe.ee
+        description: Perereiside atlas
+        server: my-docker
+        container: trips
+
+- Veeb:
+    - khe.ee:
+        icon: mdi-web
+        href: https://khe.ee
+        description: Avaleht
+        server: my-docker
+        container: landing
+    - Games:
+        icon: mdi-gamepad-variant
+        href: https://games.khe.ee
+        description: Mängud
+        server: my-docker
+        container: games
+    - Pages:
+        icon: mdi-file-document-outline
+        href: https://pages.khe.ee
+        description: Avaldatud lehed
+        server: my-docker
+        container: pages
+    - Draft:
+        icon: filebrowser
+        href: https://draft.khe.ee
+        description: Lehtede mustandid
+        server: my-docker
+        container: draft
 
 - Infra:
     - Proxmox:
@@ -59,3 +87,20 @@
         description: Monitooring
         server: my-docker
         container: uptime-kuma
+        widget:
+          type: uptimekuma
+          url: http://uptime-kuma:3001
+          # The widget reads a status page; create one with this slug in Kuma.
+          slug: homelab
+    - Grafana:
+        icon: grafana
+        href: http://192.168.0.11:3030
+        description: Logid ja hoiatused
+        server: my-docker
+        container: grafana
+    - NPM:
+        icon: nginx-proxy-manager
+        href: http://192.168.0.11:81
+        description: Reverse proxy
+        server: my-docker
+        container: nginx-proxy-manager

@@ -89,9 +89,13 @@ file in every session is wasteful; the entries are independent.
 
 ## Homepage
 
-- Live widgets for all services. Config in `services/core/homepage/config/`
+- Live widgets where the service has an API. Config in `services/core/homepage/config/`
   (git-tracked bind mount).
 - API keys in VM `.env` only, never committed.
+- The Uptime Kuma widget reads the Kuma status page with slug `homelab`;
+  without it the widget errors. Kuma status pages cannot be private, so it
+  is public at `status.khe.ee/status/homelab`: put only monitors whose
+  names are fine to show.
 - **Regenerate API keys** from scratch:
   - Proxmox: a privilege-separated token of the read-only `monitor@pve` user
     ([Proxmox API tokens](../infrastructure/proxmox/README.md#api-tokens)),
