@@ -50,6 +50,7 @@ comparable, the one that scores better on these wins.
 | Workflow automation   | n8n, removed 2026-10  | —          | 2026-10-01    |
 | Ad-hoc page publishing| FileBrowser (+ nginx) | Medium     | 2026-06-06    |
 | Uptime monitoring     | Uptime Kuma           | High       | 2026-05-05    |
+| Logs and log alerts   | Loki + Alloy + Grafana| Medium     | 2026-10-01    |
 | Dashboard             | Homepage              | High       | 2026-05-05    |
 | Hypervisor            | Proxmox VE            | High       | 2026-05-05    |
 | Container auto-heal   | autoheal              | High       | 2026-05-05    |
@@ -467,6 +468,38 @@ homepage is hard to beat at this scale.
 
 **When we'd revisit:** Uptime Kuma stagnates (it has slowed somewhat in
 2025-26 — Gatus is gaining); we move to a config-as-code monitoring stance.
+
+---
+
+## Logs and log alerts — Loki + Alloy + Grafana
+
+Uptime Kuma answers "does it respond"; this stack answers "what happened
+inside". Alloy ships every container's output to Loki (30 days on the ZFS
+mirror), Grafana is the query UI, and the Loki ruler fires log-content
+alerts through Alertmanager to the same Telegram bot Kuma uses. A container
+that passes its probe while logging errors is invisible to Kuma; Loki
+cannot watch itself, so Kuma probes Loki's `/ready`. Neither sees a tunnel
+outage ([operational notes](operational-notes.md#cloudflare-tunnel--access)).
+
+The stack went in on 2026-05-12 without a written comparison; this entry
+records it after the fact. Realistic alternatives today are VictoriaLogs
+(single binary, lighter, has a Grafana datasource), Graylog or
+ELK/OpenSearch (a JVM search cluster, against constraint 1), and Dozzle
+(live tail only: no retention, alerts or query API). Alloy over Promtail
+and the OTel Collector is covered in
+[operational notes](operational-notes.md#observability-loki--grafana--alloy--alertmanager).
+
+**Known cost:** five containers (Loki, Grafana, Alloy and its socket proxy,
+Alertmanager) for two alert rules, above the bar in constraint 1. What
+carries it is that Grafana is in regular use and is the planned read
+channel for the agent-operated homelab in [ROADMAP](../ROADMAP.md): an
+agent queries Loki through Grafana read-only, never through the Docker
+socket.
+
+**When we'd revisit:** the agent read channel does not materialise and
+Grafana falls out of use; Loki needs per-release tuning; or Prometheus
+metrics arrive and a single store for logs and metrics (VictoriaMetrics +
+VictoriaLogs) becomes cheaper than adding Prometheus beside Loki.
 
 ---
 
