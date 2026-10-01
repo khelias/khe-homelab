@@ -10,7 +10,7 @@ file in every session is wasteful; the entries are independent.
   `services/core/adguard/AdGuardHome.template.yaml`. Apply changes as delta-
   patches against the live YAML. Wholesale replacement wipes admin bcrypt +
   active sessions.
-- **Per-service rewrites only**, no wildcard. 9 hostnames resolve to
+- **Per-service rewrites only**, no wildcard. 6 hostnames resolve to
   `192.168.0.11`. `games.khe.ee` is intentionally omitted - it resolves via
   Cloudflare for HTTPS.
 - **Router DHCP DNS: `192.168.0.11` ONLY**, no secondary. A "fallback" DNS
