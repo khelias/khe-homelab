@@ -46,7 +46,8 @@ file in every session is wasteful; the entries are independent.
   timeouts. Applies to LAN clients only; the CF
   tunnel does not route through NPM (see Cloudflare Tunnel section).
 - **All hosts**: WebSocket, HTTP/2, HSTS, SSL forced, block exploits.
-- **Admin UI**: `http://192.168.0.11:81`, creds in VM `.env`.
+- **Admin UI**: `http://192.168.0.11:81`. The login lives in NPM's own
+  database (`npm_data` volume), set in the UI; no `.env` holds it.
 - **CF API token for DNS-01** is stored inside NPM's database
   (`npm_data` volume), not in repo.
 - **Not behind NPM**: `games` (CF-only routing).
