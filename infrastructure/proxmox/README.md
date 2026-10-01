@@ -95,8 +95,8 @@ pveum acl modify / --tokens 'monitor@pve!<consumer>' --roles PVEAuditor
 
 The token secret goes straight into that consumer's `.env` on the VM. Current
 consumers: `homepage` (the Proxmox widget). `root@pam` gets no tokens; the
-Homepage token it held until October 2026 is replaced and removed in
-`khe-meta/plans/flickering-crunching-sparkle.md` step 4.
+Homepage token it held was replaced and removed on 2026-10-01
+(`khe-meta/plans/proxmox-vm-updates.md` step 4).
 
 ## VM Provisioning
 VMs are created using Debian 13 (Trixie) cloud images with cloud-init (no interactive installer).
