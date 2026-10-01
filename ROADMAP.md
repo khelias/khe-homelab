@@ -50,6 +50,15 @@ Direction and priorities for the homelab — what it should become, beyond curre
 - **Bootstrap script for full rebuild** — one entry point that takes a fresh
   Proxmox host to a fully working homelab. The 10-step setup is scripted already
   but has no orchestrator handling the reboot points.
+- **ZFS datasets that match the NFS export** — `/srv/data` is exported
+  without `crossmnt`, so the VM writes every service's files into `tank/data`
+  itself, Immich's ~400G of photos included. `tank/data/immich` exists but is
+  empty (96K); the nextcloud, paperless and media datasets were empty for the
+  same reason and were destroyed on 2026-10-01. `setup-nfs-share.sh` still
+  creates `tank/data/immich`, so a rebuild repeats the mismatch. Either drop
+  it from the script and destroy the empty dataset, or add `crossmnt` and move
+  the photos into it, which buys per-dataset snapshots and quotas at the cost
+  of copying ~400G. Decide before the rebuild rehearsal below.
 - **Disaster recovery runbook from a rebuild rehearsal** — the tested restore is
   done (`restore-verify.yml` restores a Postgres dump from R2 every week). What
   is left is rebuilding the host once for real and writing the runbook from it;
