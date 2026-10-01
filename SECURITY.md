@@ -35,3 +35,11 @@ the required `validate.yml` check:
   repo's `ci.yml` on `main`, or whose images of one repo come from different
   commits. The accepted residual risk (the App can merge or fast-forward an
   already-green change it did not write) is in khe-meta ADR-008.
+
+## Automated readers
+
+- **The agent's log reader** is mcp-grafana on the operator's machine, run
+  read-only by `scripts/mcp-grafana.sh` with a Grafana service account token
+  of role Viewer in `~/.config/khe/grafana-token` (mode 600, never in git).
+  Grafana answers on the LAN only. Loki itself has `auth_enabled: false` and
+  is reachable only on the `observability` Docker network, through Grafana.
