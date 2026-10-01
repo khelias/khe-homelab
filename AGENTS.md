@@ -66,7 +66,9 @@ base branch against the PR tree.
 4. **State in named volumes or bind mounts under `/srv/data/<service>/`**,
    never `/home` or arbitrary paths.
 5. **Ingress through the shared `proxy` network** for NPM; separate networks
-   isolate databases.
+   isolate databases. The `draft.khe.ee` editor, which runs without an app
+   login, sits on `draft-tunnel`, shared only with `cloudflare-tunnel`; the
+   tunnel stack owns that network because it deploys first.
 6. **AdGuard's live `AdGuardHome.yaml` is gitignored.** Apply changes as
    delta patches against `AdGuardHome.template.yaml`; replacing it wholesale
    wipes admin credentials and sessions

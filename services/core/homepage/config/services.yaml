@@ -49,7 +49,7 @@
         server: my-docker
         container: pages
     - Draft:
-        icon: filebrowser
+        icon: dufs
         href: https://draft.khe.ee
         description: Lehtede mustandid
         server: my-docker

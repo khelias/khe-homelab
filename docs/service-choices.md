@@ -48,7 +48,7 @@ comparable, the one that scores better on these wins.
 | Document OCR          | Paperless-ngx, removed 2026-10 | — | 2026-10-01    |
 | LLM serving           | Ollama, removed 2026-10 | —        | 2026-10-01    |
 | Workflow automation   | n8n, removed 2026-10  | —          | 2026-10-01    |
-| Ad-hoc page publishing| FileBrowser (+ nginx) | Medium     | 2026-06-06    |
+| Ad-hoc page publishing| dufs (+ nginx)        | Medium     | 2026-10-01    |
 | Uptime monitoring     | Uptime Kuma           | High       | 2026-05-05    |
 | Logs and log alerts   | Loki + Alloy + Grafana| Medium     | 2026-10-01    |
 | Dashboard             | Homepage              | High       | 2026-05-05    |
@@ -361,62 +361,69 @@ cleanly. Activepieces is the fully open alternative to compare then.
 
 ---
 
-## Ad-hoc page publishing — FileBrowser
+## Ad-hoc page publishing — dufs
 
-**Status: chosen 2026-06-06, not yet deployed.** Recorded here ahead of
-build per the "decide before code" step; the compose/nginx stack and the
-README / operational-notes / cloudflare.md updates land in the build commit.
+Chosen 2026-10-01, replacing FileBrowser (chosen 2026-06-06), which upstream
+archived on 2026-09-01.
 
-The need: an idea strikes on the phone, an AI generates a self-contained
+The need: an idea strikes on any device, an AI generates a self-contained
 HTML page, and you want it live at a shareable public URL in under a
 minute — without a git commit, a CI run, or fighting the `khe-sites` build
 (whose strict `npm run check` rejects standalone inline-style HTML). The
 authoring surface must stay private (only the owner publishes); the
-published page must be public (anyone with the link can open it).
+published page must be public (anyone with the link can open it). It is
+used as "paste and forget" from several devices, so a browser UI stays the
+primary surface.
 
 ### Alternatives considered
 
-| Tool             | Notable strengths                                                                 | Why not for us                                                                 |
-|------------------|-----------------------------------------------------------------------------------|---------------------------------------------------------------------------------|
-| **FileBrowser**  | Built-in Ace editor — create a file, paste, save, all from a phone browser; non-root UID, scope-confinable | (selected)                                                                      |
-| dufs             | Single Rust binary, lean, upload + WebDAV                                          | Upload-centric UI, no create-and-edit-text affordance — phone paste is awkward |
-| Pastefy          | Purpose-built paste-sharing, nice UX                                               | Own DB + auth (duplicates CF Access); serves via its own UI, no clean filesystem output for a public nginx |
-| WebDAV + nginx   | Minimal, nginx already in the fleet                                                | No phone-friendly create/edit UI — you'd hand-build the authoring surface       |
-| Bespoke container| Exactly the wanted features                                                       | Build + maintain custom code for what FileBrowser already does                  |
+| Tool                 | Notable strengths                                                                 | Why not for us                                                                 |
+|----------------------|-----------------------------------------------------------------------------------|---------------------------------------------------------------------------------|
+| **dufs**             | Single Rust binary on a scratch image; web UI with New File and an editor with save (since 2023-02, dufs #179, #180); plain `PUT` for a later script publisher | (selected)                                                                      |
+| FileBrowser          | Ace editor, create-paste-save from a phone browser                                | Archived upstream 2026-09-01; advisories published after that stay unfixed     |
+| FileBrowser Quantum  | Same codebase lineage, actively developed                                         | 25 advisories in 2026, 4 of them critical; 2.x is still beta                    |
+| copyparty            | Fits the need                                                                     | Far more surface than paste and forget needs                                    |
+| Pastefy              | Purpose-built paste-sharing, nice UX                                              | Own DB + auth (duplicates CF Access); serves via its own UI, no clean filesystem output for a public nginx |
+| WebDAV + nginx       | Minimal, nginx already in the fleet                                               | No phone-friendly create/edit UI — you'd hand-build the authoring surface       |
+| Bespoke container    | Exactly the wanted features                                                       | Build + maintain custom code for what dufs already does                         |
 
-### Why FileBrowser
+The 2026-06 record rejected dufs for having "no create-and-edit-text
+affordance". That was a factual error: New File and the editor had shipped
+in 2023.
 
-- **The editor is the deal-breaker.** The core action is "create one HTML
-  file from a phone and paste into it", not "drag a file from the
-  filesystem". FileBrowser's New File + Ace editor does exactly that with
-  no desktop or app dependency; dufs and WebDAV don't.
-- **"Render as a page, not source" is not the tool's job.** It is solved by
-  the existing writer→reader split: FileBrowser writes a file, a separate
-  read-only nginx serves it with a real `text/html` response: one container
-  writes into a directory, a second mounts it `:ro` and serves it, so the
-  two never share a privilege.
-- **Safe to run, but upstream is ending.** UID 1000, write scope confined to
-  `/srv/data/pages/app`. The
-  original bet was that v2.63.x "maintenance mode" meant continued security
-  patches. That expired: the startup banner in `docker logs draft` announces
-  archival on **2026-09-01**, after which there are no releases and no security
-  fixes, with known unfixed issues left in the project's security advisories.
-  See "When we'd revisit" below.
+### Why dufs
+
+- **It has the editor, and little else.** New File, paste, save in a phone
+  browser is the whole job. dufs does it without a database, users or
+  stored settings, so there is nothing stateful besides the page files.
+- **Small surface, small image.** A scratch image with one binary, run as
+  UID 1000 with a read-only root filesystem, no capabilities and
+  `no-new-privileges`. Write scope is the page tree.
+- **"Render as a page, not source" stays out of the tool.** The writer/reader
+  split carries over: dufs writes a file, a separate read-only nginx serves
+  it with a real `text/html` response.
+- **Files stay plain.** A later swap to another editor is a compose change,
+  no migration.
 
 ### How it's wired
 
-- Two containers in `services/apps/pages/`, both on the `proxy` network:
-  - `draft` (FileBrowser, **private behind CF Access**, internal port 8080)
-    writes to `/srv/data/pages/app`.
-  - `pages` (nginx `:ro`, **public, no Access**) serves that tree.
+- Two containers in `services/apps/pages/`:
+  - `draft` (dufs, **private behind CF Access**, internal port 8080) writes
+    to `/srv/data/pages/app`. It sits only on `draft-tunnel`, an internal
+    network shared with `cloudflare-tunnel` alone and owned by the tunnel
+    stack, which deploys first. No other container can reach it.
+  - `pages` (nginx `:ro`, **public, no Access**) serves that tree from the
+    `proxy` network.
+- **CF Access is the only auth layer.** dufs runs without `--auth`
+  (its own basic-auth accounts) and has no proxy-header auth; Access gates
+  the hostname, and the dedicated network
+  keeps neighbours on `proxy` from reaching `draft:8080` directly.
 - Hosts: `draft.khe.ee` (Access: Email=owner AND Country=EE) and
   `pages.khe.ee` (fully public). The two-host split is forced — CF Access
   gates an entire hostname, so public-GET and private-write cannot share one.
 - `/srv/data/pages` is its own tree, separate from the `khe-sites`-managed
   roots (`/srv/data/sites/khe`, `/srv/data/games/launcher`), so site deploys
-  never touch it. First deploy needs
-  `mkdir -p /srv/data/pages/app && chown 1000:1000` (a root-owned bind mount
-  blocks the non-root FileBrowser, same as the Loki chown step).
+  never touch it. The page tree must be owned by UID 1000.
 - Clean URLs: nginx `try_files $uri $uri.html $uri/ =404` — a flat
   `leht1.html` serves at `pages.khe.ee/leht1`.
 - noindex in two layers: `X-Robots-Tag: noindex` header (authoritative for
@@ -429,32 +436,41 @@ published page must be public (anyone with the link can open it).
 
 ### Known costs / open decisions
 
+- **CF Access is the sole auth layer.** Removing or loosening the
+  `draft.khe.ee` Access application exposes a writable editor to the
+  internet.
+- **Clicking a file's name in the dufs list opens the raw page on the
+  editor's origin.** The link opens in a new tab on `draft.khe.ee`
+  (`assets/index.js`, `target="_blank"`), so the page's JS runs there and
+  can write and delete pages (dufs has no CSRF token). Edit through the
+  pencil icon (`?edit`) and view pages on `pages.khe.ee`. For the same
+  reason a published page can frame the editor: dufs sends no
+  `frame-ancestors`, and `pages.khe.ee` is same-site, so the Access cookie
+  goes along. Acceptable while only the owner publishes.
+- **A failed save is silent.** The editor's save ignores the HTTP status and
+  reloads, so a failed save loses the paste. An upload that breaks mid-body
+  deletes the file (`handle_upload` truncates, then removes on stream
+  error), so a dropped connection while overwriting removes the old page.
+- **No healthcheck.** The image has no probe binary and Uptime Kuma cannot
+  reach `draft-tunnel`; liveness is `restart: unless-stopped`.
+- **Single maintainer, slow release cadence.** Accepted for the small
+  surface; files are plain, so a later swap is cheap.
 - **Arbitrary public HTML/JS under `*.khe.ee`.** Owner-authored only, and
-  `pages.khe.ee` is same-site-but-not-same-origin to `vault`/`cloud`/etc.;
-  CF Access cookies are host-scoped. Acceptable while only the owner
+  `pages.khe.ee` is same-site-but-not-same-origin to `vault` and the other
+  apps; CF Access cookies are host-scoped. Acceptable while only the owner
   publishes. If untrusted third-party content ever enters scope, the durable
   fix is moving `pages` to a non-`khe.ee` registrable domain.
-- **No auto-expiry.** Pages accumulate and stay public until manually deleted
-  via the FileBrowser list view. A TTL cron (delete older than N days) plus
-  unguessable slugs is the upgrade path if this bites; not built initially.
-- **CF Access is the only auth layer** since 2026-08-29. FileBrowser runs with
-  `auth.method=proxy` on `Cf-Access-Authenticated-User-Email`, so the second
-  password is gone. External traffic is unaffected (Access still gates the
-  hostname), but any container on the shared `proxy` network can reach
-  `draft:8080` directly and forge that header, where the password previously
-  raised the bar. Accepted while every neighbour on that network is owner-run;
-  the durable fix is putting `draft` on a dedicated network shared only with
-  `cloudflare-tunnel`.
+- **No auto-expiry.** Pages accumulate and stay public until deleted in the
+  dufs UI. A TTL cron (delete older than N days) plus unguessable slugs is
+  the upgrade path if this bites; not built.
 
 ### When we'd revisit
 
+- dufs goes unmaintained, or an advisory affects the editor or upload path
+  and stays unfixed.
 - We want true paste-and-go with auto-expiring links at volume → a
   purpose-built pastebin, or the TTL-cron upgrade above.
-- FileBrowser goes unmaintained or drops the in-browser editor. **Fired
-  2026-08-29:** upstream archives the project on 2026-09-01. Replacement not
-  chosen yet; the service keeps working, it just stops receiving fixes.
-- We need multi-user publishing with per-user spaces (FileBrowser supports
-  users, but the access model would need rethinking).
+- We need multi-user publishing with per-user spaces.
 
 ---
 

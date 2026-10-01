@@ -18,7 +18,7 @@ Tunnel routes directly to Docker containers. LAN traffic goes via NPM (split-hor
 | status.khe.ee       | uptime-kuma:3001            | uptime-kuma:3001            | |
 | games.khe.ee        | study-game:80 (→ games)     | — (CF only)                 | no AdGuard rewrite; alias in games compose until route updated to games:80 |
 | trips.khe.ee        | trips:80                    | — (CF Access)               | CF Access OTP on all networks; no AdGuard rewrite |
-| draft.khe.ee        | draft:8080                  | — (CF Access)               | FileBrowser editor; CF Access OTP on all networks; **sole auth layer** (no app password, see service-choices.md); no AdGuard rewrite |
+| draft.khe.ee        | draft:8080                  | — (CF Access)               | dufs editor; CF Access OTP on all networks; **sole auth layer** (dufs runs without `--auth`, see service-choices.md); only on `draft-tunnel`; no AdGuard rewrite |
 | pages.khe.ee        | pages:80                    | — (CF only)                 | public; serves published pages read-only; no AdGuard rewrite |
 
 Not exposed via tunnel (LAN only): AdGuard (:8080), NPM admin (:81), Proxmox (:8006)
@@ -39,8 +39,8 @@ Policy combines `Include: Email = owner` AND `Require: Countries = Estonia`.
 Owner traveling abroad connects via Tailscale → egresses through VM's EE IP → passes both checks.
 If Tailscale is down while abroad, access is blocked — intentional two-factor (identity + location).
 
-`draft.khe.ee` has no application-level login behind Access (FileBrowser
-proxy-auth), so removing or loosening its Access application exposes the
+`draft.khe.ee` has no application-level login behind Access (dufs runs
+without `--auth`), so removing or loosening its Access application exposes the
 editor outright.
 
 ## Custom Login Page

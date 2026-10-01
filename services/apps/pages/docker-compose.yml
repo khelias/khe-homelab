@@ -1,30 +1,33 @@
 services:
-  # Private editor: paste/create an HTML file from a phone, save it. Behind CF
-  # Access. Runs as UID 1000 and only sees /srv (the published tree); the DB
-  # lives in a separate /database mount so it never shows up in the file UI.
+  # Private editor: paste/create an HTML file from any device, save it. dufs
+  # runs without --auth, so CF Access is the only auth layer and the
+  # container sits on draft-tunnel, a network shared only with
+  # cloudflare-tunnel: nothing on proxy can reach it. Runs as UID 1000 and
+  # only sees /data (the published tree).
   draft:
-    image: filebrowser/filebrowser:v2.63.23@sha256:a469ea076d4a1b4b1d86a41d130f2f536cd9da996a2b1fb39c0d7635f9d89b9a
+    image: sigoden/dufs:v0.46.0@sha256:8dd3b750015734703e64b55641fb7d2254c112e0ff3967074766177dc15dc982
     container_name: draft
     restart: unless-stopped
     user: "1000:1000"
+    # --allow-delete is needed for PUT over an existing file, not only for
+    # deleting pages.
+    command: ["/data", "--bind", "0.0.0.0", "--port", "8080", "--allow-upload", "--allow-delete", "--allow-search"]
     environment:
-      - FB_DATABASE=/database/filebrowser.db
-      - FB_ROOT=/srv
-      - FB_ADDRESS=0.0.0.0
-      - FB_PORT=8080
-      - FB_LOG=stdout
       - TZ=Europe/Tallinn
     volumes:
-      - /srv/data/pages/app:/srv
-      - /srv/data/pages/db:/database
+      - /srv/data/pages/app:/data
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     networks:
-      - proxy
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8080/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
+      - draft-tunnel
+    # No container-internal healthcheck: sigoden/dufs is FROM scratch (no
+    # shell, no wget/curl), and adding a thin Dockerfile layer just for a
+    # probe breaks the "pinned upstream image" convention. Uptime Kuma cannot
+    # reach draft-tunnel by design, so liveness comes from restart:
+    # unless-stopped. See docs/operational-notes.md > Pages.
     deploy:
       resources:
         limits:
@@ -37,7 +40,7 @@ services:
     container_name: pages
     restart: unless-stopped
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - /srv/data/pages/app:/usr/share/nginx/html:ro
     networks:
       - proxy
@@ -54,4 +57,6 @@ services:
 
 networks:
   proxy:
+    external: true
+  draft-tunnel:
     external: true

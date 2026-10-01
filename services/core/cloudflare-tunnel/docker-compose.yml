@@ -26,6 +26,7 @@ services:
       start_period: 30s
     networks:
       - proxy
+      - draft-tunnel
     deploy:
       resources:
         limits:
@@ -35,3 +36,10 @@ services:
 networks:
   proxy:
     external: true
+  # The draft.khe.ee editor runs without an app login, so only the tunnel may
+  # reach it.
+  # Owned here because this stack deploys before apps/pages.
+  draft-tunnel:
+    name: draft-tunnel
+    driver: bridge
+    internal: true

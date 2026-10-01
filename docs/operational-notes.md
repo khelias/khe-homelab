@@ -274,57 +274,53 @@ and served via a per-location `root`. Do NOT nest it under
   `HOMEPAGE_ALLOWED_HOSTS` from it plus `homepage:3000`, the Uptime Kuma
   monitor URL. Homepage v2 answers 400 to any other Host, the IP included.
 
-## Pages (FileBrowser editor + nginx)
+## Pages (dufs editor + nginx)
 
-Quick-publish surface: paste an AI-generated HTML page from a phone, get a
+Quick-publish surface: paste an AI-generated HTML page from any device, get a
 public shareable link. Two containers in `services/apps/pages/` sharing
 `/srv/data/pages/app` (writer/reader split: the private container writes,
 the public one mounts the same directory read-only).
 
-- `draft` (FileBrowser `v2.63.12`, runs as UID 1000, internal port 8080) is
-  the **private** editor. `draft.khe.ee` -> `draft:8080` via CF Tunnel, CF
-  Access protected (shared `Email + Country=EE` policy). It only mounts the
-  published tree at `/srv` (`FB_ROOT`); the DB lives in a separate
-  `/srv/data/pages/db:/database` mount (`FB_DATABASE=/database/filebrowser.db`)
-  so it never shows up in the file UI.
+- `draft` (dufs, runs as UID 1000, internal port 8080) is the **private**
+  editor. `draft.khe.ee` -> `draft:8080` via CF Tunnel, CF Access protected
+  (shared `Email + Country=EE` policy). Flags: `--allow-upload
+  --allow-delete --allow-search`; `--allow-delete` is also what lets a `PUT`
+  overwrite an existing file. It mounts only the page tree at `/data`; no
+  database, no settings outside compose. Root filesystem read-only, all
+  capabilities dropped, `no-new-privileges`.
+- **CF Access is the only auth layer.** dufs runs without `--auth`, so the
+  `draft.khe.ee` Access application must never be removed. `draft` sits only
+  on the internal `draft-tunnel` network, shared with `cloudflare-tunnel`
+  alone, so nothing on `proxy` can reach it. The tunnel stack owns that
+  network because it deploys before `apps/pages`.
+- **No healthcheck.** The image is `FROM scratch` (no shell, no wget), and
+  Uptime Kuma cannot reach `draft-tunnel`. Liveness is
+  `restart: unless-stopped`; Homepage shows the container state.
+- **Edit with the pencil icon, view on `pages.khe.ee`.** Clicking a file's
+  name in the list opens the raw page on `draft.khe.ee`, where its JS could
+  write and delete pages. New files are created `0644`; an edited file keeps
+  its mode.
+- **A failed save is silent:** the editor reloads whatever the status, so
+  check the page on `pages.khe.ee` after saving.
 - `pages` (nginx `1.31-alpine`) is the **public** reader. `pages.khe.ee` ->
   `pages:80` via CF Tunnel (public, no Access, no AdGuard rewrite). Mounts the
-  same dir `:ro`. Unlike landing/trips it mounts a full **main** `nginx.conf`
-  (at `/etc/nginx/nginx.conf`, not `conf.d/`) so the worker `user` can be set.
-- **Why nginx workers run as `root`:** FileBrowser hardcodes newly created
-  files to mode `0640` (owner+group read, no other-read) regardless of umask,
-  so the stock `nginx` worker (uid 101) gets **403 Forbidden** on every page.
-  Workers run as root to read them. Safe here: read-only static server, mounts
-  only the public page tree + its own config, no proxy/exec/secrets. (Do NOT
-  copy this to landing/trips - they serve git-deployed, world-readable files.)
+  same dir `:ro` and a `conf.d` server block, like landing. Workers run as the
+  stock `nginx` user, so every page and directory must be world-readable
+  (`o+r`, `o+x` on directories); a `0640` file answers 403.
 - **Extension-less files render:** `default_type text/html` means a page saved
-  in FileBrowser as just `unify` (no `.html`) still serves as HTML instead of
-  downloading. `.html` names work too (mapped via mime.types).
+  as just `unify` (no `.html`) still serves as HTML instead of downloading.
+  `.html` names work too (mapped via mime.types).
 - **First deploy is permission-sensitive.** Create and chown the tree BEFORE
   the first `docker compose up`, or Docker auto-creates it root-owned and the
-  non-root FileBrowser cannot write its DB (same trap as Loki):
-  `sudo mkdir -p /srv/data/pages/app /srv/data/pages/db && sudo chown -R 1000:1000 /srv/data/pages`
-- **Login: no FileBrowser password.** Since 2026-08-29 the editor runs with
-  `auth.method=proxy` and `auth.header=Cf-Access-Authenticated-User-Email`. It
-  trusts the header cloudflared injects for Access-protected hostnames and logs
-  in the user whose username equals that email (user ID 1). CF Access is now the
-  only auth layer, so the `draft.khe.ee` Access application must never be
-  removed. This replaced the one-time random admin password FileBrowser printed
-  to `docker logs draft` on first run.
-- **Changing that setting requires stopping the container.** The bbolt DB takes
-  an exclusive lock, so `docker exec draft filebrowser config ...` hangs against
-  a running server. Stop `draft`, copy `/srv/data/pages/db/filebrowser.db`
-  aside, then run the config command in a throwaway container mounting the same
-  `/database`. The setting lives in the DB, not in git or compose, so it is not
-  reproducible from the repo; it rides along in the `/srv/data/pages` backup.
-  Rollback to password login is `config set --auth.method=json`.
+  non-root dufs cannot write (same trap as Loki):
+  `sudo mkdir -p /srv/data/pages/app && sudo chown 1000:1000 /srv/data/pages/app`
 - **Clean URLs:** nginx `try_files $uri $uri.html $uri/ =404` — a flat
-  `leht1.html` is shared as `pages.khe.ee/leht1`. The public root `/` 404s
-  until an `index.html` exists; intentional (no directory listing).
+  `leht1.html` is shared as `pages.khe.ee/leht1`. The public root `/` answers
+  403 until an `index.html` exists; intentional (no directory listing).
 - **noindex:** `X-Robots-Tag: noindex` header (authoritative) plus an
   always-200 `/robots.txt` Disallow. The `pages` healthcheck targets
   `/robots.txt`, so it stays healthy even with zero published pages.
-- **No auto-expiry:** pages stay public until deleted in the FileBrowser UI.
+- **No auto-expiry:** pages stay public until deleted in the dufs UI.
   `/srv/data/pages` is the one app tree not reproducible from git, so it is in
   `backup.sh` BIND_MOUNTS.
 - Headers match the `games`/`adventure` house set minus the strict app CSP
