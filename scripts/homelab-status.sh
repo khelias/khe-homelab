@@ -49,7 +49,9 @@ if [ "$#" -gt 0 ]; then
   # a copy: Alloy reads a new inode from offset 0 and stamps lines at read
   # time, so copied lines would reappear in Loki as current.
   exec 9>>"${log_file}.lock" || exit 1
-  flock 9 || exit 1
+  # A run normally takes seconds; one stuck on a wedged Docker daemon must not
+  # block every later run, nor ops-status until its job timeout.
+  flock -w 180 9 || { echo "status log locked for 180 s by another run" >&2; exit 1; }
   if [ -f "$log_file" ] && [ "$(stat -c %s "$log_file")" -gt "$LOG_MAX_BYTES" ]; then
     mv -f "$log_file" "${log_file}.1"
   fi
@@ -322,13 +324,17 @@ echo
 echo "Orphan compose projects"
 # A stack deleted from git is skipped by deploy-stacks.sh, so its containers
 # and volumes stay until retire-stack.yml removes them.
-if docker info >/dev/null 2>&1; then
+if ! docker info >/dev/null 2>&1; then
+  :
+elif ! orphans="$("${SCRIPT_DIR}/retire-stack.sh" 2>/dev/null)"; then
+  warn "orphan check failed: retire-stack.sh exited non-zero"
+else
   n_orphans=0
   while read -r project; do
     [ -z "$project" ] && continue
     n_orphans=$((n_orphans + 1))
     warn "${project}: no services/*/${project}/docker-compose.yml; retire it with retire-stack.yml"
-  done < <("${SCRIPT_DIR}/retire-stack.sh" 2>/dev/null)
+  done <<< "$orphans"
   [ "$n_orphans" -eq 0 ] && ok "every compose project has a compose file in the checkout"
 fi
 echo

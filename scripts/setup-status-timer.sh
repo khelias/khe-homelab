@@ -27,6 +27,9 @@ Type=oneshot
 User=khe
 # Exit 1 means the snapshot found problems: data, not a failed unit.
 SuccessExitStatus=1
+# Oneshot units have no start timeout by default, and a run hung on a wedged
+# Docker daemon would hold the log lock and stop the timer for good.
+TimeoutStartSec=3min
 ExecStart=${CHECKOUT}/scripts/homelab-status.sh --log ${STATUS_DIR}/status.log
 EOF
 

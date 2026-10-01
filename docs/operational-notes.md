@@ -365,7 +365,11 @@ the public one mounts the same directory read-only).
   container's log stream via `GET /containers/{id}/logs` and ships
   to Loki via the native push API. `container_name`, `stream`, and
   `cluster` are first-class stream labels — query with
-  `{container_name="adventure-proxy"}`.
+  `{container_name="adventure-proxy"}`. `loki.source.file` also tails
+  `/var/lib/khe-status/status.log` (bind-mounted read-only), the
+  `homelab-status.sh` snapshot, as `{job="homelab-status"}` without a
+  `cluster` label, so its FAIL lines stay out of the alert rules and
+  dashboards.
 - **Loki ruler.** Alert rules live in
   `services/observability/loki/config/rules/fake/` — the `fake`
   subdir is Loki's default tenant ID when `auth_enabled: false`.

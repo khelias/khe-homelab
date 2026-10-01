@@ -15,7 +15,8 @@ export GRAFANA_URL="${GRAFANA_URL:-http://192.168.0.11:3030}"
 
 command -v mcp-grafana >/dev/null || { echo "mcp-grafana not on PATH" >&2; exit 1; }
 [ -s "$TOKEN_FILE" ] || { echo "missing Grafana token: $TOKEN_FILE" >&2; exit 1; }
-mode="$(stat -f %Lp "$TOKEN_FILE" 2>/dev/null || stat -c %a "$TOKEN_FILE")"
+# GNU first: GNU `stat -f` is file-system status and succeeds with other output.
+mode="$(stat -c %a "$TOKEN_FILE" 2>/dev/null || stat -f %Lp "$TOKEN_FILE")"
 [ "$mode" = 600 ] || { echo "$TOKEN_FILE is mode $mode; chmod 600 it" >&2; exit 1; }
 # An inline token in the environment would win over the file.
 unset GRAFANA_SERVICE_ACCOUNT_TOKEN GRAFANA_API_KEY

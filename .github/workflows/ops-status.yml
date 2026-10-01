@@ -33,7 +33,18 @@ jobs:
             echo "::error::$(dirname "$STATUS_LOG") is missing or not writable; run scripts/setup-status-timer.sh on the VM"
             exit 1
           fi
+          # Read only what this run appended, so a run that exits early does
+          # not show an older run's summary. Rotation starts a new file.
+          start=0
+          if [ -f "$STATUS_LOG" ]; then start="$(stat -c %s "$STATUS_LOG")"; fi
           rc=0
           ./scripts/homelab-status.sh --log "$STATUS_LOG" || rc=$?
-          awk '/^Summary$/ { block = ""; n = 3 } n > 0 { block = block $0 "\n"; n-- } END { printf "%s", block }' "$STATUS_LOG"
+          if [ ! -f "$STATUS_LOG" ] || [ "$(stat -c %s "$STATUS_LOG")" -lt "$start" ]; then start=0; fi
+          summary="$(tail -c +"$((start + 1))" "$STATUS_LOG" 2>/dev/null \
+            | awk '/^Summary$/ { block = ""; n = 3 } n > 0 { block = block $0 "\n"; n-- } END { printf "%s", block }')"
+          if [ -n "$summary" ]; then
+            echo "$summary"
+          else
+            echo "::error::the snapshot wrote no summary (exit ${rc})"
+          fi
           exit "$rc"
