@@ -19,7 +19,6 @@ Tunnel routes directly to Docker containers. LAN traffic goes via NPM (split-hor
 | photos.khe.ee       | immich-server:2283          | immich-server:2283          | NPM: unlimited upload, 600s timeout |
 | jellyfin.khe.ee     | jellyfin:8096               | jellyfin:8096               | NPM: unlimited body, 600s timeout |
 | books.khe.ee        | audiobookshelf:80           | audiobookshelf:80           | NPM: unlimited upload, 600s timeout |
-| n8n.khe.ee          | n8n:5678                    | — (CF Access)               | CF Access OTP on all networks |
 | status.khe.ee       | uptime-kuma:3001            | uptime-kuma:3001            | |
 | games.khe.ee        | study-game:80 (→ games)     | — (CF only)                 | no AdGuard rewrite; alias in games compose until route updated to games:80 |
 | trips.khe.ee        | trips:80                    | — (CF Access)               | CF Access OTP on all networks; no AdGuard rewrite |
@@ -36,11 +35,10 @@ Identity: One-time PIN via email (no OAuth setup needed).
 | Application  | Domain  | Policy          |
 |--------------|---------|-----------------|
 | KHE Dashboard | dash.khe.ee | Email allowlist + Require Country=EE |
-| n8n          | n8n.khe.ee  | Email allowlist + Require Country=EE |
 | KHE Trips    | trips.khe.ee | Email allowlist + Require Country=EE |
 | KHE Pages    | draft.khe.ee | Email allowlist + Require Country=EE |
 
-All four apps share a single reusable policy (edit once → applies to all).
+All three apps share a single reusable policy (edit once → applies to all).
 Policy combines `Include: Email = owner` AND `Require: Countries = Estonia`.
 Owner traveling abroad connects via Tailscale → egresses through VM's EE IP → passes both checks.
 If Tailscale is down while abroad, access is blocked — intentional two-factor (identity + location).
@@ -52,7 +50,7 @@ editor outright.
 ## Custom Login Page
 
 Zero Trust → Reusable components → Custom pages → Access login page.
-Applies to all Access-protected apps (dash, n8n, trips, draft).
+Applies to all Access-protected apps (dash, trips, draft).
 
 | Field | Value |
 |-------|-------|

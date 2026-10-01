@@ -50,9 +50,9 @@ status_field() {
 }
 
 # live=yes for this VM: the host checks above already read its state directly,
-# so its file only proves the path the weekly report depends on.
+# so its file only proves that its timer runs.
 os_update_line() {
-  local label="$1" file="$2" live="$3" epoch age_h pending reboot running newest pve detail
+  local label="$1" file="$2" live="$3" epoch age_h pending since reboot running newest pve detail waited
   if [ ! -f "$file" ]; then
     warn "${label}: not reported (no ${file##*/})"
     return
@@ -71,8 +71,15 @@ os_update_line() {
   running="$(status_field "$file" runningKernel)"
   newest="$(status_field "$file" newestKernel)"
   pve="$(status_field "$file" pveVersion)"
+  since="$(status_field "$file" pendingSinceEpoch)"
   case "$pending" in
     ''|*[!0-9]*) warn "${label}: not reported (${file##*/} unreadable)"; return ;;
+  esac
+  # Files written before os-status.sh kept the pending age have no such field.
+  waited=""
+  case "$since" in
+    ''|*[!0-9]*) ;;
+    *) waited=" for $(( ($(date +%s) - since) / 86400 )) d" ;;
   esac
   detail="kernel ${running}"
   [ -n "$pve" ] && [ "$pve" != null ] && detail="pve ${pve}, ${detail}"
@@ -80,8 +87,8 @@ os_update_line() {
   if [ "$live" = yes ]; then
     local due="no reboot due"
     [ "$reboot" = true ] && due="reboot due"
-    printf '  INFO  %s: %s pending, %s (%s, reported %d h ago)\n' \
-      "$label" "$pending" "$due" "$detail" "$age_h"
+    printf '  INFO  %s: %s pending%s, %s (%s, reported %d h ago)\n' \
+      "$label" "$pending" "$waited" "$due" "$detail" "$age_h"
     return
   fi
   if [ "$reboot" = true ]; then
@@ -92,7 +99,7 @@ os_update_line() {
     fi
   fi
   if [ "$pending" -gt 0 ]; then
-    warn "${label}: ${pending} update(s) pending"
+    warn "${label}: ${pending} update(s) pending${waited}"
   fi
   if [ "$reboot" != true ] && [ "$pending" -eq 0 ]; then
     ok "${label}: up to date (${detail})"

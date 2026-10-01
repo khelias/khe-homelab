@@ -33,7 +33,6 @@ ALLOWED_PORTS=(
   8096  # Jellyfin
   8888  # Nextcloud
   8010  # Paperless
-  5678  # n8n
   11434 # Ollama
   13378 # Audiobookshelf
   8123  # Home Assistant

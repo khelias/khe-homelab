@@ -8,7 +8,7 @@
 #   - Immich: already mirrored to iCloud + Google Photos
 #   - Jellyfin / Audiobookshelf media: re-rippable
 #
-# Known risk: volumes containing live SQLite (uptime-kuma, npm, n8n,
+# Known risk: volumes containing live SQLite (uptime-kuma, npm,
 # audiobookshelf) are tarred while the writing process is running. SQLite
 # journal replay handles most crashes on restore, but a snapshot captured
 # mid-transaction is not guaranteed consistent. Acceptable for this homelab
@@ -111,7 +111,6 @@ POSTGRES_JOBS=(
   "immich-postgres:postgres:immich"
   "nextcloud-db:nextcloud:nextcloud"
   "paperless-db:paperless:paperless"
-  "n8n-db:n8n:n8n"
 )
 
 for entry in "${POSTGRES_JOBS[@]}"; do
@@ -151,7 +150,6 @@ NAMED_VOLUMES=(
   "nginx-proxy-manager_npm_data:npm-data"
   "nginx-proxy-manager_npm_letsencrypt:npm-letsencrypt"
   "uptime-kuma_uptime_kuma_data:uptime-kuma-data"
-  "n8n_n8n_data:n8n-data"
   "adguard_adguard_work:adguard-work"
   "jellyfin_jellyfin_config:jellyfin-config"
   "audiobookshelf_audiobookshelf_config:audiobookshelf-config"

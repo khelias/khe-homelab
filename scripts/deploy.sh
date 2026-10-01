@@ -20,7 +20,6 @@ DEPLOY_ORDER=(
   "productivity/paperless-ngx"
   "home/homeassistant"
   "ai/ollama"
-  "ai/n8n"
   "apps/landing"
   "apps/games"
   "apps/pages"

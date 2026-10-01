@@ -4,7 +4,8 @@
 # Debian security updates install themselves; Proxmox packages and kernels
 # stay manual (the monthly procedure in docs/runbook.md). Nothing reboots on
 # its own. Also orders guest start after the NFS export and installs the
-# daily OS status file that ops-status and the weekly report read.
+# daily OS status file that ops-status reads and the push to its Uptime Kuma
+# monitor.
 set -euo pipefail
 
 STATUS_FILE=/srv/data/reports/khe/internal/os-status-pve-host.json
@@ -61,6 +62,7 @@ EOF
 systemctl daemon-reload
 
 echo "Installing the daily OS status timer..."
+install -d -m 755 "$(dirname "$STATUS_FILE")"
 bash "$HERE/os-status.sh" --install "$STATUS_FILE"
 
 echo ""

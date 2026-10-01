@@ -10,7 +10,7 @@ name: Restore Verify
 # Telegram alert.
 #
 # Why nextcloud-db: if its restore works, the simpler ones (immich,
-# paperless, n8n) almost certainly do — they don't carry the
+# paperless) almost certainly do — they don't carry the
 # non-superuser CREATEROLE constraint that broke us once. The smoke
 # test count threshold is intentionally low: we're proving the chain,
 # not auditing data.

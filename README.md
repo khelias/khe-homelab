@@ -23,7 +23,7 @@ graph TB
         Core["<b>Core</b><br/>Homepage · Vaultwarden<br/>Uptime Kuma"]
         Media["<b>Media</b><br/>Immich · Jellyfin<br/>Audiobookshelf"]
         Prod["<b>Productivity</b><br/>Nextcloud · Paperless-ngx"]
-        AI["<b>AI</b><br/>Ollama · n8n"]
+        AI["<b>AI</b><br/>Ollama"]
         Apps["<b>Apps</b><br/>Landing Page · games hub<br/>pages · trips"]
         Obs["<b>Observability</b><br/>Loki · Grafana<br/>Alloy · Alertmanager"]
         Home["<b>Home</b><br/>Home Assistant<br/>Mosquitto · PAI"]
@@ -69,7 +69,6 @@ Jellyfin and Immich machine-learning both use `/dev/dri` for Quick Sync accelera
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/jellyfin.svg" width="22" /> | **Jellyfin** | `jellyfin.khe.ee` | Media server with Quick Sync HW transcoding |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/paperless-ngx.svg" width="22" /> | **Paperless-ngx** | `docs.khe.ee` | Document archive with OCR (Estonian + English) |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/audiobookshelf.svg" width="22" /> | **Audiobookshelf** | `books.khe.ee` | Audiobooks and podcasts |
-| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/n8n.svg" width="22" /> | **n8n** | `n8n.khe.ee` | Workflow automation and weekly homelab report generation (CF Access protected) |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/uptime-kuma.svg" width="22" /> | **Uptime Kuma** | `status.khe.ee` | Service monitoring and alerts |
 | 🎮 | **games hub** | `games.khe.ee` | Launcher, khe-study (`/study/`) and khe-ai-adventure (`/adventure/`), auto-deployed from GitHub |
 | 🗺️ | **trips** | `trips.khe.ee` | Private family trip atlas, CF Access protected, own GitHub runner |
@@ -87,7 +86,7 @@ Multiple independent layers — nothing on the router is exposed to the internet
 
 **External access — Cloudflare Tunnel**
 Zero inbound ports. Cloudflare terminates TLS and forwards to containers over an outbound-only tunnel.
-Private apps (the dashboard, n8n, trips, the pages editor) sit behind **Cloudflare Access** with email OTP.
+Private apps (the dashboard, trips, the pages editor) sit behind **Cloudflare Access** with email OTP.
 
 **Remote admin — Tailscale VPN**
 Docker VM runs Tailscale as a **subnet router** (`192.168.0.0/24`), so any Tailscale-connected
@@ -146,9 +145,9 @@ Operational work is kept to a minimum by pushing everything into code and cron.
 - **Estate images**: `khe-ai-adventure` is built in GitHub-hosted CI and published to
   GHCR; this repo pins the digests and the app's CI moves them in an automerged pin PR,
   so its deploy is a merge here, minutes after the push.
-- **n8n weekly report** — generates internal homelab reports plus a small public
-  portfolio metrics file; only `/srv/data/reports/khe/public` is served read-only
-  by the public landing nginx at `/reports/`.
+- **OS update reminders** — `scripts/os-status.sh` pushes the Proxmox host's and
+  the VM's update state to Uptime Kuma daily, which pages Telegram when a reboot is
+  due or an update has waited 30 days.
 - **Certificate renewal** — NPM auto-renews the wildcard cert via Cloudflare DNS API. No manual steps.
 - **Backups** — `scripts/backup.sh` dumps every Postgres DB, the Home Assistant
   recorder and the service configs on a schedule; `scripts/offsite-backup.sh` then

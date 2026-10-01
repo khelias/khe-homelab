@@ -70,7 +70,7 @@ the Debian security origin); Proxmox packages and kernels are upgraded by hand
 in a monthly catch-up, and nothing reboots on its own. Guests start after the
 NFS server (`pve-guests.service` drop-in), so the Docker VM never mounts an
 export that is not there yet. A daily timer writes the host's update state for
-ops-status and the weekly report. Set up by `../../scripts/setup-proxmox-updates.sh`
+ops-status and pushes it to its Uptime Kuma monitor. Set up by `../../scripts/setup-proxmox-updates.sh`
 (called from the post-install script); the procedure and the kernel rollback
 are in [docs/runbook.md](../../docs/runbook.md#os-updates-and-reboots).
 

@@ -140,8 +140,9 @@ The sections above come first.
     2026-09-25 because its socket proxy let an LLM agent read every
     container's env; an agent here reads through those same read-only
     windows and never gets the Docker socket.
-  - *First step:* a weekly triage note (the n8n weekly report is the
-    natural carrier) listing each alert and held PR with a proposed action.
+  - *First step:* a weekly triage note (a scheduled Actions workflow or a
+    `/schedule` routine carries it) listing each alert and held PR with a
+    proposed action.
     Measure how many proposals the operator accepts unchanged.
   - *Waits for:* Prometheus metrics (estate roadmap), so diagnoses rest on
     more than logs.

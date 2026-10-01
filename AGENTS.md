@@ -29,7 +29,7 @@ services/
                    Uptime Kuma, Homepage, autoheal
   media/           Immich, Jellyfin, Audiobookshelf
   productivity/    Nextcloud, Paperless-ngx
-  ai/              Ollama, n8n
+  ai/              Ollama
   home/            Home Assistant, Mosquitto, PAI (Paradox alarm)
   apps/            landing, games, pages, trips
   observability/   Loki, Grafana, Alloy, Alertmanager (one stack)

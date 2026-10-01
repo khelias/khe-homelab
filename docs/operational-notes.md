@@ -50,7 +50,7 @@ file in every session is wasteful; the entries are independent.
 - **Admin UI**: `http://192.168.0.11:81`, creds in VM `.env`.
 - **CF API token for DNS-01** is stored inside NPM's database
   (`npm_data` volume), not in repo.
-- **Not behind NPM**: `n8n`, `games` (CF Access / CF-only routing).
+- **Not behind NPM**: `games` (CF-only routing).
 
 ## Cloudflare Tunnel + Access
 
@@ -60,8 +60,8 @@ file in every session is wasteful; the entries are independent.
   Express`. **NPM's per-host tuning (unlimited body, 600s timeout) therefore
   applies to LAN traffic only** - split-horizon DNS sends LAN clients to NPM,
   external clients bypass it entirely.
-- Access policies (email OTP) protect: `dash.khe.ee`, `n8n.khe.ee`,
-  `trips.khe.ee`, `draft.khe.ee`.
+- Access policies (email OTP) protect: `dash.khe.ee`, `trips.khe.ee`,
+  `draft.khe.ee`.
 - `khe.ee` is fully public (landing page).
 - **Healthcheck must be `cloudflared tunnel ready`, not `cloudflared version`.**
   The old check only proved the binary could execute, so it stayed green through
@@ -178,7 +178,7 @@ and served via a per-location `root`. Do NOT nest it under
 - `trips.khe.ee` -> `trips:80` via CF Tunnel (no AdGuard rewrite, CF only
   for HTTPS).
 - CF Access protected with the shared `Email + Country=EE` policy
-  (same as dash, n8n, draft).
+  (same as dash, draft).
 - Static SPA: bind mount `/srv/data/trips/app:/usr/share/nginx/html:ro`,
   SPA fallback to `/index.html`.
 - Source: `khelias/khe-trips` (private).
@@ -285,10 +285,12 @@ and served via a per-location `root`. Do NOT nest it under
 - Static HTML at `khe.ee` (public), served by nginx alpine (pinned by Renovate).
 - Security headers (HSTS, nosniff, referrer, permissions, a CSP with no
   third-party hosts but Cloudflare Web Analytics) are set at server level and
-  repeated in `/reports/` and the static-asset location, since a location
-  with its own `add_header` inherits none. HSTS has no `includeSubDomains`:
+  repeated in the static-asset location, since a location with its own
+  `add_header` inherits none. HSTS has no `includeSubDomains`:
   the apex policy must not pin LAN-only names. `/r/` keeps its own set.
   `absolute_redirect off`, so `/privacy` -> `/privacy/` stays on https.
+- `/reports` and `/reports/`, retired in 2026-10, answer 404 rather than the
+  landing fallback, so an old link does not get the home page with a 200.
 - `/r/<slug>/` serves khe-trips share sites from `/srv/data/trips/share`,
   written by the khe-trips runner and mounted outside the html root
   (`/srv/share/r`). An unknown slug, `/r` and `/r/` answer 404, not the
@@ -306,8 +308,8 @@ and served via a per-location `root`. Do NOT nest it under
 
 Quick-publish surface: paste an AI-generated HTML page from a phone, get a
 public shareable link. Two containers in `services/apps/pages/` sharing
-`/srv/data/pages/app` (writer/reader split, same shape as n8n -> landing
-`/reports`).
+`/srv/data/pages/app` (writer/reader split: the private container writes,
+the public one mounts the same directory read-only).
 
 - `draft` (FileBrowser `v2.63.12`, runs as UID 1000, internal port 8080) is
   the **private** editor. `draft.khe.ee` -> `draft:8080` via CF Tunnel, CF
@@ -676,7 +678,7 @@ addresses, so they live in the private `khe-meta` repo under
   restores the `nextcloud-db.dump` (largest schema, only DB-init quirk)
   into a throwaway Postgres container, and asserts ≥50 public tables
   before tearing down. Heartbeat pings Kuma at the end.
-- **Why nextcloud-db, not all four DBs:** if its restore works, the
+- **Why nextcloud-db, not all three DBs:** if its restore works, the
   others almost certainly do — they don't carry the non-superuser
   CREATEROLE constraint that bit us once. Limit egress, limit run time.
 - **Sync risk:** the workflow re-creates the `nextcloud` role + DB
@@ -703,6 +705,29 @@ addresses, so they live in the private `khe-meta` repo under
 - The trap fires on **any** exit, including the FATAL early ones
   (missing env file, wrong perms, repo unreachable). Don't move the
   trap below those checks.
+
+## OS update heartbeats
+
+- `scripts/os-status.sh`, run daily by the `khe-os-status` timer on the
+  Proxmox host and on the VM, pushes to its machine's Uptime Kuma push
+  monitor: "OS updates: Proxmox host" and "OS updates: Docker VM".
+- **Down when a reboot is due, or when an update has been pending for 30
+  days or more** (`OS_STATUS_PENDING_DAYS`); up otherwise. The message
+  names the count, the days and the kernels, e.g. `12 updates pending 34 d,
+  reboot due (a -> b)`. The pending start lives in
+  `/var/lib/khe-os-status/pending-since` and resets when the count is zero.
+- Both monitors: heartbeat interval 28 h, Retries 0, Resend Notification
+  every 7 down beats, the Telegram notification. Kuma keeps generating down
+  beats for a push monitor that hears nothing, so a VM left on
+  `reboot-required` is re-sent weekly and a dead timer is still caught.
+- The URL is `OS_STATUS_PUSH_URL` in `/etc/khe/os-status.env` (root, mode
+  0600), read with `sed`, never sourced. No file or an empty value: no push.
+  The VM uses `http://localhost:3001/api/push/<token>`; the host uses
+  `http://<vm-lan-address>:3001/api/push/<token>`, since `status.khe.ee`
+  through Cloudflare meets WAF rule 3's CLI challenge. Kuma's
+  `?status=up&msg=OK&ping=` suffix can be pasted along; the script strips it.
+- The push retries for about five minutes: the host's boot run fires while
+  VM 100 and Kuma are still starting. A failed push changes nothing locally.
 
 ## Tailscale
 

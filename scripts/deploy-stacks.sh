@@ -21,7 +21,6 @@ DEPLOY_ORDER=(
   "home/homeassistant"
   "home/pai"
   "ai/ollama"
-  "ai/n8n"
   "apps/landing"
   "apps/games"
   "apps/pages"
@@ -149,7 +148,7 @@ main() {
   local force_flags=()
   local dry_run=false
   local targets=()
-  local stack ordered
+  local stack
 
   case "$mode" in
     all)

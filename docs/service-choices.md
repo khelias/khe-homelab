@@ -47,7 +47,7 @@ comparable, the one that scores better on these wins.
 | Cloud / file sync     | Nextcloud             | Medium     | 2026-05-05    |
 | Document OCR          | Paperless-ngx         | High       | 2026-05-05    |
 | LLM serving           | Ollama                | High       | 2026-05-05    |
-| Workflow automation   | n8n                   | Medium     | 2026-05-05    |
+| Workflow automation   | n8n, removed 2026-10  | —          | 2026-10-01    |
 | Ad-hoc page publishing| FileBrowser (+ nginx) | Medium     | 2026-06-06    |
 | Uptime monitoring     | Uptime Kuma           | High       | 2026-05-05    |
 | Dashboard             | Homepage              | High       | 2026-05-05    |
@@ -167,9 +167,9 @@ friction during high-churn periods.
 
 - **`khe.ee` DNS already on Cloudflare** — choosing CF Tunnel means one
   vendor, one auth surface, one set of certs (CF edge cert).
-- **CF Access** gates `dash.khe.ee`, `n8n.khe.ee`, `trips.khe.ee`,
-  `draft.khe.ee` with email OTP. Replacing this with self-hosted
-  equivalents (Authelia, Authentik) is real work for a 4-route gate.
+- **CF Access** gates `dash.khe.ee`, `trips.khe.ee`, `draft.khe.ee`
+  with email OTP. Replacing this with self-hosted equivalents (Authelia,
+  Authentik) is real work for a 3-route gate.
 - **Zero open ports** on the home router — single biggest win for
   attack-surface reduction.
 
@@ -353,8 +353,10 @@ Nextcloud is the **right** choice given the breadth of needs, but:
 - **`ollama pull` and a model is running** — Ollama abstracts the
   GGUF-download-and-config dance that llama.cpp leaves to the user.
   Iterating on which model fits the iGPU is a 2-minute exercise.
-- **Stable OpenAI-compatible endpoint** — n8n speaks that protocol.
-  Swapping models doesn't churn the integration layer.
+- **Stable OpenAI-compatible endpoint** — any client that speaks the
+  protocol works, and swapping models doesn't churn it. Nothing consumes it
+  since the workflow tool's removal in 2026-10, so whether Ollama stays is
+  an open decision.
 - **Single container, model files on the ZFS mirror** — fits the layout.
 
 ### When we'd revisit
@@ -393,32 +395,28 @@ breaks for est language support.
 
 ---
 
-## Workflow automation — n8n
+## Workflow automation — n8n (removed 2026-10)
 
-### Alternatives considered
+Chosen 2026-05 over Node-RED, Huginn and Activepieces for its integration
+breadth, removed on 2026-10-01:
 
-| Tool          | Notable strengths                              | Why not for us                                              |
-|---------------|------------------------------------------------|-------------------------------------------------------------|
-| **n8n**       | 400+ integrations, fair-code license, polished UI | (selected)                                                  |
-| Node-RED      | Lower-level, flow-programming, mature          | Fewer SaaS integrations; UX trails n8n for API-glue work    |
-| Huginn        | Long history, Ruby                             | Smaller ecosystem; UX feels dated                           |
-| Activepieces  | Open-core, modern UI                           | Younger; fewer integrations than n8n                         |
+- **One workflow, no reader.** n8n ran only the weekly report. Nothing read
+  its outputs (the public metrics file at `khe.ee/reports/` was fetched by
+  nobody, the internal one never), and its Telegram step never delivered.
+- **Every planned use had another carrier.** The architecture page numbers
+  are a CI snapshot, the maintenance digest a `/schedule` routine, house
+  data Home Assistant, trips jobs the trips backend, OS update reminders
+  Uptime Kuma push monitors
+  ([notes](operational-notes.md#os-update-heartbeats)). Paperless-ngx
+  fetches mail itself.
+- **It did not rebuild from git.** Workflows live in n8n's database, the
+  Community Edition has no git sync, and a re-import wipes their settings.
+- **Patch cost.** The pinned 2.39.4 was two High advisory batches behind
+  (September 2026), and upstream published dozens of advisories that month.
 
-### Why n8n, with caveats
-
-- **Integration breadth** — when the use case is "fetch from API X, write
-  to API Y", n8n's prebuilt nodes save real time.
-- **Self-hostable for free** under the fair-code license; we're well
-  inside the personal-use bounds.
-
-### Confidence: Medium
-
-n8n's licensing has tightened in past years and could tighten again
-(commercial use vs personal use boundaries shift). Activepieces is the
-emerging fully-open contender to watch.
-
-**When we'd revisit:** licensing change that constrains personal use, or
-Activepieces reaches integration parity (currently behind by a wide margin).
+**When we'd revisit:** a real need to glue three or more services with
+inbound events and human approval that a script or Home Assistant cannot do
+cleanly. Activepieces is the fully open alternative to compare then.
 
 ---
 
@@ -453,11 +451,11 @@ published page must be public (anyone with the link can open it).
   no desktop or app dependency; dufs and WebDAV don't.
 - **"Render as a page, not source" is not the tool's job.** It is solved by
   the existing writer→reader split: FileBrowser writes a file, a separate
-  read-only nginx serves it with a real `text/html` response. This reuses
-  the proven `n8n` (writer) → `landing` (`:ro` `/reports` reader) pattern —
-  zero new architectural concepts.
+  read-only nginx serves it with a real `text/html` response: one container
+  writes into a directory, a second mounts it `:ro` and serves it, so the
+  two never share a privilege.
 - **Safe to run, but upstream is ending.** UID 1000, write scope confined to
-  `/srv/data/pages/app` (its analog of `N8N_RESTRICT_FILE_ACCESS_TO`). The
+  `/srv/data/pages/app`. The
   original bet was that v2.63.x "maintenance mode" meant continued security
   patches. That expired: the startup banner in `docker logs draft` announces
   archival on **2026-09-01**, after which there are no releases and no security

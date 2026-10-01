@@ -214,14 +214,33 @@ with an automatic reboot:
 **How you know.** `scripts/os-status.sh` runs daily at 07:00 and five minutes
 after each boot (`khe-os-status.timer`) on both machines and writes
 `os-status-pve-host.json` and `os-status-vm.json` into
-`/srv/data/reports/khe/internal/`. Step 1's "OS updates" section and the
-Monday Telegram report ("Proxmox: ...", "Docker VM: ...") read them: pending
-updates, a due reboot, or "not reported" when a file is missing or older than
-48 h. On the host a due reboot means the newest installed kernel is not the
-running one, so a kernel pinned to an older version reads as "reboot due"
-until it is unpinned.
+`/srv/data/reports/khe/internal/`. Step 1's "OS updates" section reads them:
+pending updates and for how long, a due reboot, or "not reported" when a file
+is missing or older than 48 h. Each run also pushes to the Uptime Kuma
+monitors "OS updates: Proxmox host" and "OS updates: Docker VM", which go
+down, and page Telegram, when a reboot is due or an update has been pending
+for 30 days, and resend weekly while down
+([notes](operational-notes.md#os-update-heartbeats)). On the host a due reboot
+means the newest installed kernel is not the running one, so a kernel pinned
+to an older version reads as "reboot due" until it is unpinned.
 
-**The monthly catch-up**, when the Telegram lines show updates or a reboot due.
+Each machine needs its push URL once, as root, before the setup script runs
+(the VM's is `http://localhost:3001/api/push/<token>`, the host's
+`http://<vm-lan-address>:3001/api/push/<token>`):
+
+```bash
+install -d -m 700 /etc/khe
+```
+
+```bash
+read -rs U && printf 'OS_STATUS_PUSH_URL=%s\n' "$U" > /etc/khe/os-status.env && chmod 600 /etc/khe/os-status.env && unset U
+```
+
+Then `scripts/setup-vm-updates.sh` or `scripts/setup-proxmox-updates.sh`; the
+monitor has a beat within a minute.
+
+**The monthly catch-up**, when a Kuma OS updates monitor is down or step 1
+shows updates or a reboot due.
 A night after 23:00: AdGuard is the LAN's only DNS, so the reboots take the
 whole household offline for about ten minutes. SSH from the LAN, not over
 Tailscale, and work inside `tmux` on each machine, one block at a time:

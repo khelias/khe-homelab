@@ -40,7 +40,6 @@
         "ghcr.io/immich-app/immich-machine-learning",
         "ghcr.io/immich-app/immich-server",
         "ghcr.io/immich-app/postgres",
-        "ghcr.io/n8n-io/n8n",
         "ghcr.io/paperless-ngx/paperless-ngx",
         "jc21/nginx-proxy-manager",
         "nextcloud",

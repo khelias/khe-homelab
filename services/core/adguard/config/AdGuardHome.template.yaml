@@ -65,7 +65,6 @@ dns:
 filtering:
   rewrites:
     # games.khe.ee intentionally omitted - resolve via Cloudflare (HTTPS needed)
-    # n8n.khe.ee omitted — CF Access OTP protection must apply on LAN too
     - domain: khe.ee
       answer: 192.168.0.11
     - domain: dash.khe.ee
