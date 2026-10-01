@@ -675,19 +675,21 @@ addresses, so they live in the private `khe-meta` repo under
 
 - `.github/workflows/restore-verify.yml` runs Sundays 04:00 UTC on the
   self-hosted homelab runner. Pulls the latest restic snapshot from R2,
-  restores the `nextcloud-db.dump` (largest schema, only DB-init quirk)
-  into a throwaway Postgres container, and asserts ≥50 public tables
-  before tearing down. Heartbeat pings Kuma at the end.
-- **Why nextcloud-db, not all three DBs:** if its restore works, the
-  others almost certainly do — they don't carry the non-superuser
-  CREATEROLE constraint that bit us once. Limit egress, limit run time.
-- **Sync risk:** the workflow re-creates the `nextcloud` role + DB
-  inline using the same approach `services/productivity/nextcloud/init-db.sh`
-  uses. If you change `init-db.sh`, update the workflow's role-create
-  block in the same commit, otherwise the test stops mirroring prod.
+  restores the newest dated `immich-postgres.dump` into a throwaway
+  Postgres container, and asserts ≥20 public tables before tearing down.
+  Heartbeat pings Kuma at the end.
+- **Why immich-postgres:** it is the one Postgres data service left. Only
+  the newest dated copy is restored, because every copy carries the
+  embeddings and the job has a 20-minute timeout.
+- **Image:** the throwaway container runs the image of the running
+  `immich-postgres` container (`docker inspect`), because the dump needs
+  the vchord extension. The job fails unless it is a
+  `ghcr.io/immich-app/postgres` image.
+- **Not covered:** snapshot age, the volume tarballs and Vaultwarden's
+  SQLite (audit finding 10 in khe-meta).
 - **Manual trigger:** Actions tab → Restore Verify → Run workflow.
-  Useful right after touching backup.sh, the Postgres image, or the
-  Nextcloud schema (major version upgrade).
+  Useful right after touching backup.sh, the Immich Postgres image, or an
+  Immich major version upgrade.
 
 ## Backup heartbeats
 

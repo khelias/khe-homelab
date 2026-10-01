@@ -65,14 +65,14 @@ restic snapshots                                # list
 restic restore <snapshot-id> --target /tmp/r    # full restore
 # --include matches the absolute path as stored in the snapshot
 restic restore <snapshot-id> --target /tmp/r \
-       --include "/srv/backups/2026-04-18/nextcloud-db.dump"
+       --include "/srv/backups/2026-04-18/immich-postgres.dump"
 ```
 
 DB recovery example:
 
 ```bash
-docker exec -i nextcloud-db pg_restore -U nextcloud -d nextcloud --clean \
-       < /tmp/r/srv/backups/2026-04-18/nextcloud-db.dump
+docker exec -i immich-postgres pg_restore -U postgres -d immich --clean \
+       < /tmp/r/srv/backups/2026-04-18/immich-postgres.dump
 ```
 
 ## Integrity

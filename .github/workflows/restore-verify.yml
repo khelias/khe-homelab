@@ -2,18 +2,18 @@ name: Restore Verify
 
 # Weekly proof that the offsite backup chain actually restores.
 #
-# Pulls the latest restic snapshot from R2, isolates one PostgreSQL dump
-# (nextcloud — chosen because it has the most schema surface and the only
-# DB-init quirk in the fleet), restores it into a throwaway Postgres
-# container, and checks that the schema is queryable. Heartbeat pings
-# Uptime Kuma at the end so a missed verification fires the existing
-# Telegram alert.
+# Pulls the latest restic snapshot from R2, isolates the newest Immich
+# PostgreSQL dump, restores it into a throwaway Postgres container, and
+# checks that the schema is queryable. Heartbeat pings Uptime Kuma at the
+# end so a missed verification fires the existing Telegram alert.
 #
-# Why nextcloud-db: if its restore works, the simpler ones (immich,
-# paperless) almost certainly do — they don't carry the
-# non-superuser CREATEROLE constraint that broke us once. The smoke
-# test count threshold is intentionally low: we're proving the chain,
-# not auditing data.
+# Why immich-postgres: it is the one Postgres data service left in the
+# fleet. Its dump needs the vchord extension, so the throwaway container
+# runs the image that wrote it. The table threshold is intentionally low:
+# we're proving the chain, not auditing data.
+#
+# Not covered: snapshot age (a stale snapshot still passes), the volume
+# tarballs, and Vaultwarden's SQLite. See audit finding 10 in khe-meta.
 
 on:
   schedule:
@@ -29,18 +29,18 @@ concurrency:
 
 jobs:
   verify:
-    name: Restore latest nextcloud dump
+    name: Restore latest immich dump
     runs-on: [self-hosted, linux, homelab]
     timeout-minutes: 20
 
     steps:
       - name: Restore + smoke test
         env:
-          DUMP_NAME: nextcloud-db.dump
-          DB_USER: nextcloud
-          DB_NAME: nextcloud
-          PG_IMAGE: postgres:18-alpine
-          MIN_TABLES: '50'
+          DUMP_NAME: immich-postgres.dump
+          DB_USER: postgres
+          DB_NAME: immich
+          SOURCE_CONTAINER: immich-postgres
+          MIN_TABLES: '20'
         run: |
           set -euo pipefail
 
@@ -82,27 +82,42 @@ jobs:
           WORKDIR="$(mktemp -d)"
           trap on_exit EXIT
 
+          STAGE="pg-image"
+          # The image that wrote the dump, already local. A copy here would
+          # drift from the compose pin.
+          PG_IMAGE="$(docker inspect -f '{{.Config.Image}}' "$SOURCE_CONTAINER")"
+          case "$PG_IMAGE" in
+            ghcr.io/immich-app/postgres*) echo "Postgres image: $PG_IMAGE" ;;
+            *) echo "FAIL: $SOURCE_CONTAINER runs '$PG_IMAGE', expected ghcr.io/immich-app/postgres"; exit 2 ;;
+          esac
+
           STAGE="restic-restore"
-          # Restic snapshot path: /srv/backups/<date>/<dump-name>.
-          # `restic restore latest --include` pulls only the dump we need
-          # — saves ~200MB of unrelated tarballs per run.
+          # Restic snapshot path: /srv/backups/<date>/<dump-name>. Every
+          # dated copy carries the embeddings, so restore only the newest.
+          SNAPSHOT_LS="$(mktemp)"
+          restic ls latest --tag cron-daily > "$SNAPSHOT_LS"
+          SNAPSHOT_PATH="$(grep -E "^/srv/backups/[0-9]{4}-[0-9]{2}-[0-9]{2}/${DUMP_NAME}\$" "$SNAPSHOT_LS" \
+            | sort | tail -1 || true)"
+          rm -f "$SNAPSHOT_LS"
+          [ -n "$SNAPSHOT_PATH" ] || { echo "no $DUMP_NAME in latest snapshot"; exit 3; }
           restic restore latest \
             --target "$WORKDIR" \
-            --include "/srv/backups/*/${DUMP_NAME}" \
+            --include "$SNAPSHOT_PATH" \
             --tag cron-daily
 
-          DUMP_PATH="$(find "$WORKDIR" -name "$DUMP_NAME" | sort | tail -1)"
+          DUMP_PATH="${WORKDIR}${SNAPSHOT_PATH}"
           [ -s "$DUMP_PATH" ] || { echo "no dump restored"; exit 3; }
-          echo "Restored dump: $DUMP_PATH ($(du -h "$DUMP_PATH" | awk '{print $1}'))"
+          echo "Restored dump: $SNAPSHOT_PATH ($(du -h "$DUMP_PATH" | awk '{print $1}'))"
 
           STAGE="docker-up"
           docker run -d --rm \
             --name pg-restore-verify \
+            --shm-size 512m \
             -e POSTGRES_PASSWORD=verify \
             "$PG_IMAGE"
 
           # Wait for postgres ready — pg_isready returns 0 when accepting
-          # connections. 30s ceiling = generous; alpine starts in <5s.
+          # connections. 30s ceiling = generous; it starts in <5s.
           STAGE="docker-wait"
           for _ in $(seq 30); do
             if docker exec pg-restore-verify pg_isready -U postgres >/dev/null 2>&1; then
@@ -113,20 +128,29 @@ jobs:
           docker exec pg-restore-verify pg_isready -U postgres
 
           STAGE="role-create"
-          # Recreate the non-superuser role + DB the same way init-db.sh
-          # does in production. If this drifts from prod's init-db.sh,
-          # the restore test stops representing reality — keep them in
-          # sync.
-          docker exec -i pg-restore-verify psql -v ON_ERROR_STOP=1 -U postgres <<SQL
+          # The postgres role exists in a fresh container, so only a
+          # non-superuser DB_USER needs creating.
+          if [ "$DB_USER" = postgres ]; then
+            docker exec pg-restore-verify psql -v ON_ERROR_STOP=1 -U postgres \
+              -c "CREATE DATABASE ${DB_NAME};"
+          else
+            docker exec -i pg-restore-verify psql -v ON_ERROR_STOP=1 -U postgres <<SQL
           CREATE ROLE ${DB_USER} WITH LOGIN PASSWORD 'verify';
           CREATE DATABASE ${DB_NAME} OWNER ${DB_USER};
           GRANT ALL ON SCHEMA public TO ${DB_USER};
           SQL
+          fi
 
           STAGE="pg-restore"
-          docker exec -i pg-restore-verify \
+          RESTORE_ERR="$WORKDIR/pg_restore.err"
+          if ! docker exec -i pg-restore-verify \
             pg_restore -U "$DB_USER" -d "$DB_NAME" --no-owner --no-acl \
-            < "$DUMP_PATH"
+            < "$DUMP_PATH" 2> "$RESTORE_ERR"; then
+            echo "FAIL: pg_restore exited non-zero. Last 20 lines of stderr:"
+            tail -n 20 "$RESTORE_ERR"
+            grep -i 'errors ignored on restore' "$RESTORE_ERR" || echo "(no 'errors ignored on restore' line)"
+            exit 5
+          fi
 
           STAGE="smoke-test"
           TABLES="$(docker exec pg-restore-verify \
