@@ -30,11 +30,6 @@ ALLOWED_PORTS=(
   3000  # Homepage
   3001  # Uptime Kuma
   2283  # Immich
-  8096  # Jellyfin
-  8888  # Nextcloud
-  8010  # Paperless
-  11434 # Ollama
-  13378 # Audiobookshelf
   8123  # Home Assistant
 )
 

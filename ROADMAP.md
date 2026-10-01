@@ -13,10 +13,9 @@ Direction and priorities for the homelab — what it should become, beyond curre
   it gives this host write access to the heat pump and ventilation.
 - **Resource-limit tuning from metrics** — initial `deploy.resources.limits`
   now cover every long-running container. Watch Docker stats / service behavior
-  and tune caps where Nextcloud, Immich, Paperless, Jellyfin, or Ollama show
-  real workload pressure.
+  and tune caps where Immich shows real workload pressure.
 - **Healthcheck cleanup** — standardise `start_period`, replace trivial checks
-  (Nextcloud cron `stat`, Ollama `list`) with real probes.
+  with real probes.
 - **Immich: unused feature surface** — audited 2026-08-03, Tier 1 (multilingual
   CLIP, fullsize renders, 1080p transcode) landed. Still open, roughly in order:
   - **Config secrets have nowhere to live.** `immich.config.json` is committed
@@ -62,7 +61,7 @@ Direction and priorities for the homelab — what it should become, beyond curre
   projects land, a UI + API + rollback + push-based deploys become worth the
   install. Until then, manual `deploy.sh` via Tailscale is the right scope.
 - **Upgrade strategy documented** — major jumps (PVE 9 → 10, Debian 13 → 14,
-  Nextcloud major) need a rehearsed path. Capture the steps before the first
+  Immich major) need a rehearsed path. Capture the steps before the first
   painful upgrade, not after.
 - **Authentik / Authelia SSO** — once RAM upgrade lands, consolidate auth across
   services instead of each one managing its own.
@@ -150,30 +149,33 @@ The sections above come first.
     agent reads, so prompt injection is the main threat. Agents get no
     write path beyond a branch or a note, and a workflow still never takes
     a shell command as input. Model cost if a hosted model does the work;
-    the local 7B model is unverified for this kind of diagnosis.
+    no local model runs here since Ollama was removed on 2026-10-01.
 - **Local AI serving for the apps.** Serve khe-ai-adventure's narration
-  from Ollama here instead of a hosted API, so a game costs nothing per
-  play.
-  - *Why here:* Ollama is already deployed with an OpenAI-compatible API.
-  - *Honest state:* it is CPU-only, capped at 10G RAM and 6 CPUs inside an
-    8-vCPU, 24GB VM, and runs `qwen2.5:7b`. khe-ai-adventure's own roadmap
+  from a local model here instead of a hosted API, so a game costs nothing
+  per play.
+  - *Why here:* Ollama ran here with an OpenAI-compatible API until
+    2026-10-01, when it was removed for lack of use. Its compose file is in
+    this repo's git history.
+  - *Honest state:* it was CPU-only, capped at 10G RAM and 6 CPUs inside an
+    8-vCPU, 24GB VM, and ran `qwen2.5:7b`. khe-ai-adventure's own roadmap
     keeps local models out of the live path until latency, Estonian quality
     and structured-output reliability are competitive, and nothing measured
     says a 7B CPU model is. On this hardware the answer is most likely no.
-  - *First step:* replay a recorded game's prompts against the local model
-    and score it with the adventure repo's model matrix: turn latency,
-    schema retries, Estonian editor corrections.
+  - *First step:* re-add the Ollama stack from git history (with the
+    `ai-internal` network it needs), replay a recorded game's prompts
+    against it and score it with the adventure repo's model matrix: turn
+    latency, schema retries, Estonian editor corrections.
   - *Waits for:* the RTX-class GPU under Hardware, and a measured per-game
     API cost from the proxy logs to compare against.
   - *Risk and cost:* a GPU costs money and draws power around the clock,
     which may exceed the API bill of a low-volume party game. Worth doing
-    only if the GPU is bought for Immich and Ollama anyway.
+    only if the GPU is bought for Immich and local models anyway.
 - **Family data the homelab can stand behind alone.** Today `backup.sh`
   skips Immich originals because they are mirrored to iCloud and Google
   Photos. The ambition is the reverse: the homelab holds the primary copy
   with its own offsite backup, and the third-party mirrors become optional.
-  - *Why here:* Immich, Nextcloud and Paperless already replace the cloud
-    services; only the backup does not yet trust them to.
+  - *Why here:* Immich already replaces the cloud photo services; only the
+    backup does not yet trust it to.
   - *First step:* measure the size of Immich originals and price keeping
     them offsite (R2 beyond its free 10 GB, or the second site).
   - *Waits for:* the Immich config-secrets and SMTP items above, before
@@ -188,14 +190,15 @@ The sections above come first.
 
 Currently: i7-12700K, 32GB DDR5, 2× 12TB ZFS mirror, 2TB NVMe. No discrete GPU.
 
-- **RTX-class GPU** — accelerate Ollama (today CPU-only `qwen2.5:7b`) and Immich
-  ML (today OpenVINO CPU). IOMMU is already on, iGPU is already passed through for
+- **RTX-class GPU** — accelerate local LLMs (Ollama, CPU-only `qwen2.5:7b`, was
+  removed on 2026-10-01 for lack of use) and Immich ML (today OpenVINO CPU).
+  IOMMU is already on, iGPU is already passed through for
   Quick Sync — a discrete card would pass through the same way.
 - **+32GB DDR5 → 64GB total** — unblocks Authentik SSO, more concurrent services,
   larger local LLMs, parallel ML workloads.
 - **UPS** — not yet; power cut is unclean shutdown for the whole homelab. Worth
   considering once critical family usage grows.
-- **10GbE upgrade** — only relevant if Jellyfin / Immich / Nextcloud transfers
+- **10GbE upgrade** — only relevant if Immich transfers
   start saturating the current 2.5GbE link. No evidence of that yet.
 
 ## Service wishlist
@@ -212,7 +215,8 @@ Rough order of impact:
 - **Own projects** — adventure-engine revival, Spliit (Splitwise alternative),
   khe-study iterations
 - **khe-memory (idea, not started)** — cross-agent memory bank as own project.
-  SQLite + sqlite-vec + Ollama embeddings (`nomic-embed-text`), MCP server over
+  SQLite + sqlite-vec + local embeddings (`nomic-embed-text`; Ollama, removed on
+  2026-10-01, would have to come back), MCP server over
   HTTP. Shared store for Claude Code and Codex CLI on both laptops, reached via
   Tailscale. Differentiators worth pursuing: auto-ingest from existing
   `~/.claude/projects/` and `~/.codex/sessions/` history (bootstrap problem

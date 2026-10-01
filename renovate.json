@@ -40,11 +40,7 @@
         "ghcr.io/immich-app/immich-machine-learning",
         "ghcr.io/immich-app/immich-server",
         "ghcr.io/immich-app/postgres",
-        "ghcr.io/paperless-ngx/paperless-ngx",
         "jc21/nginx-proxy-manager",
-        "nextcloud",
-        "postgres",
-        "redis",
         "tecnativa/docker-socket-proxy",
         "vaultwarden/server"
       ],

@@ -10,9 +10,6 @@ layout:
   Meedia:
     style: row
     columns: 3
-  AI:
-    style: row
-    columns: 3
   Infra:
     style: row
     columns: 3

@@ -4,14 +4,13 @@
 # exits non-zero if anything failed so cron mail / monitoring surfaces it.
 #
 # Encryption is NOT applied here — offsite tier (restic) handles that.
-# Large user data (Immich uploads, Jellyfin media) is deliberately excluded:
-#   - Immich: already mirrored to iCloud + Google Photos
-#   - Jellyfin / Audiobookshelf media: re-rippable
+# Large user data (Immich uploads) is deliberately excluded: it is already
+# mirrored to iCloud + Google Photos.
 #
-# Known risk: volumes containing live SQLite (uptime-kuma, npm,
-# audiobookshelf) are tarred while the writing process is running. SQLite
-# journal replay handles most crashes on restore, but a snapshot captured
-# mid-transaction is not guaranteed consistent. Acceptable for this homelab
+# Known risk: volumes containing live SQLite (uptime-kuma, npm) are tarred
+# while the writing process is running. SQLite journal replay handles most
+# crashes on restore, but a snapshot captured mid-transaction is not
+# guaranteed consistent. Acceptable for this homelab
 # — fixing it properly requires per-service quiesce or SQLite .backup API.
 # The Home Assistant recorder DB is the one exception: it is large, written
 # continuously, and dumped through the .backup API below instead of tarred.
@@ -102,15 +101,11 @@ tar_via_alpine() {
 }
 
 # --- PostgreSQL: pg_dump per database (not pg_dumpall — that needs superuser
-#     access to pg_authid, which breaks for non-superuser DB owners like the
-#     Nextcloud role created via init-db.sh without CREATEROLE). User/DB are
-#     hardcoded here rather than read from container env: nextcloud-db only
-#     sets POSTGRES_PASSWORD and provisions its role+db through init-db.sh,
-#     so env lookup returns nothing for that container.
+#     access to pg_authid, which breaks for non-superuser DB owners). User/DB
+#     are hardcoded here rather than read from container env, so a container
+#     that provisions its role through an init script still dumps correctly.
 POSTGRES_JOBS=(
   "immich-postgres:postgres:immich"
-  "nextcloud-db:nextcloud:nextcloud"
-  "paperless-db:paperless:paperless"
 )
 
 for entry in "${POSTGRES_JOBS[@]}"; do
@@ -144,17 +139,13 @@ done
 
 # --- Docker named volumes (small, critical runtime state).
 #     pgdata volumes are NOT listed here: pg_dump above is the source of truth
-#     and a file-level tar of a live pgdata is unsafe. Model caches (Immich
-#     ML, Ollama) are excluded — redownloadable.
+#     and a file-level tar of a live pgdata is unsafe. The Immich ML model
+#     cache is excluded — redownloadable.
 NAMED_VOLUMES=(
   "nginx-proxy-manager_npm_data:npm-data"
   "nginx-proxy-manager_npm_letsencrypt:npm-letsencrypt"
   "uptime-kuma_uptime_kuma_data:uptime-kuma-data"
   "adguard_adguard_work:adguard-work"
-  "jellyfin_jellyfin_config:jellyfin-config"
-  "audiobookshelf_audiobookshelf_config:audiobookshelf-config"
-  "audiobookshelf_audiobookshelf_metadata:audiobookshelf-metadata"
-  "nextcloud_nextcloud_html:nextcloud-html"
 )
 
 for entry in "${NAMED_VOLUMES[@]}"; do
@@ -170,14 +161,10 @@ for entry in "${NAMED_VOLUMES[@]}"; do
 done
 
 # --- Host bind mounts (config + small user data on /srv).
-#     Nextcloud user files (/srv/data/nextcloud) and Paperless docs
-#     (/srv/data/paperless) are covered here — both are small today.
 #     The repo-tracked config dirs (homepage, adguard) are also tar'd because
 #     the live state may include runtime changes not yet committed.
 BIND_MOUNTS=(
   "/srv/data/vaultwarden:vaultwarden-data"
-  "/srv/data/paperless:paperless-files"
-  "/srv/data/nextcloud:nextcloud-files"
   "/srv/data/pages:pages-files"
   "/home/khe/homelab/services/core/adguard/config:adguard-config"
   "/home/khe/homelab/services/core/homepage/config:homepage-config"

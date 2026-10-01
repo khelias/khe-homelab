@@ -13,12 +13,8 @@ Tunnel routes directly to Docker containers. LAN traffic goes via NPM (split-hor
 |---------------------|-----------------------------|-----------------------------|-------|
 | khe.ee              | landing:80                  | landing:80                  | public; `/r/` = khe-trips share sites, public by design (no Access, no dashboard change) |
 | dash.khe.ee         | homepage:3000               | homepage:3000               | CF Access (external only) |
-| cloud.khe.ee        | nextcloud:80                | nextcloud:80                | NPM: 16G upload, 600s timeout |
 | vault.khe.ee        | vaultwarden:80              | vaultwarden:80              | |
-| docs.khe.ee         | paperless:8000              | paperless:8000              | NPM: unlimited upload, 300s timeout |
 | photos.khe.ee       | immich-server:2283          | immich-server:2283          | NPM: unlimited upload, 600s timeout |
-| jellyfin.khe.ee     | jellyfin:8096               | jellyfin:8096               | NPM: unlimited body, 600s timeout |
-| books.khe.ee        | audiobookshelf:80           | audiobookshelf:80           | NPM: unlimited upload, 600s timeout |
 | status.khe.ee       | uptime-kuma:3001            | uptime-kuma:3001            | |
 | games.khe.ee        | study-game:80 (→ games)     | — (CF only)                 | no AdGuard rewrite; alias in games compose until route updated to games:80 |
 | trips.khe.ee        | trips:80                    | — (CF Access)               | CF Access OTP on all networks; no AdGuard rewrite |
@@ -70,7 +66,7 @@ Security → Security rules → Custom rules. Free plan: 5 rule slots, 4 in use.
 |---|------|-----------|--------|---------|
 | 1 | Block known scanner paths | `(http.request.uri.path contains "/.env") or (.../.git/) or (.../wp-login) or (.../wp-admin) or (.../wp-content) or (.../xmlrpc.php) or (.../phpmyadmin) or (.../.aws/) or (.../.ssh/)` | Block | Drops WP/PHP/env scanner noise before origin |
 | 2 | Challenge high-risk countries | `(ip.geoip.country in {"RU" "CN" "KP" "IR" "BY"}) and (http.host ne "khe.ee")` | Managed Challenge | CAPTCHA for bots; apex exempted so UptimeRobot still works |
-| 3 | Challenge non-browser UAs on public apps | `(http.host in {"photos" "cloud" "books" "jellyfin" "docs" "vault" "status" ".khe.ee"}) and (lower(http.user_agent) contains "curl"/"wget"/"python-requests"/"go-http-client"/"scrapy" or http.user_agent eq "")` | Managed Challenge | Stops naive scraper CLIs on non-Access-protected subdomains; mobile apps send their own UAs so unaffected |
+| 3 | Challenge non-browser UAs on public apps | `(http.host in {"photos" "vault" "status" ".khe.ee"}) and (lower(http.user_agent) contains "curl"/"wget"/"python-requests"/"go-http-client"/"scrapy" or http.user_agent eq "")` | Managed Challenge | Stops naive scraper CLIs on non-Access-protected subdomains; mobile apps send their own UAs so unaffected |
 | 4 | Block Vaultwarden admin | `(http.host eq "vault.khe.ee") and starts_with(http.request.uri.path, "/admin")` | Block | The admin panel is never needed from the internet; LAN reaches it through NPM, which the tunnel never touches. `ADMIN_TOKEN` stays an argon2 hash as the second layer |
 
 Also enabled:

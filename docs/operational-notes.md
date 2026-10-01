@@ -41,10 +41,9 @@ file in every session is wasteful; the entries are independent.
 ## Nginx Proxy Manager
 
 - **Wildcard `*.khe.ee` Let's Encrypt cert** via Cloudflare DNS-01 (auto-renew).
-- **9 proxy hosts**: `khe.ee`, `dash`, `cloud`, `vault`, `docs`, `photos`,
-  `jellyfin`, `books`, `status`.
-- **Upload-heavy hosts** (photos, cloud, docs, jellyfin, books) have
-  unlimited body size + 600s timeouts. Applies to LAN clients only; the CF
+- **5 proxy hosts**: `khe.ee`, `dash`, `vault`, `photos`, `status`.
+- **The upload-heavy host** (photos) has unlimited body size + 600s
+  timeouts. Applies to LAN clients only; the CF
   tunnel does not route through NPM (see Cloudflare Tunnel section).
 - **All hosts**: WebSocket, HTTP/2, HSTS, SSL forced, block exploits.
 - **Admin UI**: `http://192.168.0.11:81`, creds in VM `.env`.
@@ -87,29 +86,6 @@ file in every session is wasteful; the entries are independent.
   had no path out while every container kept running normally.
 - See [`infrastructure/cloudflare.md`](../infrastructure/cloudflare.md).
 
-## Nextcloud
-
-- **PHP**: 512M memory, 16G upload, OPcache 256M, JIT 128M
-  (`php-custom.ini` mount).
-- **PostgreSQL**: `shared_buffers=256MB`, `work_mem=16MB`,
-  `effective_cache_size=1GB`.
-- **Redis**: `maxmemory 256MB`, `allkeys-lru`, persistence disabled (cache-only).
-- **`trusted_proxies`**: `172.16.0.0/12` (Docker network for CF Tunnel).
-- **Config**: `default_phone_region=EE`, `maintenance_window_start=1` (UTC),
-  `simpleSignUpAllowed=false`, `loglevel=2`, `trashbin/versions "7, auto"`.
-- **`PG CREATEROLE` bug** resolved via `init-db.sh` (non-superuser nextcloud
-  DB user).
-- **`NEXTCLOUD_TRUSTED_DOMAINS`** includes `nextcloud` for Homepage OCS API.
-- **App password for Homepage**:
-  `docker exec nextcloud php occ user:add-app-password admin`.
-- **Cron sidecar** (`nextcloud-cron`) runs background jobs.
-
-## Jellyfin
-
-- **QSV** configured via init container (`encoding.xml` bind mount +
-  `system.xml` patch). No web UI steps needed.
-- `/dev/dri` mounted for Intel Quick Sync (iGPU passthrough).
-
 ## Homepage
 
 - Live widgets for all services. Config in `services/core/homepage/config/`
@@ -119,11 +95,7 @@ file in every session is wasteful; the entries are independent.
   - Proxmox: a privilege-separated token of the read-only `monitor@pve` user
     ([Proxmox API tokens](../infrastructure/proxmox/README.md#api-tokens)),
     never a `root@pam` token
-  - Paperless: `docker exec paperless python3 manage.py drf_create_token admin`
   - Immich: insert into `api_key` table (helper in `scripts/`)
-  - Jellyfin: insert into `ApiKeys` table in `jellyfin.db`
-  - Audiobookshelf: read `token` column from `users` table in `absdatabase.sqlite`
-  - Nextcloud: `docker exec nextcloud php occ user:add-app-password admin`
 
 ## Games hub (launcher + study + adventure)
 
@@ -186,13 +158,6 @@ and served via a per-location `root`. Do NOT nest it under
   `khe.ee/r/<slug>/`, not here; see "Landing page".
 - GH Actions runner: `/home/khe/actions-runner-trips`,
   systemd unit `actions.runner.khelias-khe-trips.trips-runner.service`.
-
-## Ollama
-
-- CPU-only, `qwen2.5:7b` loaded.
-- Tuning: `OLLAMA_NUM_THREAD=8`, `OLLAMA_KEEP_ALIVE=-1`,
-  `OLLAMA_FLASH_ATTENTION=1`.
-- Resource limits: 10G RAM, 6 CPUs (leaves 2 vCPUs for other services).
 
 ## Immich
 
@@ -659,7 +624,8 @@ addresses, so they live in the private `khe-meta` repo under
 - VM runs `linux-image-amd64` kernel (cloud kernel lacks i915), GRUB
   default set.
 - VM apt sources include `non-free-firmware` for Intel firmware packages.
-- `/dev/dri` mounted into `jellyfin` and `immich-server` containers.
+- `/dev/dri` mounted into the `immich-server` and `immich-machine-learning`
+  containers.
 
 ## VM watchdog
 

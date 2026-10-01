@@ -19,7 +19,7 @@ on:
           - changed
           - all
       stack:
-        description: Optional stack path, for example services/ai/ollama
+        description: Optional stack path, for example services/media/immich
         required: false
         type: string
       force_recreate:

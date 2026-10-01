@@ -40,7 +40,7 @@ sudo touch /srv/backups/.nfs-test && sudo rm /srv/backups/.nfs-test && echo "  /
 echo ""
 # 6. Create data subdirectories on the NFS mount
 echo "Creating data directories on NFS..."
-sudo mkdir -p /srv/data/{immich/upload,nextcloud,paperless/{media,consume,export},media/{audiobooks,podcasts,kids-cartoons}}
+sudo mkdir -p /srv/data/immich/upload
 sudo chown -R "$USER:$USER" /srv/data
 
 echo "NFS mounts ready. Docker services can now use /srv/data/*"

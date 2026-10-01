@@ -13,7 +13,7 @@ apt-get install -y nfs-kernel-server
 
 # 2. Create ZFS datasets if they don't exist
 echo "Ensuring ZFS datasets exist..."
-for ds in tank/data tank/data/immich tank/data/nextcloud tank/data/paperless tank/data/media tank/backups; do
+for ds in tank/data tank/data/immich tank/backups; do
   zfs list "$ds" >/dev/null 2>&1 || zfs create -p "$ds"
 done
 

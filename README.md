@@ -1,6 +1,6 @@
 # KHE Homelab
 
-Personal family homelab — self-hosted cloud, media, and AI on a single machine. Infrastructure as Code with Docker Compose on Proxmox VE.
+Personal family homelab — self-hosted photos, passwords, family apps and home automation on a single machine. Infrastructure as Code with Docker Compose on Proxmox VE.
 
 ## Architecture
 
@@ -21,9 +21,7 @@ graph TB
     subgraph DVM[Docker VM · 192.168.0.11]
         direction LR
         Core["<b>Core</b><br/>Homepage · Vaultwarden<br/>Uptime Kuma"]
-        Media["<b>Media</b><br/>Immich · Jellyfin<br/>Audiobookshelf"]
-        Prod["<b>Productivity</b><br/>Nextcloud · Paperless-ngx"]
-        AI["<b>AI</b><br/>Ollama"]
+        Media["<b>Media</b><br/>Immich"]
         Apps["<b>Apps</b><br/>Landing Page · games hub<br/>pages · trips"]
         Obs["<b>Observability</b><br/>Loki · Grafana<br/>Alloy · Alertmanager"]
         Home["<b>Home</b><br/>Home Assistant<br/>Mosquitto · PAI"]
@@ -41,7 +39,7 @@ Two independent paths to the same containers:
 
 Which hostname goes where, and which ones Access gates, is in [infrastructure/cloudflare.md](infrastructure/cloudflare.md).
 
-Proxmox VE (192.168.0.10) is the hypervisor; the Docker VM (192.168.0.11) is the only guest. Fast storage (NVMe) holds the VM root + DB volumes; bulk storage (ZFS mirror, NFS-mounted at `/srv`) holds photos, media, documents.
+Proxmox VE (192.168.0.10) is the hypervisor; the Docker VM (192.168.0.11) is the only guest. Fast storage (NVMe) holds the VM root + DB volumes; bulk storage (ZFS mirror, NFS-mounted at `/srv`) holds photos and backups.
 
 ## Hardware
 
@@ -55,7 +53,7 @@ Proxmox VE (192.168.0.10) is the hypervisor; the Docker VM (192.168.0.11) is the
 | Network | Intel 2.5G LAN → Asus RT-AX55 |
 
 Intel iGPU is passed through to the Docker VM via `vfio-pci` for hardware transcoding —
-Jellyfin and Immich machine-learning both use `/dev/dri` for Quick Sync acceleration.
+Immich machine-learning uses `/dev/dri` for Quick Sync acceleration.
 
 ## Services
 
@@ -63,17 +61,12 @@ Jellyfin and Immich machine-learning both use `/dev/dri` for Quick Sync accelera
 |---|---------|--------|-------------|
 | 🌐 | **Landing Page** | `khe.ee` | Public family landing page; shared trips under `/r/` |
 | 🏠 | **Homepage** | `dash.khe.ee` | Service dashboard with live widgets (CF Access protected) |
-| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/nextcloud.svg" width="22" /> | **Nextcloud** | `cloud.khe.ee` | Files, calendar, contacts (CalDAV/CardDAV), tuned PHP/PG/Redis |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/immich.svg" width="22" /> | **Immich** | `photos.khe.ee` | Photo library with ML tagging (Google Photos replacement) |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/vaultwarden.svg" width="22" /> | **Vaultwarden** | `vault.khe.ee` | Password manager with Passkey support |
-| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/jellyfin.svg" width="22" /> | **Jellyfin** | `jellyfin.khe.ee` | Media server with Quick Sync HW transcoding |
-| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/paperless-ngx.svg" width="22" /> | **Paperless-ngx** | `docs.khe.ee` | Document archive with OCR (Estonian + English) |
-| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/audiobookshelf.svg" width="22" /> | **Audiobookshelf** | `books.khe.ee` | Audiobooks and podcasts |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/uptime-kuma.svg" width="22" /> | **Uptime Kuma** | `status.khe.ee` | Service monitoring and alerts |
 | 🎮 | **games hub** | `games.khe.ee` | Launcher, khe-study (`/study/`) and khe-ai-adventure (`/adventure/`), auto-deployed from GitHub |
 | 🗺️ | **trips** | `trips.khe.ee` | Private family trip atlas, CF Access protected, own GitHub runner |
 | 📝 | **pages** | `pages.khe.ee` | Quick-publish HTML pages; edited at `draft.khe.ee` (CF Access protected) |
-| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/ollama.svg" width="22" /> | Ollama | LAN only | Local AI models (CPU-only) |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/home-assistant.svg" width="22" /> | Home Assistant | `home.khe.ee` (LAN + Tailscale) | House automation: HVAC, grid metering and cameras over local protocols. Deliberately not on the tunnel; the house detail is in the private khe-meta repo |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/adguard-home.svg" width="22" /> | AdGuard Home | LAN + Tailscale | DNS ad-blocking on the LAN + split-horizon DNS; over Tailscale it answers only the `khe.ee` zone |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/nginx-proxy-manager.svg" width="22" /> | Nginx Proxy Manager | LAN only | Reverse proxy + wildcard SSL for LAN traffic |
@@ -91,7 +84,7 @@ Private apps (the dashboard, trips, the pages editor) sit behind **Cloudflare Ac
 **Remote admin — Tailscale VPN**
 Docker VM runs Tailscale as a **subnet router** (`192.168.0.0/24`), so any Tailscale-connected
 device gets full LAN access: Proxmox UI, AdGuard, NPM admin, and SSH to the VM.
-Lets mobile devices bypass the Cloudflare 100MB upload limit — large Immich / Nextcloud
+Lets mobile devices bypass the Cloudflare 100MB upload limit — large Immich
 uploads go directly to NPM over VPN.
 
 **LAN access — Wildcard SSL**
@@ -120,9 +113,9 @@ Five layers, each catching what the others miss:
    left by `restart: unless-stopped`, which only reacts to full crashes. This
    caught a stuck immich-ml worker the day it was deployed.
 3. **Runaway service — Compose resource limits.** Every long-running container
-   has conservative memory and CPU limits in its `docker-compose.yml`; media,
-   database, AI, and document workloads get larger caps than static web
-   services. This keeps one bad process from consuming the whole 32GB VM.
+   has conservative memory and CPU limits in its `docker-compose.yml`; media
+   and database workloads get larger caps than static web services. This
+   keeps one bad process from consuming the whole 24GB VM.
 4. **Service down — Uptime Kuma + Telegram push.** Every service has a Kuma
    HTTP/DNS monitor; all notify the same Telegram bot (`@khe_homelab_bot`).
    Alert lands on the owner's phone within ~90s. Kuma

@@ -1,7 +1,7 @@
 # khe-homelab
 
 Family homelab as code: one Proxmox host, one Debian 13 VM running Docker
-Compose stacks for cloud, media, AI and home services. Every compose file,
+Compose stacks for core, media, home and app services. Every compose file,
 AdGuard and Homepage config lives here. This file holds rules and
 pointers; the reference lives in:
 
@@ -27,9 +27,7 @@ rules are not loaded into context on their own.
 services/
   core/            NPM, AdGuard, Cloudflare Tunnel, Vaultwarden,
                    Uptime Kuma, Homepage, autoheal
-  media/           Immich, Jellyfin, Audiobookshelf
-  productivity/    Nextcloud, Paperless-ngx
-  ai/              Ollama
+  media/           Immich
   home/            Home Assistant, Mosquitto, PAI (Paradox alarm)
   apps/            landing, games, pages, trips
   observability/   Loki, Grafana, Alloy, Alertmanager (one stack)

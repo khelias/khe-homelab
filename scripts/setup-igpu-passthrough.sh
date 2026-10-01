@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Bind Intel iGPU to vfio-pci on the Proxmox host so it can be passed through
-# to the Docker VM for Jellyfin/Immich Quick Sync hardware transcoding.
+# to the Docker VM for Immich Quick Sync hardware transcoding.
 #
 # Run on the Proxmox HOST (not inside the VM).
 # Requires IOMMU enabled (intel_iommu=on) — proxmox-post-install.sh sets this.

@@ -69,17 +69,9 @@ filtering:
       answer: 192.168.0.11
     - domain: dash.khe.ee
       answer: 192.168.0.11
-    - domain: cloud.khe.ee
-      answer: 192.168.0.11
     - domain: vault.khe.ee
       answer: 192.168.0.11
-    - domain: docs.khe.ee
-      answer: 192.168.0.11
     - domain: photos.khe.ee
-      answer: 192.168.0.11
-    - domain: jellyfin.khe.ee
-      answer: 192.168.0.11
-    - domain: books.khe.ee
       answer: 192.168.0.11
     - domain: status.khe.ee
       answer: 192.168.0.11

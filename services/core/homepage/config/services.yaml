@@ -1,31 +1,10 @@
 - Pilv:
-    - Nextcloud:
-        icon: nextcloud
-        href: https://cloud.khe.ee
-        description: Failid ja kalender
-        server: my-docker
-        container: nextcloud
-        widget:
-          type: nextcloud
-          url: http://nextcloud:80
-          username: "{{HOMEPAGE_VAR_NEXTCLOUD_USERNAME}}"
-          password: "{{HOMEPAGE_VAR_NEXTCLOUD_APP_PASSWORD}}"
     - Vaultwarden:
         icon: vaultwarden
         href: https://vault.khe.ee
         description: Paroolihaldur
         server: my-docker
         container: vaultwarden
-    - Paperless-ngx:
-        icon: paperless-ngx
-        href: https://docs.khe.ee
-        description: Dokumendiarhiiv
-        server: my-docker
-        container: paperless
-        widget:
-          type: paperlessngx
-          url: http://paperless:8000
-          key: "{{HOMEPAGE_VAR_PAPERLESS_API_KEY}}"
 
 - Meedia:
     - Immich:
@@ -39,35 +18,6 @@
           url: http://immich-server:2283
           key: "{{HOMEPAGE_VAR_IMMICH_API_KEY}}"
           version: 2
-    - Jellyfin:
-        icon: jellyfin
-        href: https://jellyfin.khe.ee
-        description: Filmid ja sarjad
-        server: my-docker
-        container: jellyfin
-        widget:
-          type: jellyfin
-          url: http://jellyfin:8096
-          key: "{{HOMEPAGE_VAR_JELLYFIN_API_KEY}}"
-          enableUser: true
-          showEpisodeNumber: true
-    - Audiobookshelf:
-        icon: audiobookshelf
-        href: https://books.khe.ee
-        description: Audioraamatud
-        server: my-docker
-        container: audiobookshelf
-        widget:
-          type: audiobookshelf
-          url: http://audiobookshelf:80
-          key: "{{HOMEPAGE_VAR_AUDIOBOOKSHELF_API_KEY}}"
-
-- AI:
-    - Ollama:
-        icon: ollama
-        description: qwen2.5:7b · CPU
-        server: my-docker
-        container: ollama
 
 - Kodu:
     - Home Assistant:

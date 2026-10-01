@@ -33,7 +33,7 @@ See `../../scripts/proxmox-post-install.sh`
 - Usable space: ~12TB
 - Compression: lz4
 - Mountpoint: `/srv`
-- Datasets: tank/data/immich, tank/data/nextcloud, tank/data/paperless, tank/data/media, tank/backups
+- Datasets: tank/data/immich, tank/backups. tank/data/nextcloud, tank/data/paperless and tank/data/media are unused since their services were removed on 2026-10-01, and wait for a decision on their data
 
 ## Storage Access (ZFS → Docker VM)
 ZFS pool lives on Proxmox host. Docker VM accesses it via **NFS**:

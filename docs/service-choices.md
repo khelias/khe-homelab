@@ -42,11 +42,11 @@ comparable, the one that scores better on these wins.
 | Mesh VPN              | Tailscale             | High       | 2026-05-05    |
 | Password manager      | Vaultwarden           | High       | 2026-05-05    |
 | Photo management      | Immich                | High       | 2026-05-05    |
-| Media server          | Jellyfin              | High       | 2026-05-05    |
-| Audiobook server      | Audiobookshelf        | High       | 2026-05-05    |
-| Cloud / file sync     | Nextcloud             | Medium     | 2026-05-05    |
-| Document OCR          | Paperless-ngx         | High       | 2026-05-05    |
-| LLM serving           | Ollama                | High       | 2026-05-05    |
+| Media server          | Jellyfin, removed 2026-10 | —      | 2026-10-01    |
+| Audiobook server      | Audiobookshelf, removed 2026-10 | — | 2026-10-01   |
+| Cloud / file sync     | Nextcloud, removed 2026-10 | —     | 2026-10-01    |
+| Document OCR          | Paperless-ngx, removed 2026-10 | — | 2026-10-01    |
+| LLM serving           | Ollama, removed 2026-10 | —        | 2026-10-01    |
 | Workflow automation   | n8n, removed 2026-10  | —          | 2026-10-01    |
 | Ad-hoc page publishing| FileBrowser (+ nginx) | Medium     | 2026-06-06    |
 | Uptime monitoring     | Uptime Kuma           | High       | 2026-05-05    |
@@ -237,7 +237,7 @@ today.
 | **Immich**    | Native iOS/Android apps with auto-backup, modern face/object ML, multi-user | (selected)                                                        |
 | PhotoPrism    | Excellent at indexing existing libraries, Go (lighter)                  | No native mobile app — manual sync via Syncthing/rsync; bad UX for non-technical family |
 | Ente self-host | Strong E2EE design                                                     | Self-hosting story still maturing; client UX trails Immich        |
-| Nextcloud Memories | Already running Nextcloud; one fewer service                       | Mobile auto-backup via Nextcloud app is fragile; ML pipeline thinner |
+| Nextcloud Memories | One fewer service while Nextcloud ran here (removed 2026-10)       | Mobile auto-backup via Nextcloud app is fragile; ML pipeline thinner |
 
 ### Why Immich
 
@@ -267,131 +267,71 @@ today.
 
 ---
 
-## Media server — Jellyfin
+## Media server — Jellyfin (removed 2026-10)
 
-### Alternatives considered
+Chosen 2026-05 over Plex and Emby because Quick Sync transcoding through the
+passed-through iGPU came free, with no account and no telemetry. Removed on
+2026-10-01: the household watches through Stremio and did not use Jellyfin.
+It held a 3G memory limit, a public hostname and a pending major upgrade
+(10.11 to 12.1). The `/dev/dri` passthrough stays for Immich ML.
 
-| Tool         | Notable strengths                                       | Why not for us                                                   |
-|--------------|---------------------------------------------------------|------------------------------------------------------------------|
-| **Jellyfin** | Free hardware transcoding, no account, no telemetry     | (selected)                                                       |
-| Plex         | Best app ecosystem, remote-share-friendly               | Hardware transcoding behind paywall; Plex account required; ad-supported content surfaced in UI |
-| Emby         | Polished UI, faster release cadence than Jellyfin       | Hardware transcoding behind paywall                              |
-| Kodi         | Local-first playback; no server                         | Solves a different problem (player, not server)                  |
-
-### Why Jellyfin
-
-- **Hardware transcoding is included.** With Intel iGPU passthrough on the
-  Proxmox host, QSV transcoding is the difference between "watchable" and
-  "fan spins up". Paying $120 for the same on Plex/Emby is offensive when
-  the open-source alternative just works.
-- **No account, no telemetry, no cloud dependency** — the server going
-  offline doesn't mean the LAN clients can't reach it (Plex has historically
-  required cloud auth).
-- **QSV configured via init container** ([operational-notes.md](operational-notes.md#jellyfin)) —
-  the setup pain is paid once at deploy time, not weekly.
-
-### When we'd revisit
-
-- We start sharing libraries with non-LAN remote users at scale (Plex's
-  remote-friendly story would matter; today we just use Tailscale).
+**When we'd revisit:** a local media library that Stremio does not cover,
+and someone who watches it. The compose file and the QSV init container are
+in git history.
 
 ---
 
-## Cloud / file sync — Nextcloud
+## Cloud / file sync — Nextcloud (removed 2026-10)
 
-### Alternatives considered
+Chosen 2026-05 over Seafile and ownCloud Infinite Scale for breadth:
+CalDAV/CardDAV, file sync and an app ecosystem in one stack. Removed on
+2026-10-01: the household keeps calendars, contacts and files in Apple
+Calendar and similar services, and did not use Nextcloud. It was the
+heaviest stack by config surface (PHP, Postgres and Redis tuning, an init
+script for a `CREATEROLE` quirk), held 4.4G of memory limits and a public
+hostname, and its healthcheck stayed green while the app was broken. The
+weekly restore check now restores the Immich dump instead.
 
-| Tool                     | Notable strengths                                        | Why not for us                                                       |
-|--------------------------|----------------------------------------------------------|----------------------------------------------------------------------|
-| **Nextcloud**            | Largest app ecosystem, mature mobile clients, Office, Calendar, Contacts | (selected)                                                           |
-| Seafile                  | 30-40% faster sync, lighter on resources, deduped blocks | No Office/Calendar/Contacts; fewer apps; sync UX great, ecosystem thin |
-| ownCloud Infinite Scale  | Go rewrite, single binary, faster than legacy ownCloud   | Smaller community post-Nextcloud-fork; uncertain product roadmap     |
-| Syncthing-only           | No server, peer-to-peer                                  | No web UI for non-technical users; no calendar/contacts story         |
-
-### Why Nextcloud
-
-- **More than file sync** — CalDAV/CardDAV for Calendar + Contacts is what
-  pulls phones away from iCloud/Google. Seafile and oCIS don't replace
-  that without bolting on Radicale separately.
-- **Mobile auto-upload backup** for documents is a working UX, even if it
-  isn't as polished as Immich for photos.
-- **App ecosystem** — Notes, Bookmarks, Forms, Talk, Memories. Each one
-  individually is a small win; together they justify the heavier stack.
-- **Document edit via Collabora / OnlyOffice** when needed.
-
-### Confidence: Medium
-
-Nextcloud is the **right** choice given the breadth of needs, but:
-
-- Heaviest service by config surface — 16 GB upload, OPcache 256M, JIT
-  128M, Postgres tuning, Redis cache, init script for `CREATEROLE` quirk
-  ([operational-notes.md](operational-notes.md#nextcloud)).
-- PHP perf still trails Seafile / oCIS noticeably for pure-sync workloads.
-- Major-version upgrades have historically been a coin-flip (the NC30→NC33
-  bump in commit `f4ca9aa` was driven by the `CREATEROLE` bug).
-
-### When we'd revisit
-
-- We drop the Calendar/Contacts/Talk features (would unblock Seafile).
-- Two consecutive major upgrades break the deployment in non-trivial ways.
+**When we'd revisit:** the family wants calendars, contacts or files off
+the big clouds. Seafile plus Radicale is the lighter pair to compare then.
 
 ---
 
-## LLM serving — Ollama
+## LLM serving — Ollama (removed 2026-10)
 
-### Alternatives considered
+Chosen 2026-05 over llama.cpp, LocalAI and vLLM for one-command model pulls
+and an OpenAI-compatible API. Removed on 2026-10-01: nothing called it after
+n8n went, it kept CPU-only `qwen2.5:7b` resident under a 10G memory limit,
+and its API was open on the LAN without authentication. khe-ai-adventure's
+local-model item re-adds it from git history, with the `ai-internal`
+network, when its benchmark runs.
 
-| Tool          | Notable strengths                                                  | Why not for us                                                        |
-|---------------|--------------------------------------------------------------------|-----------------------------------------------------------------------|
-| **Ollama**    | One-command model pulls, polished CLI, OpenAI-compatible API       | (selected)                                                            |
-| llama.cpp (server) | Lowest-level control, smallest footprint, no abstractions     | Manual GGUF download + tuning per model; brittle for model swaps      |
-| LocalAI       | OpenAI-compatible hub for text/image/audio/video                   | Heavier idle footprint; multi-modal we don't need                     |
-| vLLM          | Throughput king for high-concurrency APIs                          | Optimised for hundreds of concurrent users; we have 1-3                |
-
-### Why Ollama
-
-- **`ollama pull` and a model is running** — Ollama abstracts the
-  GGUF-download-and-config dance that llama.cpp leaves to the user.
-  Iterating on which model fits the iGPU is a 2-minute exercise.
-- **Stable OpenAI-compatible endpoint** — any client that speaks the
-  protocol works, and swapping models doesn't churn it. Nothing consumes it
-  since the workflow tool's removal in 2026-10, so whether Ollama stays is
-  an open decision.
-- **Single container, model files on the ZFS mirror** — fits the layout.
-
-### When we'd revisit
-
-- We push past 5+ concurrent inference requests (vLLM territory).
-- We need image/audio generation alongside text (LocalAI hub).
-- Ollama's licensing or model-pull layer becomes restrictive (no signal).
+**When we'd revisit:** a GPU, or a measured case for a local model in
+khe-ai-adventure.
 
 ---
 
-## Audiobook server — Audiobookshelf
+## Audiobook server — Audiobookshelf (removed 2026-10)
 
-Realistic alternatives are LazyLibrarian (more about acquisition than
-serving) and Booksonic (mostly dormant). Audiobookshelf is the de-facto
-choice for self-hosted audiobook serving in 2026 — active development,
-native iOS/Android apps, Plex-like UX without the Plex baggage.
+Chosen 2026-05 as the de-facto self-hosted audiobook server: native apps,
+active development. Removed on 2026-10-01: the household listens through
+BookPlayer and did not use it. Its live SQLite was tarred by `backup.sh`
+while running, one of the known consistency risks.
 
-**When we'd revisit:** the project becomes unmaintained.
+**When we'd revisit:** a shared family audiobook library that a phone app
+cannot hold on its own.
 
 ---
 
-## Document OCR — Paperless-ngx
+## Document OCR — Paperless-ngx (removed 2026-10)
 
-The community-led continuation of `paperless-ng` (which itself succeeded
-the original `paperless`). Estonian Tesseract language pack runs at
-container startup via `PAPERLESS_OCR_LANGUAGES=est`
-([operational-notes.md](operational-notes.md#paperless)).
+Chosen 2026-05 for its feature density per RAM and Estonian OCR. Removed on
+2026-10-01: household documents live in Google Drive, and the archive was
+not used. It held 3.4G of memory limits and a public hostname, and its
+healthcheck stayed green while the app was broken.
 
-**Realistic alternatives:** DocSpell (heavier Java stack, fewer mobile
-options), Mayan EDMS (overkill for personal use), plain Nextcloud + OCR
-plugins (worse search). Paperless-ngx wins on density of features per
-RAM.
-
-**When we'd revisit:** Paperless-ngx fragments again or the OCR pipeline
-breaks for est language support.
+**When we'd revisit:** a paper-document flow that Drive search does not
+handle, such as OCR over scanned Estonian mail.
 
 ---
 
@@ -408,7 +348,7 @@ breadth, removed on 2026-10-01:
   data Home Assistant, trips jobs the trips backend, OS update reminders
   Uptime Kuma push monitors
   ([notes](operational-notes.md#os-update-heartbeats)). Paperless-ngx
-  fetches mail itself.
+  fetched mail itself.
 - **It did not rebuild from git.** Workflows live in n8n's database, the
   Community Edition has no git sync, and a re-import wipes their settings.
 - **Patch cost.** The pinned 2.39.4 was two High advisory batches behind
@@ -461,8 +401,6 @@ published page must be public (anyone with the link can open it).
   archival on **2026-09-01**, after which there are no releases and no security
   fixes, with known unfixed issues left in the project's security advisories.
   See "When we'd revisit" below.
-- **Doesn't duplicate Nextcloud.** `cloud.khe.ee` is a heavy app-login sync
-  stack, not a fast paste-to-public-page tool. Different job.
 
 ### How it's wired
 
@@ -545,8 +483,8 @@ outside git. Compose stacks change only through this repo.
 
 Realistic alternatives are Heimdall (older, heavier), Dashy (YAML-driven,
 flashier, slower iteration), Glance (newer, RSS-strong), Flame (similar).
-Homepage's win is **service integrations** — it talks to Sonarr, Jellyfin,
-Nextcloud, Uptime Kuma, etc., and surfaces real status, not just
+Homepage's win is **service integrations** — it talks to Immich, Proxmox,
+AdGuard, Uptime Kuma, etc., and surfaces real status, not just
 bookmarks. YAML config sits next to the rest of the IaC.
 
 **When we'd revisit:** integration breadth with our specific stack falls
