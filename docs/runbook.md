@@ -235,7 +235,7 @@ pending updates and for how long, a due reboot, or "not reported" when a file
 is missing or older than 48 h. Each run also pushes to the Uptime Kuma
 monitors "OS updates: Proxmox host" and "OS updates: Docker VM", which go
 down, and page Telegram, when a reboot is due or an update has been pending
-for 30 days, and resend weekly while down
+for 30 days, and resend about every 8 days while down
 ([notes](operational-notes.md#os-update-heartbeats)). On the host a due reboot
 means the newest installed kernel is not the running one, so a kernel pinned
 to an older version reads as "reboot due" until it is unpinned.
@@ -275,11 +275,11 @@ bash /root/khe-homelab/scripts/setup-proxmox-updates.sh
 both machines a change to the script takes effect only when the setup script
 runs again.
 
-**The monthly catch-up**, when a Kuma OS updates monitor is down or step 1
-shows updates or a reboot due.
-A night after 23:00: AdGuard is the LAN's only DNS, so the reboots take the
-whole household offline for about ten minutes. SSH from the LAN, not over
-Tailscale, and work inside `tmux` on each machine, one block at a time:
+**The monthly catch-up** is due when a Kuma OS updates monitor is down or step
+1 shows updates or a reboot due. Do it on a night after 23:00: AdGuard is the
+LAN's only DNS, so the reboots take the whole household offline for about ten
+minutes. SSH from the LAN, not over Tailscale, and work inside `tmux` on each
+machine, one block at a time:
 
 1. host: `qm snapshot 100 pre-update-$(date +%F)`
 2. VM: `sudo apt update`, then `sudo apt full-upgrade` (Docker and Tailscale

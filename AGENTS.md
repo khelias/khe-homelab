@@ -95,7 +95,7 @@ base branch against the PR tree.
   `.deploy/last-successful-sha`. A manual deploy after that push is a no-op.
   One is needed only for changes outside the paths filter or when CI is
   down, and then it is `gh workflow run deploy.yml` (inputs `mode`, `stack`,
-  `dry_run`).
+  `force_recreate`, `dry_run`).
 - **Rolling back an estate app** is a git change here. Pin every image of
   the app to the same `sha-<full commit>@sha256:<digest>` and push. The pin
   job skips a `sha-` pin, so the rollback stays until the operator returns

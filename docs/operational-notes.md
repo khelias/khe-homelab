@@ -41,7 +41,8 @@ file in every session is wasteful; the entries are independent.
 ## Nginx Proxy Manager
 
 - **Wildcard `*.khe.ee` Let's Encrypt cert** via Cloudflare DNS-01 (auto-renew).
-- **5 proxy hosts**: `khe.ee`, `dash`, `vault`, `photos`, `status`.
+- **Proxy hosts**: one per AdGuard rewrite: `khe.ee`, `dash`, `vault`,
+  `photos`, `status`, `home`.
 - **The upload-heavy host** (photos) has unlimited body size + 600s
   timeouts. Applies to LAN clients only; the CF
   tunnel does not route through NPM (see Cloudflare Tunnel section).
@@ -405,10 +406,10 @@ the public one mounts the same directory read-only).
     `label_values({cluster="homelab"}, container_name)`. Auto-
     populates from whatever Alloy is currently shipping, no manual
     ID-to-name map.
-- **Grafana ingress.** LAN-only for v1 via host port `3030` (NPM
-  is taken by homepage on port 3000) + direct via NPM at
-  `grafana.khe.ee`. Add to AdGuard split-horizon DNS + NPM proxy
-  host before the domain resolves. **Do not** expose via Cloudflare
+- **Grafana ingress.** LAN-only via host port `3030` (port 3000 is
+  taken by homepage); Homepage and `mcp-grafana.sh` use it. There is
+  no `grafana.khe.ee`: it would need an AdGuard rewrite and an NPM
+  proxy host first. **Do not** expose via Cloudflare
   Tunnel without CF Access OTP — log search is the door to every
   container's history. CF integration is a deliberate follow-up
   step.
@@ -610,8 +611,8 @@ addresses, so they live in the private `khe-meta` repo under
 
 - **games**: uses `127.0.0.1` (NOT `localhost`). Busybox wget DNS issue in
   alpine - localhost doesn't resolve.
-- **cloudflare-tunnel**: uses `cloudflared version` (distroless image, no
-  curl/wget available).
+- **cloudflare-tunnel**: uses `cloudflared tunnel ready` (distroless image,
+  no curl/wget available; see the Cloudflare Tunnel section).
 - **alloy**, **loki** (>= 3.7): no container-internal healthcheck.
   `grafana/alloy` ships without wget/curl; `grafana/loki` 3.7+ is
   fully distroless (no shell either). Adding a thin Dockerfile
@@ -692,7 +693,8 @@ addresses, so they live in the private `khe-meta` repo under
 - Both monitors: heartbeat interval 28 h, Retries 0, Resend Notification
   every 7 down beats, the Telegram notification. Kuma keeps generating down
   beats for a push monitor that hears nothing, so a VM left on
-  `reboot-required` is re-sent weekly and a dead timer is still caught.
+  `reboot-required` is re-sent about every 8 days (7 × 28 h) and a dead
+  timer is still caught.
 - The URL is `OS_STATUS_PUSH_URL` in `/etc/khe/os-status.env` (root, mode
   0600), read with `sed`, never sourced. No file or an empty value: no push.
   The VM uses `http://localhost:3001/api/push/<token>`; the host uses

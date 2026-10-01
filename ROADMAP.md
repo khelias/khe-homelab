@@ -122,7 +122,7 @@ The sections above come first.
   - *Risk and cost:* a rebuild VM must never talk to the live Cloudflare
     tunnel, Telegram bot or house devices, so it runs with isolated
     credentials. What it restores is config, databases and small user data;
-    Immich originals and media are not in the backup (see below), so the
+    Immich originals are not in the backup (see below), so the
     number describes that scope, not a full restore.
 - **Second site.** A small node at a relative's home, reached over
   Tailscale, holding a second restic repository of this homelab's backups

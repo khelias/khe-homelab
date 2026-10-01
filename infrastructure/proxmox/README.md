@@ -25,7 +25,7 @@ See `../../scripts/proxmox-post-install.sh`
 | Device | Mount/Pool | Purpose |
 |--------|-----------|---------|
 | Kingston KC3000 NVMe 2TB | / (ext4) | Proxmox OS + VM system disks |
-| 2x WD Ultrastar 12TB | tank (ZFS mirror) | Data: photos, media, files, backups |
+| 2x WD Ultrastar 12TB | tank (ZFS mirror) | Data: service data (Immich photos), backups |
 
 ## ZFS Data Pool (created post-install)
 - Pool name: `tank`
@@ -40,7 +40,7 @@ ZFS pool lives on Proxmox host. Docker VM accesses it via **NFS**:
 - Proxmox exports `/srv/data` and `/srv/backups` via NFS
 - Docker VM mounts these at the same paths
 - **Databases (PostgreSQL) stay on VM's NVMe disk** (named Docker volumes) for fast I/O
-- **Large files (photos, media, documents) go via NFS** to ZFS for snapshots/compression
+- **Large files (photos, backups) go via NFS** to ZFS for snapshots/compression
 
 Why NFS over virtual disk (zvol):
 - ZFS snapshots work per-file, not per-disk-image

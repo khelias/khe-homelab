@@ -39,7 +39,7 @@ Two independent paths to the same containers:
 
 Which hostname goes where, and which ones Access gates, is in [infrastructure/cloudflare.md](infrastructure/cloudflare.md).
 
-Proxmox VE (192.168.0.10) is the hypervisor; the Docker VM (192.168.0.11) is the only guest. Fast storage (NVMe) holds the VM root + DB volumes; bulk storage (ZFS mirror, NFS-mounted at `/srv`) holds photos and backups.
+Proxmox VE (192.168.0.10) is the hypervisor; the Docker VM (192.168.0.11) runs every service. Fast storage (NVMe) holds the VM root + DB volumes; bulk storage (ZFS mirror, NFS-mounted at `/srv`) holds photos and backups.
 
 ## Hardware
 
@@ -115,9 +115,10 @@ Five layers, each catching what the others miss:
 3. **Runaway service — Compose resource limits.** Every long-running container
    has conservative memory and CPU limits in its `docker-compose.yml`; media
    and database workloads get larger caps than static web services. This
-   keeps one bad process from consuming the whole 16GB VM.
-4. **Service down — Uptime Kuma + Telegram push.** Every service has a Kuma
-   HTTP/DNS monitor; all notify the same Telegram bot (`@khe_homelab_bot`).
+   keeps one bad process from consuming the whole VM.
+4. **Service down — Uptime Kuma + Telegram push.** Kuma watches the services
+   with HTTP/DNS monitors and takes push heartbeats from the backups and the OS
+   update reports; all notify the same Telegram bot (`@khe_homelab_bot`).
    Alert lands on the owner's phone within ~90s. Kuma
    DB is in `backup.sh`, so monitor + notification config survives a VM rebuild.
 5. **Whole homelab down — external UptimeRobot.** Pings `khe.ee` every 5 min
@@ -181,7 +182,8 @@ All external traffic goes through Cloudflare Tunnel — zero ports open on the r
 ./scripts/mount-nfs-in-vm.sh          # 7. Mount NFS shares at /srv, Docker waits for them
 ./scripts/harden-docker-vm.sh         # 8. UFW firewall, fail2ban, SSH hardening
 ./scripts/setup-tailscale.sh          # 9. Install Tailscale as subnet router
-./scripts/deploy.sh up                # 10. Start every stack
+./scripts/deploy.sh up                # 10. Start the stacks
+sudo ./scripts/setup-status-timer.sh  # 11. 5-min status snapshot into Loki
 ```
 
 ## Day-to-day

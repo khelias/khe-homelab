@@ -127,11 +127,11 @@ The non-obvious calls:
 
 ### Why NPM
 
-- **9 LAN hosts behind one wildcard `*.khe.ee` cert** issued via Cloudflare
+- **The LAN hosts sit behind one wildcard `*.khe.ee` cert** issued via Cloudflare
   DNS-01. NPM's GUI handles this in 3 clicks; doing the same in Caddy
   requires the Cloudflare DNS plugin and cert bookkeeping by hand.
-- **Per-host upload limits** (photos, cloud, docs at unlimited body size +
-  600s timeouts) are a checkbox in NPM, a stanza in Caddy.
+- **Per-host upload limits** (photos at unlimited body size + 600s
+  timeouts) are a checkbox in NPM, a stanza in Caddy.
 - **Audit trail through the GUI** matters when troubleshooting at 23:00 —
   reading nginx error logs through NPM's "View Log" is faster than `docker
   logs` + grep.
@@ -147,7 +147,7 @@ friction during high-churn periods.
 
 ### When we'd revisit
 
-- Service count crosses ~20 LAN-exposed hosts (currently 9).
+- Service count crosses ~20 LAN-exposed hosts.
 - We add a second Docker host and want centralised proxy state.
 - Cloudflare DNS-01 stops being an option (forces manual cert renewals).
 
@@ -507,13 +507,12 @@ and the OTel Collector is covered in
 
 **Known cost:** five containers (Loki, Grafana, Alloy and its socket proxy,
 Alertmanager) for two alert rules, above the bar in constraint 1. What
-carries it is that Grafana is in regular use and is the planned read
-channel for the agent-operated homelab in [ROADMAP](../ROADMAP.md): an
-agent queries Loki through Grafana read-only, never through the Docker
-socket.
+carries it is that Grafana is in regular use and is the agent's read
+channel: an agent queries Loki through Grafana read-only
+(`scripts/mcp-grafana.sh`), never through the Docker socket.
 
-**When we'd revisit:** the agent read channel does not materialise and
-Grafana falls out of use; Loki needs per-release tuning; or Prometheus
+**When we'd revisit:** the agent stops reading through Grafana and Grafana
+falls out of use; Loki needs per-release tuning; or Prometheus
 metrics arrive and a single store for logs and metrics (VictoriaMetrics +
 VictoriaLogs) becomes cheaper than adding Prometheus beside Loki.
 

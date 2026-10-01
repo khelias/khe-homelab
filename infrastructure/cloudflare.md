@@ -16,7 +16,7 @@ Tunnel routes directly to Docker containers. LAN traffic goes via NPM (split-hor
 | vault.khe.ee        | vaultwarden:80              | vaultwarden:80              | |
 | photos.khe.ee       | immich-server:2283          | immich-server:2283          | NPM: unlimited upload, 600s timeout |
 | status.khe.ee       | uptime-kuma:3001            | uptime-kuma:3001            | |
-| games.khe.ee        | study-game:80 (→ games)     | — (CF only)                 | no AdGuard rewrite; alias in games compose until route updated to games:80 |
+| games.khe.ee        | games:80                    | — (CF only)                 | no AdGuard rewrite |
 | trips.khe.ee        | trips:80                    | — (CF Access)               | CF Access OTP on all networks; no AdGuard rewrite |
 | draft.khe.ee        | draft:8080                  | — (CF Access)               | dufs editor; CF Access OTP on all networks; **sole auth layer** (dufs runs without `--auth`, see service-choices.md); only on `draft-tunnel`; no AdGuard rewrite |
 | pages.khe.ee        | pages:80                    | — (CF only)                 | public; serves published pages read-only; no AdGuard rewrite |
@@ -104,7 +104,8 @@ Split-horizon: local DNS via AdGuard rewrites *.khe.ee → 192.168.0.11.
 Router DHCP DNS: 192.168.0.11 (AdGuard) ONLY — never advertise a secondary.
 Clients race both servers in parallel (happy-eyeballs) and Cloudflare would
 win most races, silently bypassing ad/tracker filtering. Upstream DoH
-(Cloudflare/Quad9) happens inside AdGuard, not via DHCP. See CLAUDE.md.
+(Cloudflare/Quad9) happens inside AdGuard, not via DHCP. See
+[operational-notes.md](../docs/operational-notes.md#adguard-home).
 
 ## Redirect Rules
 
