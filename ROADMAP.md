@@ -116,8 +116,9 @@ The sections above come first.
     the estate roadmap in `khe-meta`, then the bootstrap script from the
     medium-term list above. Time the manual run; that is the first number.
   - *Waits for:* the rehearsal fixes, and room to run a second VM. The host
-    has 32GB and the Docker VM takes 24GB, so a full parallel rebuild needs
-    the RAM upgrade, a reduced stack, or a short-lived cloud VM.
+    has 32GB and the Docker VM takes 16GB, which leaves about 8GB for a
+    second VM, so a full parallel rebuild needs the RAM upgrade, a reduced
+    stack, or a short-lived cloud VM.
   - *Risk and cost:* a rebuild VM must never talk to the live Cloudflare
     tunnel, Telegram bot or house devices, so it runs with isolated
     credentials. What it restores is config, databases and small user data;

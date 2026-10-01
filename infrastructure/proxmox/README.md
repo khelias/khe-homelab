@@ -51,8 +51,16 @@ Why NFS over virtual disk (zvol):
 ## VM Layout
 | VM ID | Name       | Purpose              | vCPU | RAM   | OS | OS Disk |
 |-------|------------|----------------------|------|-------|----|---------|
-| 100   | docker-vm  | Main Docker host     | 8    | 24GB  | Debian 13 (cloud-init) | NVMe (local-lvm) 256GB |
+| 100   | docker-vm  | Main Docker host     | 8    | 16GB  | Debian 13 (cloud-init) | NVMe (local-lvm) 256GB |
 | 101   | playground | Testing/experiments  | 4    | 8GB   | Debian 13 (cloud-init) | NVMe (local-lvm) |
+
+docker-vm has the iGPU passed through, so VFIO pins all of its memory on the
+host from boot and ballooning cannot return any of it: on 2026-10-01 a balloon
+floor shrank the guest to 14 GiB while the host stayed at 96%. Size the VM by
+`memory` alone, which needs a VM reboot. At 24GB the host had about 1 GiB
+available next to ARC (capped at 3.1 GiB) while the guest used 6.8 GiB, the
+rest file cache, after Ollama, Jellyfin, Nextcloud and Paperless were retired.
+The guest has no swap and Immich ML jobs are its peaks, so keep headroom.
 
 ## Security
 

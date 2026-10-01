@@ -7,7 +7,7 @@ set -euo pipefail
 VM_ID=100
 VM_NAME="docker-vm"
 VM_CORES=8
-VM_MEMORY=24576  # 24GB
+VM_MEMORY=16384  # 16GB
 VM_DISK_SIZE="256G"
 VM_STORAGE="local-lvm"
 VM_IP="192.168.0.11/24"

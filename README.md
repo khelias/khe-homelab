@@ -115,7 +115,7 @@ Five layers, each catching what the others miss:
 3. **Runaway service — Compose resource limits.** Every long-running container
    has conservative memory and CPU limits in its `docker-compose.yml`; media
    and database workloads get larger caps than static web services. This
-   keeps one bad process from consuming the whole 24GB VM.
+   keeps one bad process from consuming the whole 16GB VM.
 4. **Service down — Uptime Kuma + Telegram push.** Every service has a Kuma
    HTTP/DNS monitor; all notify the same Telegram bot (`@khe_homelab_bot`).
    Alert lands on the owner's phone within ~90s. Kuma
