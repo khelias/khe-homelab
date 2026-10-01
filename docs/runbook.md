@@ -141,6 +141,14 @@ HEAD^{tree}` on the VM with the new `origin/main^{tree}`. If they match,
 `git fetch origin && git reset --hard origin/main` on the VM leaves every
 tracked file and every `.env` as it was.
 
+## Removing a stack
+
+Delete its directory in git and push; the deploy skips a stack that is gone,
+so its containers, volumes and networks stay until you dispatch
+`retire-stack.yml` with `project` set and `apply` false, read the plan, then
+dispatch it again with `apply` true. Run the printed `sudo rm -rf` lines for
+bind-mounted data on the VM yourself, after checking each path.
+
 ## Estate app deploy
 
 A push to `main` of `khe-ai-adventure` deploys itself: its CI builds and

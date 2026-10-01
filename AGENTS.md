@@ -105,9 +105,11 @@ base branch against the PR tree.
   deploy.
 - **Operations go through `workflow_dispatch`** on the homelab runner:
   `ops-status.yml` for diagnostics ([runbook](docs/runbook.md)), `deploy.yml`
-  for deploys (the operator's call). A workflow never takes a shell command
-  as input; that would be SSH under another name. Narrow, pre-written actions
-  only.
+  for deploys (the operator's call), `retire-stack.yml` to remove what a
+  stack deleted from git leaves on the VM (the agent dispatches it only with
+  `apply=false`; `apply=true` is the operator's call). A workflow never takes
+  a shell command as input; that would be SSH under another name. Narrow,
+  pre-written actions only.
 - **Fork PRs can reach the runner.** Fork PR approval stays at
   `all_external_contributors`, and a fork run is approved only after reading
   its `.github/workflows/` diff (khe-meta ADR-006).

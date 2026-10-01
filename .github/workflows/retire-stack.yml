@@ -1,0 +1,50 @@
+name: Retire Stack
+
+# Removes the containers, volumes, networks and images a stack leaves on the
+# VM after its directory is deleted from git (scripts/retire-stack.sh). No
+# project lists the orphans; a project without apply prints the plan only.
+on:
+  workflow_dispatch:
+    inputs:
+      project:
+        description: Compose project to retire, for example openclaw; empty lists orphans
+        required: false
+        type: string
+      apply:
+        description: Remove what the plan lists; false is a dry run
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+# Not homelab-deploy: GitHub keeps one pending job per group, so a queued
+# retire would cancel a queued deploy. Retire touches only projects gone from
+# the tree, so it does not race a deploy.
+concurrency:
+  group: homelab-retire
+  cancel-in-progress: false
+
+jobs:
+  retire:
+    name: Retire stack
+    runs-on: [self-hosted, linux, homelab]
+    timeout-minutes: 10
+
+    steps:
+      # Full history: the script refuses a project this repo never had.
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+
+      - name: Retire
+        env:
+          PROJECT: ${{ inputs.project }}
+          APPLY: ${{ inputs.apply }}
+        run: |
+          args=()
+          if [ -n "$PROJECT" ]; then args+=("$PROJECT"); fi
+          if [ "$APPLY" = true ]; then args+=(--apply); fi
+          ./scripts/retire-stack.sh "${args[@]}"
