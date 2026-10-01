@@ -28,7 +28,7 @@ services:
   # khe-meta). Keep the two pins on the same commit; adventure's CI moves
   # them together in one pin PR.
   adventure-web:
-    image: ghcr.io/khelias/khe-ai-adventure-web:main@sha256:1effc12afd82719818aee098ec6f98635d9ee453dc315857a5aff4201cbbf3f9
+    image: ghcr.io/khelias/khe-ai-adventure-web:main@sha256:f91a3ab7e261523f555ccaca28cf66ac134d36cf11fb625d33557821c3ecae37
     container_name: adventure-web
     restart: unless-stopped
     environment:
@@ -49,7 +49,7 @@ services:
           cpus: '0.25'
 
   adventure-proxy:
-    image: ghcr.io/khelias/khe-ai-adventure-proxy:main@sha256:f248230062ec116879f083065f2498d225f040bf4f8ce9ff1c05d4eb0674e13b
+    image: ghcr.io/khelias/khe-ai-adventure-proxy:main@sha256:f65d0808b3685a3e1c744bf9aee69bfd0cb120c0b9cbed8e749a49f01d57201a
     container_name: adventure-proxy
     restart: unless-stopped
     environment:
