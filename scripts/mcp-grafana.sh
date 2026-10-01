@@ -22,8 +22,9 @@ unset GRAFANA_SERVICE_ACCOUNT_TOKEN GRAFANA_API_KEY
 export GRAFANA_SERVICE_ACCOUNT_TOKEN_FILE="$TOKEN_FILE"
 
 # v2.0.0 reports anonymous usage stats unless told not to. The disabled
-# categories are on by default and have no backend here: the only datasources
-# are Loki and Alertmanager, and Grafana has no image renderer.
+# categories are on by default (`mcp-grafana --help`, --enabled-tools; the
+# README's flag list misses tempo) and have no backend here: the only
+# datasources are Loki and Alertmanager, and Grafana has no image renderer.
 exec mcp-grafana --disable-write --usage-stats=disabled \
   --disable-incident --disable-prometheus --disable-oncall --disable-asserts \
-  --disable-pyroscope --disable-rendering --disable-provisioning
+  --disable-pyroscope --disable-tempo --disable-rendering --disable-provisioning
