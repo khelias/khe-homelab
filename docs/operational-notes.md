@@ -139,8 +139,7 @@ Stack: `services/apps/games/` (nginx + adventure-web + adventure-proxy).
   images moved to CI)
 - `/home/khe/actions-runner-sites` - khe-sites
 - `/home/khe/actions-runner-trips` - khe-trips
-- `actions-runner-homelab` - khe-homelab (its full path is not recorded;
-  `ls -d ~/actions-runner*` on the VM shows whether it sits with the others)
+- `/home/khe/actions-runner-homelab` - khe-homelab
 
 `backup.sh` saves the identity of every `actions-runner*` directory that has
 a `.runner` file.
