@@ -240,8 +240,11 @@ fi
 
 # GitHub Actions self-hosted runner identities. The full dirs contain _diag/
 # logs (large, noisy) — capture only the registration + credential files.
-for RUNNER_DIR in "$HOME/actions-runner" "$HOME/actions-runner-adventure" "$HOME/actions-runner-sites"; do
-  if [ -d "$RUNNER_DIR" ]; then
+# A glob, not a fixed list: a fixed list silently skipped every runner added
+# after it was written.
+for RUNNER_DIR in "$HOME"/actions-runner*/; do
+  RUNNER_DIR="${RUNNER_DIR%/}"
+  if [ -f "$RUNNER_DIR/.runner" ]; then
     runner_name="$(basename "$RUNNER_DIR")"
     echo "-> system: $runner_name identity"
     err="$BACKUP_DIR/$runner_name.err"
