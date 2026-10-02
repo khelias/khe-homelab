@@ -49,6 +49,9 @@ the required `validate.yml` check:
 - **Homepage** (dash.khe.ee, internet-facing behind Access) reads Docker
   through `homepage-socket-proxy`, not the socket: no writes or exec, but
   `CONTAINERS: 1` still lets it inspect every container, environment included.
+  Its only host mount is `./config` (read-write, Homepage writes sample files
+  there); the `/srv` share, with backups, runner credentials and service
+  data, is not mounted.
 
 ## Network exposure
 

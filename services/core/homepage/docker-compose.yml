@@ -43,7 +43,6 @@ services:
       - "3000:3000"
     volumes:
       - ./config:/app/config
-      - /srv:/srv:ro
     environment:
       # homepage:3000 is the Uptime Kuma monitor's URL; any other Host gets a 400.
       - HOMEPAGE_ALLOWED_HOSTS=${HOMEPAGE_DOMAIN},homepage:3000
