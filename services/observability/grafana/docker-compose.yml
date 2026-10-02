@@ -1,15 +1,13 @@
 services:
-  # Grafana — UI for Loki + Alertmanager. LAN-only ingress via NPM for v1;
-  # add to Cloudflare Tunnel with CF Access OTP before exposing externally.
+  # Grafana: UI for Loki + Alertmanager. LAN-only on host port 3030; there is
+  # no NPM proxy host. Add CF Access OTP before ever exposing it externally.
   # Loki datasource is auto-provisioned from config/provisioning/.
   grafana:
     image: grafana/grafana:13.2.2@sha256:9924c7fe0effe4a5fea08b3451905de54f09fde9d1589463a5f2d02d9ec158bc
     container_name: grafana
     restart: unless-stopped
     ports:
-      # Direct LAN/Tailscale access before NPM is wired up. NPM ingress
-      # still reaches us via the `proxy` network on container port 3000.
-      # Port 3000 on host is taken by homepage — using 3030 here.
+      # The only ingress: LAN/Tailscale on 3030, since homepage holds 3000.
       - "3030:3000"
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}

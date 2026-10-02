@@ -24,7 +24,8 @@ A merge to `main` deploys to the VM, so every automated writer is bounded by
 the required `validate.yml` check:
 
 - **Renovate** opens image bump PRs and automerges patch, minor and digest
-  updates outside the critical-infrastructure group. It is disabled for the
+  updates outside the critical-infrastructure group, except Home Assistant
+  minor releases, which wait for review. It is disabled for the
   estate's own images (`ghcr.io/khelias/*`).
 - **Per-repo pin Apps** (`khe-adventure-pins` for `khe-ai-adventure`) open the
   estate image pin PRs with auto-merge. An App has Contents and Pull requests

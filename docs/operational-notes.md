@@ -7,7 +7,7 @@ file in every session is wasteful; the entries are independent.
 ## AdGuard Home
 
 - **Live config is `.gitignored`.** Baseline lives in
-  `services/core/adguard/AdGuardHome.template.yaml`. Apply changes as delta-
+  `services/core/adguard/config/AdGuardHome.template.yaml`. Apply changes as delta-
   patches against the live YAML. Wholesale replacement wipes admin bcrypt +
   active sessions.
 - **Per-service rewrites only**, no wildcard. 6 hostnames resolve to
@@ -101,7 +101,8 @@ file in every session is wasteful; the entries are independent.
   - Proxmox: a privilege-separated token of the read-only `monitor@pve` user
     ([Proxmox API tokens](../infrastructure/proxmox/README.md#api-tokens)),
     never a `root@pam` token
-  - Immich: insert into `api_key` table (helper in `scripts/`)
+  - Immich: create the key by hand in the Immich UI (there is no helper
+    script)
 
 ## Games hub (launcher + study + adventure)
 
@@ -364,10 +365,11 @@ the public one mounts the same directory read-only).
   is bulk data, not hot. First run will need the directory created:
   `sudo mkdir -p /srv/data/loki && sudo chown 10001:10001 /srv/data/loki`
   (Loki runs as UID 10001). Without ownership, Loki errors out on
-  boltdb-shipper init.
+  its tsdb index init.
 - **Log shipping.** Alloy talks to Docker through the hardened
   `alloy-socket-proxy` (tecnativa/docker-socket-proxy with only
-  `CONTAINERS: 1`, no write surface — same pattern as
+  `CONTAINERS`, `NETWORKS` and `IMAGES` read access, no write surface, same
+  pattern as
   `services/core/autoheal/`). `loki.source.docker` reads each
   container's log stream via `GET /containers/{id}/logs` and ships
   to Loki via the native push API. `container_name`, `stream`, and
@@ -426,8 +428,9 @@ the public one mounts the same directory read-only).
 ## Home Assistant
 
 Runs as HA **Container**, not HAOS, so there is no Supervisor and no add-ons.
-Add-on equivalents (Mosquitto, Zigbee2MQTT, ESPHome) run as ordinary
-containers in the same group. See
+Add-on equivalents run as ordinary containers in the same group: today that
+is Mosquitto (with PAI as an MQTT client). Zigbee2MQTT is planned, ESPHome is
+not set up. See
 khe-meta's `house/home-assistant-plan.md` for the phased rollout.
 
 **Trusted proxies live in the UI, not in YAML.** Since HA 2026.8 the `http:`
@@ -676,7 +679,7 @@ addresses, so they live in the private `khe-meta` repo under
   failure count on any non-zero exit. Without the URL set, both scripts
   remain fully silent on this dimension.
 - Configuration lives in `~/homelab/.env.heartbeat` (mode 0600,
-  gitignored via `*.env`). See [`../.env.heartbeat.example`](../.env.heartbeat.example)
+  gitignored via `.env.*`). See [`../.env.heartbeat.example`](../.env.heartbeat.example)
   for the variable names and the matching Uptime Kuma push-monitor setup.
 - Heartbeat target = Uptime Kuma "Push" monitor. Telegram alert
   fires automatically when the heartbeat is missed past the configured

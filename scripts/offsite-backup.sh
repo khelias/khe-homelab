@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Offsite backup: restic → Cloudflare R2.
 # Runs after scripts/backup.sh (cron 03:00), assumes /srv/backups is fresh.
-# Reads creds from ~/homelab/.env.offsite (mode 0600, *.env gitignored).
+# Reads creds from ~/homelab/.env.offsite (mode 0600, .env.* gitignored).
 # One-time setup: see infrastructure/offsite-backup.md.
 set -uo pipefail
 

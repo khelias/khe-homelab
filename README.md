@@ -12,7 +12,7 @@ graph TB
 
     Internet --> CF[Cloudflare Tunnel]
     VPN -->|subnet route<br/>192.168.0.0/24| LAN
-    AG[AdGuard Home<br/>split-horizon DNS] -.->|*.khe.ee → 192.168.0.11| LAN
+    AG[AdGuard Home<br/>split-horizon DNS] -.->|per-host rewrites<br/>→ 192.168.0.11| LAN
     LAN --> NPM[Nginx Proxy Manager<br/>wildcard *.khe.ee · LAN-only]
 
     CF -->|public hostnames<br/>CF Access OTP on<br/>the private apps| DVM
@@ -53,7 +53,7 @@ Proxmox VE (192.168.0.10) is the hypervisor; the Docker VM (192.168.0.11) runs e
 | Network | Intel 2.5G LAN → Asus RT-AX55 |
 
 Intel iGPU is passed through to the Docker VM via `vfio-pci` for hardware transcoding —
-Immich machine-learning uses `/dev/dri` for Quick Sync acceleration.
+immich-server and Immich machine-learning both use `/dev/dri` for Quick Sync acceleration.
 
 ## Services
 
@@ -68,10 +68,13 @@ Immich machine-learning uses `/dev/dri` for Quick Sync acceleration.
 | 🗺️ | **trips** | `trips.khe.ee` | Private family trip atlas, CF Access protected, own GitHub runner |
 | 📝 | **pages** | `pages.khe.ee` | Quick-publish HTML pages; edited at `draft.khe.ee` (CF Access protected) |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/home-assistant.svg" width="22" /> | Home Assistant | `home.khe.ee` (LAN + Tailscale) | House automation: HVAC, grid metering and cameras over local protocols. Deliberately not on the tunnel; the house detail is in the private khe-meta repo |
+| | Mosquitto | internal only | MQTT broker for Home Assistant and PAI; publishes no host port |
+| | PAI | internal only | Bridges the Paradox alarm panel to MQTT |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/adguard-home.svg" width="22" /> | AdGuard Home | LAN + Tailscale | DNS ad-blocking on the LAN + split-horizon DNS; over Tailscale it answers only the `khe.ee` zone |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/nginx-proxy-manager.svg" width="22" /> | Nginx Proxy Manager | LAN only | Reverse proxy + wildcard SSL for LAN traffic |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/cloudflare.svg" width="22" /> | Cloudflare Tunnel | — | Secure external access (no open ports) |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/grafana.svg" width="22" /> | Grafana + Loki + Alloy + Alertmanager | LAN only | Log aggregation for every container, Telegram alerting via Loki ruler |
+| | autoheal | — | Restarts any container whose healthcheck turns unhealthy |
 
 ## Security & Access
 
@@ -172,9 +175,9 @@ All external traffic goes through Cloudflare Tunnel — zero ports open on the r
 ```bash
 # On Proxmox host
 ./scripts/proxmox-post-install.sh     # 1. Disable enterprise repo, tools, security updates, IOMMU
-./scripts/setup-igpu-passthrough.sh   # 2. Bind Intel iGPU to vfio-pci for QSV (reboot after)
-./scripts/create-zfs-pool.sh          # 3. Create ZFS mirror from 2x 12TB HDDs
-./scripts/create-docker-vm.sh         # 4. Create Debian 13 VM (cloud-init, fully automated)
+./scripts/create-zfs-pool.sh          # 2. Create ZFS mirror from 2x 12TB HDDs
+./scripts/create-docker-vm.sh         # 3. Create Debian 13 VM (cloud-init, fully automated)
+./scripts/setup-igpu-passthrough.sh   # 4. Bind Intel iGPU to vfio-pci, attach it to the VM (reboot after)
 ./scripts/setup-nfs-share.sh          # 5. Export ZFS pool via NFS
 
 # Inside Docker VM (ssh khe@192.168.0.11)

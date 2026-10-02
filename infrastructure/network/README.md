@@ -14,7 +14,7 @@
 
 ## DNS Strategy (Split-Horizon)
 - **External**: Cloudflare DNS for khe.ee → Cloudflare Tunnel
-- **Internal**: AdGuard Home as local DNS, 10 `*.khe.ee` rewrites → 192.168.0.11
+- **Internal**: AdGuard Home as local DNS, per-host `*.khe.ee` rewrites → 192.168.0.11 (no wildcard)
   - Local traffic stays local (no hairpin NAT)
   - Router DHCP DNS: 192.168.0.11 only, never a secondary. Clients race two
     servers in parallel and Cloudflare usually wins, which silently bypasses

@@ -1,6 +1,6 @@
 # Loki single-binary configuration. Filesystem storage on bulk ZFS,
-# 30-day retention enforced via compactor. OTLP receiver is enabled
-# by default on /otlp; OTel Collector posts here.
+# 30-day retention enforced via compactor. Alloy pushes through the
+# native push API; the OTLP receiver on /otlp is on by default but unused.
 auth_enabled: false
 
 server:

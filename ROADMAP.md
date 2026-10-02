@@ -48,8 +48,8 @@ Direction and priorities for the homelab — what it should become, beyond curre
   `restic check --read-data-subset` once the repo is large enough to make full-data
   verification meaningful.
 - **Bootstrap script for full rebuild** — one entry point that takes a fresh
-  Proxmox host to a fully working homelab. The 10-step setup is scripted already
-  but has no orchestrator handling the reboot points.
+  Proxmox host to a fully working homelab. The setup steps are scripted already
+  but have no orchestrator handling the reboot points.
 - **ZFS datasets that match the NFS export** — `/srv/data` is exported
   without `crossmnt`, so the VM writes every service's files into `tank/data`
   itself, Immich's ~400G of photos included. `tank/data/immich` exists but is
@@ -67,8 +67,8 @@ Direction and priorities for the homelab — what it should become, beyond curre
 ## Long-term (when app-heavy projects arrive)
 
 - **Komodo as GitOps controller** — once adventure-engine, spliit, or similar
-  projects land, a UI + API + rollback + push-based deploys become worth the
-  install. Until then, manual `deploy.sh` via Tailscale is the right scope.
+  projects land, a UI + API + rollback become worth the install. A push to
+  `main` already deploys through `deploy.yml`.
 - **Upgrade strategy documented** — major jumps (PVE 9 → 10, Debian 13 → 14,
   Immich major) need a rehearsed path. Capture the steps before the first
   painful upgrade, not after.

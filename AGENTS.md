@@ -64,7 +64,10 @@ base branch against the PR tree.
    `verify-estate-pins.sh` requires every pinned digest to be attested by its
    repo's `ci.yml` on main, all images of a repo from one commit.
 4. **State in named volumes or bind mounts under `/srv/data/<service>/`**,
-   never `/home` or arbitrary paths.
+   never `/home` or arbitrary paths. The exception is `services/home/`: HA's
+   `./config` and Mosquitto's `./data` live in the checkout. `backup.sh` tars
+   HA's config (plus a recorder dump) and Mosquitto's `config/`, not its
+   `data/`.
 5. **Ingress through the shared `proxy` network** for NPM; separate networks
    isolate databases. The `draft.khe.ee` editor, which runs without an app
    login, sits on `draft-tunnel`, shared only with `cloudflare-tunnel`; the
@@ -83,7 +86,8 @@ base branch against the PR tree.
 
 - Proxmox `192.168.0.10` (`pve.khe.ee`, UI on `:8006`); Docker VM
   `192.168.0.11`, SSH `khe@docker-vm` over Tailscale MagicDNS, key auth
-  only. Admin credentials live in the VM's `.env` files.
+  only. Admin credentials live in the VM's `.env` files, except NPM's login
+  (in its database) and AdGuard's (in its live `AdGuardHome.yaml`).
 - On the VM: `./scripts/deploy.sh status|pull|up|down`, `./scripts/backup.sh`
   (Postgres dumps, config snapshots, HA recorder). Per service:
   `cd services/<group>/<service> && docker compose up -d`.

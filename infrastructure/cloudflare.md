@@ -51,7 +51,7 @@ Applies to all Access-protected apps (dash, trips, draft).
 | Field | Value |
 |-------|-------|
 | Organization's name | `KHE Homelab` |
-| Logo URL | `https://khe.ee/logo.svg` (served by landing container, bind-mounted from `services/apps/landing/site/`) |
+| Logo URL | `https://khe.ee/logo.svg` (served by landing container, bind-mounted from `/srv/data/sites/khe`, which khe-sites deploys) |
 | Header text | `Access limited to homelab owner.` |
 | Message | `Sign in with your authorized email to receive a one-time code. All access attempts are logged.` |
 | Background color | `#09090b` (matches landing page `--bg`) |
@@ -100,11 +100,11 @@ SSL/TLS → Edge Certificates.
 Zone: khe.ee
 All *.khe.ee records are CNAME → tunnel (proxied).
 `www` is CNAME → `khe.ee` (proxied), handled by redirect rule below.
-Split-horizon: local DNS via AdGuard rewrites *.khe.ee → 192.168.0.11.
+Split-horizon: local DNS via per-host AdGuard rewrites (no wildcard) → 192.168.0.11.
 Router DHCP DNS: 192.168.0.11 (AdGuard) ONLY — never advertise a secondary.
 Clients race both servers in parallel (happy-eyeballs) and Cloudflare would
 win most races, silently bypassing ad/tracker filtering. Upstream DoH
-(Cloudflare/Quad9) happens inside AdGuard, not via DHCP. See
+(Cloudflare and DNS4EU) happens inside AdGuard, not via DHCP. See
 [operational-notes.md](../docs/operational-notes.md#adguard-home).
 
 ## Redirect Rules

@@ -56,6 +56,8 @@ comparable, the one that scores better on these wins.
 | Container auto-heal   | autoheal              | High       | 2026-05-05    |
 | Dependency updates    | Renovate              | High       | 2026-05-05    |
 | House automation      | Home Assistant (Container) | High  | 2026-09-13    |
+| MQTT broker           | Mosquitto (see House automation) | — | 2026-10-02 |
+| Alarm panel bridge    | PAI (see House automation) | —     | 2026-10-02    |
 
 `Confidence` reflects how stable the choice is given current constraints —
 **High** = no realistic reason to migrate, **Medium** = working but a known
@@ -103,7 +105,7 @@ Live config-specific tuning lives in [operational-notes.md](operational-notes.md
 The non-obvious calls:
 
 - Upstream: Cloudflare DoH + DNS4EU Protective DoH, `parallel` mode.
-  Quad9 was dropped 2026-05-05 (see commit `6c4c5ec`) due to
+  Quad9 was dropped 2026-05-05 (see commit `630b6ee`) due to
   [AdGuardHome#8014](https://github.com/AdguardTeam/AdGuardHome/issues/8014).
 - `cache_optimistic: true` smooths over upstream blips invisibly.
 - `ratelimit: 100` per-/24 — bumped from default 20 because browser
@@ -254,10 +256,10 @@ today.
 
 ### Known costs
 
-- 4 containers (server, ML, Postgres, Redis) — heaviest service in the
+- 4 containers (server, ML, Postgres, Valkey) — heaviest service in the
   fleet by container count.
 - ML container is the memory hog and the source of most healthcheck
-  surprises (see commit `f4ca9aa` "fix stuck ML healthcheck").
+  surprises (see commit `d65380e` "fix stuck ML healthcheck").
 - Storage growth is unbounded — backed by the ZFS mirror at `/srv` so
   this is fine, but library size needs occasional review.
 
@@ -274,7 +276,8 @@ Chosen 2026-05 over Plex and Emby because Quick Sync transcoding through the
 passed-through iGPU came free, with no account and no telemetry. Removed on
 2026-10-01: the household watches through Stremio and did not use Jellyfin.
 It held a 3G memory limit, a public hostname and a pending major upgrade
-(10.11 to 12.1). The `/dev/dri` passthrough stays for Immich ML.
+(10.11 to 12.1). The `/dev/dri` passthrough stays for immich-server and
+Immich ML.
 
 **When we'd revisit:** a local media library that Stremio does not cover,
 and someone who watches it. The compose file and the QSV init container are
@@ -565,9 +568,11 @@ well; nothing is worth changing here.
 ## Dependency updates — Renovate
 
 GitHub-native dependency-update bot. Dependabot is the realistic alternative
-but Renovate's grouping + scheduling + Docker-tag strategies are richer
-for a homelab where we want "Tuesday morning, all minor bumps in one PR."
-Configured in `renovate.json` at repo root.
+but Renovate's grouping + scheduling + Docker-tag strategies are richer.
+It runs every weekend; each image's bump comes in its own PR, and patch,
+minor and digest bumps automerge, except the critical-infrastructure group
+(one PR, never automerged) and Home Assistant minor releases. Majors wait
+for review. Configured in `renovate.json` at repo root.
 
 ---
 
@@ -578,8 +583,9 @@ actually mattered was **Container over HAOS**. HAOS ships the Supervisor and
 the add-on store, but it wants to own the machine, which breaks the single-VM
 Docker model, the pinned-image + Renovate flow, `backup.sh` and the Kuma
 monitor. The official container keeps all of that; the price is no add-ons, so
-their equivalents (Mosquitto, Zigbee2MQTT, ESPHome) run as ordinary containers
-in `services/home/` and integrations come from HACS instead.
+their equivalents run as ordinary containers in `services/home/` (Mosquitto
+today, with PAI bridging the Paradox alarm panel to it; Zigbee2MQTT planned,
+ESPHome not set up) and integrations come from HACS instead.
 
 **Known cost:** HACS and `custom_components/` are hand-installed and
 deliberately untracked, so that layer is restored from the config backup, not
