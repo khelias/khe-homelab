@@ -4,7 +4,7 @@ services:
   # bulk ZFS at /srv/data/loki. Built-in ruler fires alerts to Alertmanager.
   #
   # This stack owns the `observability` network; deploy this before
-  # grafana, otel-collector, or alertmanager (DEPLOY_ORDER handles that).
+  # uptime-kuma, alertmanager, grafana and alloy (scripts/deploy-order.sh).
   loki:
     image: grafana/loki:3.7.8@sha256:81a6802ec4bd1b88c564494f06376889ed022998a188826190d26d2754ac2aae
     container_name: loki

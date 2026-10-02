@@ -4,26 +4,8 @@ set -euo pipefail
 
 SERVICES_DIR="$(cd "$(dirname "$0")/../services" && pwd)"
 
-# Deploy order matters: core first, then dependencies
-DEPLOY_ORDER=(
-  "core/nginx-proxy-manager"
-  "core/adguard"
-  "core/cloudflare-tunnel"
-  "core/vaultwarden"
-  "core/uptime-kuma"
-  "core/homepage"
-  "core/autoheal"
-  "media/immich"
-  "home/homeassistant"
-  "apps/landing"
-  "apps/games"
-  "apps/pages"
-  "apps/trips"
-  "observability/loki"
-  "observability/alertmanager"
-  "observability/grafana"
-  "observability/alloy"
-)
+# shellcheck source=scripts/deploy-order.sh
+source "$(dirname "$0")/deploy-order.sh"
 
 # Services that require external setup before they can run.
 # Add here only if a stack currently has a missing precondition (e.g. unconfigured token).

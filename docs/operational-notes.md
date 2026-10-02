@@ -333,9 +333,10 @@ the public one mounts the same directory read-only).
 - **Stack layout.** Four sub-stacks under `services/observability/`,
   each with its own `docker-compose.yml`: `loki/`, `grafana/`,
   `alloy/` (with a sibling `alloy-socket-proxy`), `alertmanager/`.
-  Deploy order is enforced by `scripts/deploy.sh` /
-  `scripts/deploy-stacks.sh` DEPLOY_ORDER: loki first (owns the
-  `observability` network), then alertmanager, grafana, alloy.
+  Deploy order is `DEPLOY_ORDER` in `scripts/deploy-order.sh`, which
+  `deploy.sh` and `deploy-stacks.sh` both source. loki owns the
+  `observability` network, so it comes before every stack that joins it as
+  external: `core/uptime-kuma`, then alertmanager, grafana, alloy.
 - **Why Alloy, not OTel Collector contrib.** Grafana Alloy is an
   OpenTelemetry Collector distribution — 100% OTLP compatible — with
   native Docker discovery (`discovery.docker`) and a native Docker

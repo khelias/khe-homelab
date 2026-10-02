@@ -4,27 +4,8 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 SERVICES_DIR="$ROOT_DIR/services"
 
-DEPLOY_ORDER=(
-  "core/nginx-proxy-manager"
-  "core/adguard"
-  "core/cloudflare-tunnel"
-  "core/vaultwarden"
-  "core/uptime-kuma"
-  "core/homepage"
-  "core/autoheal"
-  "media/immich"
-  "home/mosquitto"
-  "home/homeassistant"
-  "home/pai"
-  "apps/landing"
-  "apps/games"
-  "apps/pages"
-  "apps/trips"
-  "observability/loki"
-  "observability/alertmanager"
-  "observability/grafana"
-  "observability/alloy"
-)
+# shellcheck source=scripts/deploy-order.sh
+source "$(dirname "$0")/deploy-order.sh"
 
 usage() {
   cat <<'USAGE'
