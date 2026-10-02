@@ -45,3 +45,6 @@ the required `validate.yml` check:
   is reachable only on the `observability` Docker network, through Grafana.
 - **Public Actions logs** get only aggregate output: `ops-status.yml` prints
   the snapshot's summary, and the snapshot itself goes to Loki.
+- **Homepage** (dash.khe.ee, internet-facing behind Access) reads Docker
+  through `homepage-socket-proxy`, not the socket: no writes or exec, but
+  `CONTAINERS: 1` still lets it inspect every container, environment included.

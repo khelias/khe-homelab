@@ -95,7 +95,7 @@ every LAN service gets HTTPS without per-service certs. AdGuard does split-horiz
 **Host hardening**
 - SSH key-only auth on Docker VM (password login disabled)
 - UFW firewall + fail2ban on the VM
-- autoheal and Alloy route Docker access through `docker-socket-proxy` instead of mounting `docker.sock` directly
+- Homepage, autoheal and Alloy route Docker access through `docker-socket-proxy` instead of mounting `docker.sock` directly
 - All secrets in `.env` files on the VM, never committed
 
 ## Resilience
