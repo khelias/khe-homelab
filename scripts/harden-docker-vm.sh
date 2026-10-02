@@ -19,7 +19,9 @@ sudo ufw allow from 192.168.0.0/24 to any port 22
 # Allow Proxmox host
 sudo ufw allow from 192.168.0.10
 
-# Allow service ports from local network
+# Allow service ports from local network. Docker-published ports bypass UFW
+# (Docker's iptables rules come first), so this list does not limit them;
+# they are reachable from the LAN and the tailnet regardless.
 ALLOWED_PORTS=(
   80    # NPM HTTP
   443   # NPM HTTPS

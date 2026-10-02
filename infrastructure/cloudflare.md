@@ -36,8 +36,12 @@ Identity: One-time PIN via email (no OAuth setup needed).
 
 All three apps share a single reusable policy (edit once → applies to all).
 Policy combines `Include: Email = owner` AND `Require: Countries = Estonia`.
-Owner traveling abroad connects via Tailscale → egresses through VM's EE IP → passes both checks.
-If Tailscale is down while abroad, access is blocked — intentional two-factor (identity + location).
+The VM is not a Tailscale exit node (it advertises only the `192.168.0.0/24`
+subnet route), so Tailscale does not carry the owner past the country rule
+when abroad. Over Tailscale, `dash.khe.ee` resolves through AdGuard to
+`192.168.0.11` and goes through NPM, so Access never sees it. `trips.khe.ee`
+and `draft.khe.ee` have no AdGuard rewrite: they reach Cloudflare from the
+device's own connection, and the country rule blocks them outside Estonia.
 
 `draft.khe.ee` has no application-level login behind Access (dufs runs
 without `--auth`), so removing or loosening its Access application exposes the

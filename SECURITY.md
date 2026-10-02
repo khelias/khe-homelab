@@ -49,3 +49,11 @@ the required `validate.yml` check:
 - **Homepage** (dash.khe.ee, internet-facing behind Access) reads Docker
   through `homepage-socket-proxy`, not the socket: no writes or exec, but
   `CONTAINERS: 1` still lets it inspect every container, environment included.
+
+## Network exposure
+
+The router forwards no ports; the internet reaches the homelab only through
+Cloudflare Tunnel. Docker-published ports bypass UFW, because Docker's
+iptables rules come before UFW's, so every published port (Grafana's 3030
+included) is reachable from the LAN and over the Tailscale subnet route,
+whatever the UFW port list says.
