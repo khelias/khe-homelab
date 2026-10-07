@@ -52,7 +52,7 @@ base branch against the PR tree.
    gitleaks pre-commit hook enforces it for secrets (`./scripts/install-hooks.sh`
    after cloning). A false positive gets an exclusion in `.gitleaks.toml`, never
    `--no-verify`. Personal-data patterns (MAC and LAN addresses, coordinates,
-   e-mail, phone) are caught by the khe workspace commit gate, rules in its
+   e-mail, phone) are caught by the khe-workspace commit gate, rules in its
    `.claude/hooks/pii-rules.toml`; names and street addresses by nobody.
 3. **Pin image versions**, no `:latest`. Images the estate builds itself
    (`ghcr.io/khelias/*`, [estate ADR-008](https://github.com/khelias/khe-architecture/blob/main/decisions/008-container-images.md)) are pinned as
