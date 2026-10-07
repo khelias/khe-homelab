@@ -146,7 +146,18 @@ is not the deploy checkout.
 
 ## After `main` was rewritten
 
-A history rewrite is an operator decision (khe-meta ADR-006). Do not re-clone
+A history rewrite is an operator decision (khe-meta ADR-006). In any estate
+repo, the ruleset is what blocks it: on `khe-homelab` classic branch
+protection *allows* force pushes, so Settings -> Branches alone gives the
+wrong answer. To rewrite: set the ruleset's enforcement to `disabled` in the
+UI (the dropdown is safer than `gh api -X PUT`, which can reset fields left
+out of the payload), push, set it back to `active` at once, then check with
+`gh api repos/khelias/<repo>/rulesets/<id>` that `rules` and `conditions`
+are intact. The live required checks of a repo are what
+`gh api repos/khelias/<repo>/branches/main/protection --jq .required_status_checks.contexts`
+returns.
+
+For `khe-homelab` the VM checkout then has to follow. Do not re-clone
 the VM checkout, because the gitignored `.env` files would go with it. Check
 first that the rewrite kept the file tree: compare `git rev-parse
 HEAD^{tree}` on the VM with the new `origin/main^{tree}`. If they match,
@@ -170,8 +181,8 @@ A push to `main` of `khe-ai-adventure` deploys itself: its CI builds and
 publishes both images, the `Pin homelab` job opens (or updates) the PR from
 `deploy/khe-ai-adventure` here with the new digests and turns on auto-merge,
 `validate.yml` passes, the PR merges and `deploy.yml` recreates both
-containers. Push to live took under 7 minutes the first time (khe-meta
-ADR-008 "Observed"). Step 1's "Estate images" section shows the commit each
+containers. Push to live took under 7 minutes the first time
+([operational notes](operational-notes.md#image-pins)). Step 1's "Estate images" section shows the commit each
 container runs.
 
 When it stalls, look in this order:

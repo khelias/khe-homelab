@@ -155,6 +155,60 @@ and served via a per-location `root`. Do NOT nest it under
 **API keys**: `GEMINI_API_KEY` + `ANTHROPIC_API_KEY` in
 `services/apps/games/.env` on VM (never committed).
 
+### Image pins
+
+How an adventure push becomes a running container (khe-meta ADR-008):
+
+```mermaid
+sequenceDiagram
+    participant Dev as Developer
+    participant App as khe-ai-adventure CI
+    participant GHCR
+    participant Pin as Pin homelab job
+    participant PR as khe-homelab PR
+    participant Val as validate.yml
+    participant Dep as deploy.yml on the VM
+    Dev->>App: push main
+    App->>App: App quality + Images (~4 min)
+    App->>GHCR: publish sha- tags, attest, move main
+    App->>Pin: needs publish (moved)
+    Pin->>GHCR: check main = this commit (~30 s)
+    Pin->>PR: force-push deploy/khe-ai-adventure, open PR, auto-merge
+    PR->>Val: guard + attestations + compose (~1 min)
+    Val-->>PR: green
+    PR->>PR: squash-merge to main
+    PR->>Dep: push to main
+    Dep->>GHCR: pull pinned digests, recreate (~1 min)
+```
+
+**The pin App guard** in `validate.yml` is inline in the workflow, because
+the App cannot change workflow files. It applies when the PR's author or the
+event's sender is the App, or when the repository activity API shows any App
+activity on the head ref (the App overwriting someone else's branch is a
+force push). The App may then change only its own
+`ghcr.io/khelias/<repo>-<part>:main@sha256:` digests in its own compose file,
+one line for one line, the lines equal once the digest is stripped. A failed
+activity lookup fails the guard, and so does a `workflow_dispatch` run on a
+branch the App touched, whose green check would otherwise stand in for the
+PR run on the same commit.
+
+**Observed timings**, the reason the pins moved from Renovate to the App:
+
+- Renovate, first real push (2026-09-28, commit `1991e7a`): publish finished
+  at 19:19:31Z. A Dependency Dashboard re-run at 19:22:52Z still listed the
+  old digests, and no PR followed. Renovate opened the grouped PR
+  khe-homelab#221 at 01:35:44Z on 2026-09-29; it automerged at 01:36:26Z and
+  deployed. Publish to merge: **6 h 16 min**. The likely cause is Mend's
+  datasource cache, whose logs sit behind the operator's Mend login.
+- Pin PR through the App, first real push (2026-09-30, commit `11d65c6`):
+  push 11:12:01Z; `App quality` done 11:13:03Z, `Images` 11:14:35Z,
+  `Publish images` 11:15:39Z; `Pin homelab` 11:15:44-11:16:06Z opened
+  khe-homelab#223; validate, guard and attestations green
+  11:16:04-11:16:21Z; auto-merge 11:18:16Z; `deploy.yml`
+  11:18:19-11:18:43Z. `ops-status.yml` then showed both containers healthy
+  on `11d65c6`. Push to live: **6 min 42 s**. About two minutes of it is
+  GitHub's auto-merge acting after the check went green.
+
 ## Trips
 
 - `services/apps/trips/` stack (nginx alpine, pinned by Renovate, mirrors landing).
