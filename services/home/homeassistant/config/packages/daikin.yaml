@@ -11,6 +11,47 @@ template:
         icon: mdi:thermometer-water
         availability: "{{ state_attr('water_heater.hot_water_tank_domestic_hot_water_tank', 'current_temperature') is not none }}"
         state: "{{ state_attr('water_heater.hot_water_tank_domestic_hot_water_tank', 'current_temperature') }}"
+      # The integration's sensors carry no state_class, and number, switch and water_heater
+      # entities never get one, so without these copies their history is gone after the
+      # recorder's purge_keep_days. They are the inputs a heating model is fitted on.
+      - name: "Pealevoolu temperatuur"
+        unique_id: daikin_leaving_water_temperature_stat
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+        availability: "{{ has_value('sensor.space_heating_leaving_water_temperature') }}"
+        state: "{{ states('sensor.space_heating_leaving_water_temperature') }}"
+      - name: "Daikini välistemperatuur"
+        unique_id: daikin_outdoor_temperature_stat
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+        availability: "{{ has_value('sensor.space_heating_outdoor_temperature') }}"
+        state: "{{ states('sensor.space_heating_outdoor_temperature') }}"
+      # A curve offset is a temperature difference, so no device_class: a unit conversion
+      # would treat it as an absolute temperature.
+      - name: "Küttekõvera nihe"
+        unique_id: daikin_heating_curve_offset_stat
+        unit_of_measurement: "°C"
+        state_class: measurement
+        icon: mdi:chart-bell-curve-cumulative
+        availability: "{{ has_value('number.space_heating_temperature_control') }}"
+        state: "{{ states('number.space_heating_temperature_control') | float }}"
+      # 1 on, 0 standby: the hourly mean is the share of the hour space heating was enabled.
+      - name: "Põrandaküte sees"
+        unique_id: daikin_space_heating_enabled_stat
+        state_class: measurement
+        icon: mdi:heating-coil
+        availability: "{{ has_value('switch.space_heating_climate_control') }}"
+        state: "{{ 1 if is_state('switch.space_heating_climate_control', 'on') else 0 }}"
+      - name: "Boileri sihttemperatuur"
+        unique_id: daikin_dhw_target_temperature_stat
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+        icon: mdi:thermometer-water
+        availability: "{{ state_attr('water_heater.hot_water_tank_domestic_hot_water_tank', 'temperature') is not none }}"
+        state: "{{ state_attr('water_heater.hot_water_tank_domestic_hot_water_tank', 'temperature') }}"
       # The heating mode select shows its raw key ("heating"); the dashboard shows this instead.
       - name: "Kütte režiim"
         unique_id: daikin_space_heating_mode_label
