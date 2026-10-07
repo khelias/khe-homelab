@@ -106,6 +106,13 @@ If the VM is wedged entirely (no console response), the Proxmox UI can force a
 reset. The hardware watchdog also handles this automatically, see
 [README](../README.md) resilience section.
 
+If the Proxmox UI does not answer either (the host does not answer ping, Cloudflare
+error 1033 on the public sites), the host itself is off. After a power cut it
+stays off: the BIOS power-loss setting is still at its `Power Off` default
+(seen 2026-10-07), so press the power button. Setting it to `Power On`
+(named "Restore on AC Power Loss" or similar) is still to do. The Docker VM has
+`onboot: 1` and comes up with the host.
+
 ## Symptom: things are slow, or a deploy fails on disk space
 
 ```bash
