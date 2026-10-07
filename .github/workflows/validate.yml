@@ -36,7 +36,7 @@ jobs:
           if [ "$EVENT" = pull_request ]; then base=HEAD^1; else base=HEAD; fi
           git worktree add --detach .base "$base"
 
-      # A pin App (khe-meta ADR-008) may only move its own image digests, one
+      # A pin App (estate ADR-008) may only move its own image digests, one
       # line for one line. This lives in the workflow file because the Apps
       # have no Workflows permission and so cannot change it. One line per App:
       # login, the compose file it pins, and its image name pattern (ERE).

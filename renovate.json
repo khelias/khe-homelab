@@ -49,7 +49,7 @@
       "groupSlug": "critical-updates"
     },
     {
-      "description": "Estate images (ghcr.io/khelias/*) are pinned by their own repo's CI, which opens a pin PR here after each publish (khe-meta ADR-008). Renovate's registry lookups lag the registry, so it would propose an older digest after CI moved the pin and automerge a silent downgrade.",
+      "description": "Estate images (ghcr.io/khelias/*) are pinned by their own repo's CI, which opens a pin PR here after each publish (estate ADR-008). Renovate's registry lookups lag the registry, so it would propose an older digest after CI moved the pin and automerge a silent downgrade.",
       "matchPackageNames": ["ghcr.io/khelias/**"],
       "enabled": false
     }

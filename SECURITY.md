@@ -35,7 +35,7 @@ the required `validate.yml` check:
   fails any PR whose `ghcr.io/khelias/*` digests are not attested by their
   repo's `ci.yml` on `main`, or whose images of one repo come from different
   commits. The accepted residual risk (the App can merge or fast-forward an
-  already-green change it did not write) is in khe-meta ADR-008.
+  already-green change it did not write) is in [estate ADR-008](https://github.com/khelias/khe-architecture/blob/main/decisions/008-container-images.md).
 
 ## Automated readers
 

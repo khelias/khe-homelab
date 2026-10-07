@@ -55,7 +55,7 @@ base branch against the PR tree.
    e-mail, phone) are caught by the khe workspace commit gate, rules in its
    `.claude/hooks/pii-rules.toml`; names and street addresses by nobody.
 3. **Pin image versions**, no `:latest`. Images the estate builds itself
-   (`ghcr.io/khelias/*`, khe-meta ADR-008) are pinned as
+   (`ghcr.io/khelias/*`, [estate ADR-008](https://github.com/khelias/khe-architecture/blob/main/decisions/008-container-images.md)) are pinned as
    `:main@sha256:<digest>`. The app's CI publishes them and then opens a pin
    PR here through a per-repo GitHub App (`khe-adventure-pins`) with
    auto-merge; Renovate is disabled for them (`renovate.json`). An App PR is
@@ -128,7 +128,7 @@ base branch against the PR tree.
   only what the task needs, and never quote personal data or tokens from them.
 - **Fork PRs can reach the runner.** Fork PR approval stays at
   `all_external_contributors`, and a fork run is approved only after reading
-  its `.github/workflows/` diff (khe-meta ADR-006).
+  its `.github/workflows/` diff ([estate ADR-006](https://github.com/khelias/khe-architecture/blob/main/decisions/006-branch-protection.md)).
 
 ## Working on Home Assistant
 

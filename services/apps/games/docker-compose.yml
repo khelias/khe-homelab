@@ -24,8 +24,8 @@ services:
           memory: 256M
           cpus: '0.50'
 
-  # khe-ai-adventure publishes both images from one commit (ADR-008 in
-  # khe-meta). Keep the two pins on the same commit; adventure's CI moves
+  # khe-ai-adventure publishes both images from one commit (estate
+  # ADR-008). Keep the two pins on the same commit; adventure's CI moves
   # them together in one pin PR.
   adventure-web:
     image: ghcr.io/khelias/khe-ai-adventure-web:main@sha256:73feff35888ff7551c63162452d3dad13029a46bccd476f5bc8a07187dd47456

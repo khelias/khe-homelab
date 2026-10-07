@@ -295,8 +295,8 @@ fi
 echo
 
 echo "Estate images"
-# Images built by the estate's own repos carry OCI labels (ADR-008 in
-# khe-meta). The revision shows which commit is live without a shell, and two
+# Images built by the estate's own repos carry OCI labels (estate
+# ADR-008). The revision shows which commit is live without a shell, and two
 # containers of one app must show the same one.
 if docker info >/dev/null 2>&1; then
   n_estate=0; estate_revs=""

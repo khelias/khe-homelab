@@ -119,7 +119,7 @@ Stack: `services/apps/games/` (nginx + adventure-web + adventure-proxy).
 - `khe-study`: `vite { base: '/study/' }`, BrowserRouter `basename="/study"`
 - `khe-ai-adventure`: same pattern with `/adventure/`
 
-**Adventure images** (built in `khe-ai-adventure` CI, khe-meta ADR-008):
+**Adventure images** (built in `khe-ai-adventure` CI, [estate ADR-008](https://github.com/khelias/khe-architecture/blob/main/decisions/008-container-images.md)):
 
 - `ghcr.io/khelias/khe-ai-adventure-web` and `-proxy`, public packages,
   pinned here as `:main@sha256:`. After each publish, adventure's CI moves
@@ -157,7 +157,7 @@ and served via a per-location `root`. Do NOT nest it under
 
 ### Image pins
 
-How an adventure push becomes a running container (khe-meta ADR-008):
+How an adventure push becomes a running container (estate ADR-008):
 
 ```mermaid
 sequenceDiagram

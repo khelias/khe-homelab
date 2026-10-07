@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Every ghcr.io/khelias image pinned under services/ of the tree in $PWD must
 # carry a build attestation from its own repo's ci.yml on main, and all images
-# of one repo must come from one commit (khe-meta ADR-008). The commit is read
+# of one repo must come from one commit (estate ADR-008). The commit is read
 # from the signing certificate, not from the predicate the workflow wrote.
 # The tree is $PWD, not the script's own: validate.yml runs the base branch's
 # copy of this script against the PR checkout.
