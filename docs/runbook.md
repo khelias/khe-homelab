@@ -146,11 +146,13 @@ is not the deploy checkout.
 
 ## After `main` was rewritten
 
-A history rewrite is an operator decision (khe-meta ADR-006). In any estate
-repo, the ruleset is what blocks it: on `khe-homelab` classic branch
-protection *allows* force pushes, so Settings -> Branches alone gives the
-wrong answer. To rewrite: set the ruleset's enforcement to `disabled` in the
-UI (the dropdown is safer than `gh api -X PUT`, which can reset fields left
+A history rewrite is an operator decision; khe-meta ADR-006 sets the guards
+that block it. In most estate repos that is a ruleset: on `khe-homelab`
+classic branch protection *allows* force pushes and the ruleset blocks them,
+so Settings -> Branches alone gives the wrong answer. `khe-sites` has no
+ruleset; its classic protection blocks force pushes, so there allow them in
+the branch protection instead, push, and turn them off again. For a ruleset:
+set its enforcement to `disabled` in the UI (the dropdown is safer than `gh api -X PUT`, which can reset fields left
 out of the payload), push, set it back to `active` at once, then check with
 `gh api repos/khelias/<repo>/rulesets/<id>` that `rules` and `conditions`
 are intact. The live required checks of a repo are what
