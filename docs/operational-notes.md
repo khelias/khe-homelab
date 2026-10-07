@@ -321,6 +321,11 @@ PR run on the same commit.
   `absolute_redirect off`, so `/privacy` -> `/privacy/` stays on https.
 - `/reports` and `/reports/`, retired in 2026-10, answer 404 rather than the
   landing fallback, so an old link does not get the home page with a 200.
+- `/lab` and `/lab/`, the Lab Atlas retired in 2026-10, answer 301 to
+  `/architecture/` with the query string kept (`?lang=et` survives).
+- `/architecture/decisions/<NNN>/` are the ADR pages built by khe-sites; an
+  unknown id answers 404 rather than the landing fallback, and the bare
+  `/architecture/decisions/` answers 301 to `/architecture/#decisions`.
 - `/r/<slug>/` serves khe-trips share sites from `/srv/data/trips/share`,
   written by the khe-trips runner and mounted outside the html root
   (`/srv/share/r`). An unknown slug, `/r` and `/r/` answer 404, not the
