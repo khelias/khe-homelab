@@ -460,7 +460,7 @@ export function mount(element, model, options = {}) {
     for (let i = 0; i < pa.count; i++) pa.setZ(i, pa.getZ(i) * narrow(pa.getY(i)));
     const body = new THREE.Mesh(geo, m.wall);
     body.renderOrder = 2;
-    g.add(body, new THREE.LineSegments(keep(new THREE.EdgesGeometry(geo, 25)), m.edge));
+    g.add(body, edges(geo, m.edge, 25));
 
     const glassShape = new THREE.Shape(p.glass.map(([x, y]) => new THREE.Vector2(x, y)));
     [-1, 1].forEach(s => {
@@ -500,8 +500,7 @@ export function mount(element, model, options = {}) {
       wheels.push(w);
     }));
 
-    // lights: front in the ink colour, rear in the alert colour, each segment with a small glow.
-    // Sprites are not faded by applyFade, so their materials are kept for the car's own fade.
+    // sprites are not faded by applyFade, so their materials are kept for the car's own fade
     const glowTex = canvasTexture(64, [[0, 'rgba(255,255,255,1)'], [0.3, 'rgba(255,255,255,0.4)'], [1, 'rgba(255,255,255,0)']]);
     const sprites = [];
     [['front', C.ink], ['rear', C.alert]].forEach(([k, color]) => {
@@ -527,7 +526,7 @@ export function mount(element, model, options = {}) {
   }
   const carOpt = options.car;
   const car = carOpt && carOpt.profile && Array.isArray(carOpt.path) && carOpt.path.length >= 2 ? buildCar(carOpt.profile, carOpt.path) : null;
-  let carState = 'away', drive = null;
+  let carState = 'away', drive = null, carFadeShown = -1;
   const carFade = { cur: 0, to: 0 };
   function placeCar(u) {
     const at = car.curve.getPointAt(u), tan = car.curve.getTangentAt(u);
@@ -672,30 +671,31 @@ export function mount(element, model, options = {}) {
     ndc.set(((ev.clientX - rect.left) / rect.width) * 2 - 1, -((ev.clientY - rect.top) / rect.height) * 2 + 1);
     ray.setFromCamera(ndc, camera);
   }
-  function pick(ev) {
+  // both tests read the ray that aim() set
+  function pick() {
     if (mode !== 'open') return null;
-    aim(ev);
     const hits = ray.intersectObjects(floorMeshes, false);
     return hits.length ? hits[0].object : null;
   }
   // the body mesh, not a bounding box, which would cover the carport floor
-  function carHit(ev) {
+  function carHit() {
     if (!car || carState === 'away' || !car.g.visible) return false;
-    aim(ev);
     return ray.intersectObject(car.body, false).length > 0;
   }
   const onMove = ev => {
     if (ev.pointerType !== 'mouse') return;
-    const overCar = carHit(ev);
-    const h = overCar ? null : pick(ev);
+    aim(ev);
+    const overCar = carHit();
+    const h = overCar ? null : pick();
     if (h !== hovered) { hovered = h; invalidate(); }
     renderer.domElement.style.cursor = overCar || h ? 'pointer' : '';
   };
   const onDown = ev => { downAt = [ev.clientX, ev.clientY]; };
   const onUp = ev => {
     if (!downAt || Math.hypot(ev.clientX - downAt[0], ev.clientY - downAt[1]) > 6) return;
-    if (carHit(ev)) { if (options.onCar) options.onCar(); return; }
-    const h = pick(ev);
+    aim(ev);
+    if (carHit()) { if (options.onCar) options.onCar(); return; }
+    const h = pick();
     if (options.onRoom) options.onRoom(h ? h.userData.room : null);
   };
   renderer.domElement.addEventListener('pointermove', onMove);
@@ -774,14 +774,19 @@ export function mount(element, model, options = {}) {
     });
     if (car) {
       if (drive) {
-        const t = Math.min(1, Math.max(0, (now - drive.t0) / drive.dur));
-        placeCar(1 - (1 - t) * (1 - t)); // eased out into the carport
+        // frame time, not the clock: a drive started while the page is hidden waits to be seen
+        drive.elapsed += Math.max(0, dt);
+        const t = Math.min(1, drive.elapsed / drive.dur);
+        placeCar(1 - (1 - t) * (1 - t));
         moving = true;
         if (t >= 1) { drive = null; carState = 'parked'; carSettled(); }
       }
       if (!near(carFade.cur, carFade.to)) { carFade.cur += (carFade.to - carFade.cur) * k; moving = true; } else carFade.cur = carFade.to;
-      applyFade(car.g, carFade.cur);
-      car.sprites.forEach(sm => { sm.opacity = sm.userData.base * carFade.cur; });
+      if (carFade.cur !== carFadeShown) {
+        carFadeShown = carFade.cur;
+        applyFade(car.g, carFade.cur);
+        car.sprites.forEach(sm => { sm.opacity = sm.userData.base * carFade.cur; });
+      }
     }
     if (!moving && !dirty) { raf = 0; return; }
     dirty = false;
@@ -832,7 +837,7 @@ export function mount(element, model, options = {}) {
     if (!car) return;
     if (state === 'arrive' && reduceMotion) state = 'parked';
     if (state === 'arrive') {
-      drive = { t0: performance.now(), dur: Math.min(6, Math.max(3, car.length / 3.2)) * 1000 };
+      drive = { elapsed: 0, dur: Math.min(6, Math.max(3, car.length / 3.2)) };
       placeCar(0);
       carState = 'driving';
       carFade.to = 1;

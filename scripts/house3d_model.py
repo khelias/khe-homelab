@@ -225,7 +225,7 @@ def _validate_car(car, rooms, bad):
         bad("car: entity is not an entity id")
     if not (isinstance(car.get("name"), str) and car["name"]):
         bad("car: name missing")
-    room = rooms.get(car.get("room"))
+    room = rooms.get(car.get("room")) if isinstance(car.get("room"), str) else None
     if not room:
         bad(f"car: room {car.get('room')!r} does not exist")
 
@@ -258,7 +258,7 @@ def _validate_car(car, rooms, bad):
     if not (isinstance(path, list) and len(path) >= 3 and all(_point(p) for p in path)):
         return bad("car: path needs three or more [x, z] points")
     a, b, c = path[-3:]
-    if math.dist(a, c) == 0:
+    if math.dist(a, c) == 0 or math.dist(b, c) == 0:
         return bad("car: path's last three points do not set a direction")
     # distance of the middle point from the line through the outer two
     off = abs((c[0] - a[0]) * (b[1] - a[1]) - (c[1] - a[1]) * (b[0] - a[0])) / math.dist(a, c)

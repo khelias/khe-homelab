@@ -19,7 +19,7 @@ function readSeen(entity) {
     const v = localStorage.getItem(seenKey(entity));
     if (v !== null) return v;
   } catch (e) { /* the in-memory copy answers */ }
-  return seenMemory.has(seenKey(entity)) ? seenMemory.get(seenKey(entity)) : null;
+  return seenMemory.get(seenKey(entity)) ?? null;
 }
 function writeSeen(entity, key) {
   seenMemory.set(seenKey(entity), key);
@@ -245,7 +245,8 @@ class House3dCard extends HTMLElement {
     if (!home) return this._view.setCar('away');
     const key = arrivalKey(st);
     if (key === null) return this._view.setCar('parked');
-    if (first && readSeen(car.entity) === key) return this._view.setCar('parked');
+    // also on a later push: an outage seen as away must not replay an arrival this browser saw
+    if (readSeen(car.entity) === key) return this._view.setCar('parked');
     writeSeen(car.entity, key);
     this._view.setCar('arrive');
   }
