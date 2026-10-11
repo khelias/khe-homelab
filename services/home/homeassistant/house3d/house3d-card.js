@@ -2,7 +2,7 @@
 // the card config, written by scripts/ha-dashboard.py; this file carries no house data.
 // Bump HOUSE3D_VERSION on every change to this file or the engine, and the same ?v= on the
 // Lovelace resource URL: HA's /local and the phone app cache aggressively.
-const HOUSE3D_VERSION = 3;
+const HOUSE3D_VERSION = 4;
 const engine = import(`./house3d.js?v=${HOUSE3D_VERSION}`);
 
 const nf1 = new Intl.NumberFormat('et-EE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
@@ -43,7 +43,6 @@ export function toMarker(d, st) {
 
 const STYLE = `
 :host { display: block; height: 480px; }
-:host([panel]) { height: 100%; min-height: calc(100vh - var(--header-height, 56px)); min-height: calc(100dvh - var(--header-height, 56px)); }
 .wrap { display: block; position: relative; width: 100%; height: 100%; overflow: hidden; border-radius: var(--ha-card-border-radius, 12px);
   --ink: #e4ecff; --muted: #8a9bc2; --line: #6fe3ff; --amber: #ffc56e; --alert: #ff8b7b; --bg: #060c1b;
   --panel: rgba(10, 18, 38, 0.9); --edge: rgba(111, 227, 255, 0.18); --chip: rgba(111, 227, 255, 0.08);
@@ -76,8 +75,9 @@ button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 .empty { color: var(--muted); }
 .msg { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; color: var(--muted); text-align: center; background: var(--bg); }
 @media (max-width: 600px) {
-  .bar { top: auto; bottom: 12px; right: 50%; transform: translateX(50%); }
-  .sheet { top: auto; left: 0; right: 0; bottom: 0; width: auto; max-height: 62%; border-radius: 16px 16px 0 0; }
+  .bar { top: auto; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); right: 50%; transform: translateX(50%); }
+  .sheet { top: auto; left: 0; right: 0; bottom: 0; width: auto; max-height: 62%; border-radius: 16px 16px 0 0;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
 }
 `;
 
@@ -111,13 +111,31 @@ class House3dCard extends HTMLElement {
   }
   get hass() { return this._hass; }
 
-  // panel views set isPanel; the card then fills the view's height
-  set isPanel(v) { this.toggleAttribute('panel', !!v); }
+  // panel views set isPanel; the card then fills the screen below its own top edge. HA's header
+  // height varies (view tabs, the phone's safe area), so it is measured rather than assumed,
+  // which kept the bottom button bar off screen in the phone app.
+  set isPanel(v) { this.toggleAttribute('panel', !!v); this._fit(); }
+  _fit() {
+    if (!this.hasAttribute('panel') || !this.isConnected) { this.style.height = ''; return; }
+    const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+    const top = Math.max(0, this.getBoundingClientRect().top);
+    this.style.height = `${Math.max(320, Math.floor(vh - top))}px`;
+  }
   getCardSize() { return 8; }
   getGridOptions() { return { columns: 'full', rows: 8 }; }
 
-  connectedCallback() { this._render(); }
-  disconnectedCallback() { this._unmount(); }
+  connectedCallback() {
+    this._onResize = this._onResize || (() => this._fit());
+    window.addEventListener('resize', this._onResize);
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', this._onResize);
+    requestAnimationFrame(this._onResize);
+    this._render();
+  }
+  disconnectedCallback() {
+    window.removeEventListener('resize', this._onResize);
+    if (window.visualViewport) window.visualViewport.removeEventListener('resize', this._onResize);
+    this._unmount();
+  }
 
   _unmount() {
     if (this._view) { this._view.dispose(); this._view = null; }

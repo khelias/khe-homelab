@@ -149,10 +149,16 @@ export function mount(element, model, options = {}) {
   const lotCx = (lotBox[0] + lotBox[2]) / 2, lotCz = (lotBox[1] + lotBox[3]) / 2;
   const ext = Math.max(lotBox[2] - lotBox[0], lotBox[3] - lotBox[1]);
   const E = ext / 41; // the prototype's framing was tuned on a 41 m lot
-  const HOME_TARGET = new THREE.Vector3((wallBox[0] + wallBox[2]) / 2, 0.3, (wallBox[1] + wallBox[3]) / 2);
-  // the model's z runs away from the street, so the home view looks in from -z, the street side
-  const HOME_DIR = new THREE.Vector3(-0.5, 0.66, -0.56).normalize();
-  const PORTRAIT_DIR = new THREE.Vector3(-0.22, 0.86, -0.46).normalize();
+  // the model's z runs away from the street, so the home view looks in from -z, the street side,
+  // 25 degrees round to the west, low like a passer-by (40 degrees up on a portrait screen, where a
+  // lower view crops the house's sides); the target leans towards the street to centre the house
+  const viewDir = (azDeg, elDeg) => {
+    const az = azDeg * D2R, el = elDeg * D2R;
+    return new THREE.Vector3(-Math.sin(az) * Math.cos(el), Math.sin(el), -Math.cos(az) * Math.cos(el));
+  };
+  const HOME_DIR = viewDir(25, 27);
+  const PORTRAIT_DIR = viewDir(25, 40);
+  const HOME_TARGET = new THREE.Vector3((wallBox[0] + wallBox[2]) / 2, 0.3, (wallBox[1] + wallBox[3]) / 2 - 0.07 * ext);
 
   const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 300 * E);
   const controls = new OrbitControls(camera, renderer.domElement);
