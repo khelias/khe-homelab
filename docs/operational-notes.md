@@ -667,6 +667,33 @@ things that should be zero and are not.
 package, and the dashboard tile shows the label with a `more-info` tap action
 on the select (`"entity": <select>`), so the picker is one tap away as before.
 
+**The 3D house view (`house3d`) is a read-only mount, not part of `config/www`.**
+The code lives in `services/home/homeassistant/house3d/` (engine `house3d.js`,
+card `house3d-card.js`, standalone `viewer.html`, vendored three.js) and the
+compose file mounts it at `/config/www/house3d:ro`, so HA serves it as
+`/local/house3d/`. It is kept out of `config/www` because `config/*` is
+gitignored and the container has left root-owned directories there before
+(tuya-local, above), which would stop the runner's `git pull --ff-only`. Only
+adding the mount recreates HA; later file changes arrive live through it.
+- **Cache:** `/local` and the phone app keep old files. Every change to the
+  card or the engine bumps `HOUSE3D_VERSION` in `house3d-card.js` and the same
+  `?v=` on the Lovelace resource (`scripts/ha-ws.py` with
+  `lovelace/resources/update`). The vendor directory is versioned
+  (`vendor/three-<version>/`), so its URLs change with it.
+- **three.js updates** are manual, Renovate does not see the vendored copy:
+  `scripts/house3d-vendor.sh <version>`, point the engine's imports at the new
+  directory, bump the version, remove the old directory.
+- **The model** (walls, rooms, devices) is not in this repo. It is the
+  `house3d:*` blocks of khe-meta's `house/house-model.md`;
+  `scripts/ha-dashboard.py` reads it (`HOUSE3D_MODEL`, else the sibling
+  khe-meta checkout) and writes everything but the showcase layer into the
+  card config, which lives only in HA's `.storage`.
+- **Privacy scan:** `scripts/house3d-build.py --scan <model>
+  services/home/homeassistant/house3d/` before every commit that touches the
+  directory. It fails on any device name, entity id, family room name or
+  device coordinate. The same script builds the standalone viewer from the
+  shareable layers only.
+
 ### HVAC integrations
 
 The Komfovent and Daikin integration quirks (Modbus client rules, register

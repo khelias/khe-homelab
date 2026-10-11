@@ -29,12 +29,15 @@ services/
                    Uptime Kuma, Homepage, autoheal
   media/           Immich
   home/            Home Assistant, Mosquitto, PAI (Paradox alarm)
+    homeassistant/house3d/  3D house view: engine, HA card, standalone viewer,
+                   vendored three.js (house data stays in khe-meta)
   apps/            landing, games, pages, trips
   observability/   Loki, Grafana, Alloy, Alertmanager (one stack)
 infrastructure/    Proxmox, network, Cloudflare, Tailscale docs
 scripts/           setup, deploy, backup, hardening, validate-compose,
                    ha-dashboard.py (HA Overview generator),
-                   ha-ws.py (HA WebSocket commands from the CLI)
+                   ha-ws.py (HA WebSocket commands from the CLI),
+                   house3d-* and house3d_model.py (3D view build, vendoring, model)
 ```
 
 Image tags live in each `docker-compose.yml`; Renovate opens the bump PRs,

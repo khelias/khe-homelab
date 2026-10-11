@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="et">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Maja 3D</title>
+<!-- Standalone house view: built by scripts/house3d-build.py next to model.json (geometry,
+     rooms and showcase layers only). No Home Assistant, no device data. -->
+<style>
+:root {
+  --bg: #060c1b; --line: #6fe3ff; --ink: #e4ecff; --muted: #8a9bc2; --faint: #4a5a82;
+  --panel: rgba(10, 18, 38, 0.86); --panel-edge: rgba(111, 227, 255, 0.18); --chip: rgba(111, 227, 255, 0.08);
+  --amber: #ffc56e;
+  --display: "Saira Semi Condensed", "Arial Narrow", system-ui, sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 var(--body); overflow: hidden; -webkit-tap-highlight-color: transparent; }
+#stage { position: fixed; inset: 0; }
+.brand { position: fixed; top: calc(16px + env(safe-area-inset-top, 0px)); left: max(16px, env(safe-area-inset-left, 0px));
+  display: grid; gap: 6px; pointer-events: none; max-width: min(460px, calc(100% - 32px)); }
+.eyebrow { font: 500 11px/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--line); opacity: 0.85; }
+.brand h1 { margin: 0; font: 600 30px/1 var(--display); letter-spacing: 0.02em; text-wrap: balance; }
+.brand p { margin: 2px 0 0; color: var(--muted); }
+.views { position: fixed; top: calc(16px + env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); display: flex; gap: 8px; align-items: center; }
+.seg { display: flex; padding: 3px; gap: 2px; background: var(--panel); border: 1px solid var(--panel-edge); border-radius: 10px; backdrop-filter: blur(10px); }
+.seg button, .icon-btn { font: 500 13px/1 var(--body); color: var(--muted); background: transparent; border: 0; border-radius: 7px; padding: 9px 12px; cursor: pointer; white-space: nowrap; }
+.seg button[aria-pressed="true"] { color: var(--bg); background: var(--line); }
+.icon-btn { display: grid; place-items: center; width: 40px; height: 40px; padding: 0; background: var(--panel); border: 1px solid var(--panel-edge); border-radius: 10px; }
+.icon-btn svg { width: 18px; height: 18px; }
+button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+@media (hover: hover) and (pointer: fine) { .seg button:not([aria-pressed="true"]):hover, .icon-btn:hover { color: var(--ink); } }
+.hint { position: fixed; left: max(16px, env(safe-area-inset-left, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  font: 400 11px/1.4 var(--mono); letter-spacing: 0.04em; color: var(--faint); pointer-events: none; margin: 0; }
+#panel[hidden] { display: none; }
+#panel { position: fixed; top: calc(72px + env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); width: 340px;
+  max-height: calc(100% - 104px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); overflow: auto; box-sizing: border-box;
+  background: var(--panel); border: 1px solid var(--panel-edge); border-radius: 14px; backdrop-filter: blur(14px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45); display: grid; gap: 14px; padding: 18px; }
+.p-head { display: grid; grid-template-columns: 40px 1fr 32px; gap: 12px; align-items: start; }
+.p-icon { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; background: var(--chip); color: var(--line); }
+.p-icon svg { width: 20px; height: 20px; }
+.p-title h2 { margin: 0; font: 600 20px/1.15 var(--display); letter-spacing: 0.01em; text-wrap: balance; }
+.p-title p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+.close { width: 32px; height: 32px; border-radius: 8px; border: 0; background: transparent; color: var(--muted); cursor: pointer; display: grid; place-items: center; }
+.close svg { width: 18px; height: 18px; }
+.text { margin: 0; }
+.fallback { position: fixed; inset: 0; display: grid; place-items: center; padding-inline: 16px; color: var(--muted); text-align: center; }
+@media (max-width: 720px) {
+  .brand h1 { font-size: 24px; }
+  .brand p { font-size: 13px; }
+  .views { top: auto; right: auto; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
+  .seg button { padding: 10px 11px; }
+  .hint { display: none; }
+  #panel { top: auto; left: 0; right: 0; bottom: 0; width: auto; max-height: 62%; border-radius: 16px 16px 0 0;
+    padding: 18px 16px calc(18px + env(safe-area-inset-bottom, 0px)); }
+}
+</style>
+</head>
+<body>
+<div id="stage" aria-label="Maja kolmemõõtmeline mudel"></div>
+<header class="brand">
+  <span class="eyebrow">Põhiplaani järgi</span>
+  <h1 id="title">Maja 3D</h1>
+  <p id="intro"></p>
+</header>
+<nav class="views" aria-label="Vaade">
+  <div class="seg" role="group">
+    <button type="button" data-mode="roof" aria-pressed="true">Katusega</button>
+    <button type="button" data-mode="open" aria-pressed="false">Katuseta</button>
+  </div>
+  <button type="button" class="icon-btn" id="reset" aria-label="Lähtesta vaade" title="Lähtesta vaade"></button>
+</nav>
+<p class="hint" id="hint">Lohista pööramiseks · kerimine suumib · vajuta ruumile või punktile</p>
+<aside id="panel" hidden aria-live="polite"></aside>
+<script type="module">
+import { mount, icon, roomArea } from './house3d.js';
+
+const stage = document.getElementById('stage');
+const panel = document.getElementById('panel');
+const nf1 = new Intl.NumberFormat('et-EE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const esc = s => String(s).replace(/[&<>"']/g, ch => `&#${ch.charCodeAt(0)};`);
+if (matchMedia('(pointer: coarse)').matches) document.getElementById('hint').textContent = 'Libista pööramiseks · näpista suumimiseks · vajuta ruumile';
+
+let model;
+try {
+  model = await (await fetch('./model.json')).json();
+} catch (e) {
+  stage.innerHTML = '<div class="fallback">Mudeli laadimine ebaõnnestus.</div>';
+  throw e;
+}
+const show = model.showcase || {};
+const features = show.features || [];
+const roomTexts = show.rooms || {};
+if (show.title) { document.getElementById('title').textContent = show.title; document.title = show.title; }
+document.getElementById('intro').textContent = show.intro || '';
+document.getElementById('reset').innerHTML = icon('reset');
+
+let sel = null;
+const view = mount(stage, model, {
+  reveal: true,
+  onMarker: id => select(sel === id ? null : id),
+  onRoom: id => select(id),
+  onMode: m => {
+    document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === m)));
+    if (m === 'roof' && sel && model.rooms.some(r => r.id === sel)) select(null);
+  }
+});
+view.setMarkers(features.map(f => ({ id: f.id, pos: f.pos, icon: f.icon, label: f.name, state: 'idle' })));
+document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => view.setMode(b.dataset.mode)));
+document.getElementById('reset').addEventListener('click', () => view.reset());
+
+function select(id) {
+  sel = id;
+  view.setSelection(id);
+  const room = model.rooms.find(r => r.id === id);
+  const feature = features.find(f => f.id === id);
+  if (!room && !feature) { panel.hidden = true; panel.innerHTML = ''; return; }
+  const head = (ic, title, sub) => `<div class="p-head"><div class="p-icon">${icon(ic)}</div>
+    <div class="p-title"><h2>${esc(title)}</h2>${sub ? `<p>${esc(sub)}</p>` : ''}</div>
+    <button type="button" class="close" data-act="close" aria-label="Sulge">${icon('close')}</button></div>`;
+  if (room) {
+    const text = (roomTexts[room.id] || {}).text;
+    panel.innerHTML = head('room', room.name, `Plaanil ${room.no} · ${nf1.format(roomArea(room))} m²`) + (text ? `<p class="text">${esc(text)}</p>` : '');
+  } else {
+    panel.innerHTML = head(feature.icon, feature.name, '') + (feature.text ? `<p class="text">${esc(feature.text)}</p>` : '');
+  }
+  panel.hidden = false;
+}
+panel.addEventListener('click', ev => { if (ev.target.closest('[data-act="close"]')) select(null); });
+document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && sel) select(null); });
+</script>
+</body>
+</html>

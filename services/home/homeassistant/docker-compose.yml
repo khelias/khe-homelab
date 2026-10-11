@@ -9,6 +9,7 @@ services:
       - TZ=Europe/Tallinn
     volumes:
       - ./config:/config
+      - ./house3d:/config/www/house3d:ro
       - /etc/localtime:/etc/localtime:ro
     networks:
       - proxy
