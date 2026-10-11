@@ -9,9 +9,13 @@ because the plan names the house's devices and addresses.
 
 Usage:  ha-dashboard.py            (saves to the "lovelace" Overview)
 Needs:  python3 with `websockets`, the HA long-lived token in
-        ~/.config/khe/ha-token, optional family list in ~/.config/khe/ha-people.json.
+        ~/.config/khe/ha-token, optional family list in ~/.config/khe/ha-people.json,
+        optional 3D house model (HOUSE3D_MODEL, below).
 """
-import asyncio, json, os, websockets
+import asyncio, json, os, sys, websockets
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import house3d_model
 HA = "192.168.0.11:8123"
 TOKEN = open(os.path.expanduser("~/.config/khe/ha-token")).read().strip()
 URL = "lovelace"  # the Overview, a dashboard entry since the 2026.9 migration
@@ -24,6 +28,8 @@ DHW = "water_heater.hot_water_tank_domestic_hot_water_tank"
 #                                  "nvr_app_url": "<scheme>://", "updates": [["update.<x>", "<name>"]],
 #                                  "tv_profiles": [[<picker position>, "<name>"], ...]}  (Google TV)
 #   ~/.config/khe/ha-people.json  [[entity_id, label], ...]
+#   HOUSE3D_MODEL                 path to khe-meta's house/house-model.md (the 3D view's walls, rooms and
+#                                 devices); unset, the khe-meta checkout beside this repo is used
 # Presence badges render "<name> <state>", so the verb rides in the name ("X on" -> "X on Kodus").
 def _local(name, default):
     path = os.path.expanduser("~/.config/khe/" + name)
@@ -837,7 +843,23 @@ soojuspump_seaded = {"title": "Soojuspumba seaded", "path": "soojuspump-seaded",
     ]),
 ]}
 
-config = {"title": "Kodu", "views": [home, energy, soojuspump, ventilatsioon, pergola, valve, cameras, teler, susteem,
+# The 3D view: the house3d card (services/home/homeassistant/house3d/) fed with every model layer
+# but the standalone viewer's showcase. A panel view, because a sections column stops at 500 px.
+# The merged model, with the family's room names, then lives only in HA's .storage.
+def house3d_view():
+    path = os.environ.get("HOUSE3D_MODEL") or str(Path(__file__).resolve().parents[2] / "khe-meta/house/house-model.md")
+    if not os.path.exists(path): return []
+    layers = house3d_model.read_layers(path)
+    problems = house3d_model.validate(layers)
+    if problems: raise SystemExit("house3d model: " + "; ".join(problems))
+    model = house3d_model.merge(layers, ("geometry", "rooms", "private"))
+    names = model.pop("room_names", {})
+    for r in model["rooms"]:
+        r["name"] = names.get(r["id"], r["name"])
+    return [{"title": "3D", "path": "maja-3d", "icon": "mdi:floor-plan", "type": "panel",
+             "cards": [{"type": "custom:house3d-card", "model": model}]}]
+
+config = {"title": "Kodu", "views": [home, *house3d_view(), energy, soojuspump, ventilatsioon, pergola, valve, cameras, teler, susteem,
                                     komfovent_seaded, soojuspump_seaded, pergola_seaded, kaamerad_seaded] + [cam_view(s, n) for s, n in CAMS]}
 # A badge row that runs out of width scrolls sideways instead of wrapping to a second line.
 for v in config["views"]:
