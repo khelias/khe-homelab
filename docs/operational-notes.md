@@ -698,8 +698,24 @@ adding the mount recreates HA; later file changes arrive live through it.
 - **Privacy scan:** `scripts/house3d-build.py --scan <model>
   services/home/homeassistant/house3d/` before every commit that touches the
   directory. It fails on any device name, entity id, family room name or
-  device coordinate. The same script builds the standalone viewer from the
-  shareable layers only.
+  device coordinate, and on the car's name, entity, path and outline points.
+  The same script builds the standalone viewer from the shareable layers only.
+- **The car** stands in the carport when it is home and drives in from the
+  street the first time the view opens after it arrived; a tap on it replays
+  the drive. The engine only draws a generic vehicle from data: the car's
+  outline, lights and drive-in path are the optional `car` object of the
+  model's private layer, so neither this repo nor the standalone viewer
+  carries the car. Its `entity` is home when the state is `home` or `on`;
+  `unavailable` and `unknown` keep the last known value, a missing entity is
+  away, and only a change of home/away acts, so location updates do nothing.
+  The drive plays once per arrival per browser: the arrival key (the entity's
+  `arrived_at` attribute, else `last_changed`) is kept in `localStorage`
+  under `house3d-car-seen:<entity>`. The entity is an arrival helper, a
+  trigger-based template binary sensor fed by the Volvo integration's
+  `device_tracker`, not the tracker itself: the tracker's `last_changed` also
+  moves on every cloud outage and HA restart, which would replay the drive,
+  while the helper restores its state and sets `arrived_at` only on a real
+  arrival. Without an entity the car stays hidden.
 
 ### HVAC integrations
 

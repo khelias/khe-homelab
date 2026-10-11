@@ -9,11 +9,14 @@ the geometry, rooms and showcase layers of MODEL (khe-meta house/house-model.md)
 private layer never goes in. Publishing the folder is a separate decision.
 
 The scan reads the private layer of MODEL and fails on every occurrence of an entity id,
-a device name or a family room name (house3d_model.private_strings), of a `devices` key,
-and of a device's coordinates written out as text: its [x, y, z] position, its ground
-[x, z] pair and a camera's look direction (integer-only directions such as [0, 1] carry
-no location and are skipped). Run it over services/home/homeassistant/house3d/ before
-every khe-homelab commit that touches it.
+a device name, a family room name or the car's entity and name
+(house3d_model.private_strings), of a `devices` key, and of a device's coordinates written
+out as text: its [x, y, z] position, its ground [x, z] pair and a camera's look direction
+(integer-only directions such as [0, 1] carry no location and are skipped). The car's
+path points and side outline points count too, as [x, z] and [x, y] pairs, but only
+pairs with a coordinate of two or more decimals: round pairs such as 0.5, 0.5 occur in
+the vendored three.js. Run it over services/home/homeassistant/house3d/ before every
+khe-homelab commit that touches it.
 """
 import json, os, re, shutil, sys
 from decimal import Decimal
@@ -50,7 +53,17 @@ def patterns(model):
         look = d.get("look")
         if look and not all(float(v).is_integer() for v in look):
             out.append((f"view direction of {d['entity']}", _seq(look)))
+    car = model.get("car") or {}
+    pairs = [(f"car path point {i}", p) for i, p in enumerate(car.get("path", []))]
+    pairs += [(f"car outline point {i}", p) for i, p in enumerate((car.get("profile") or {}).get("side", []))]
+    for label, p in pairs:
+        if any(_decimals(v) >= 2 for v in p):
+            out.append((label, _seq(p)))
     return out
+
+
+def _decimals(v):
+    return len(format(Decimal(repr(float(v))), "f").partition(".")[2].rstrip("0"))
 
 
 def scan(model, paths):

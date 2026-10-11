@@ -71,21 +71,35 @@ const STYLE = `
 const COLORS = {
   bg: '#060c1b', line: '#6fe3ff', lineSoft: '#5d86d8', roof: '#9aa6ff', roofFill: '#252f6e', wall: '#1b2c5e',
   glass: '#5fd8ff', floor: '#0e1a3c', warm: '#6b4a1c', hover: '#24407f', sel: '#2b5aa0', amber: '#ffc56e',
-  teal: '#47d9c4', hedge: '#123b45', furniture: '#7f9bff', gridMajor: '#2a4685', gridMinor: '#172a55'
+  teal: '#47d9c4', hedge: '#123b45', furniture: '#7f9bff', gridMajor: '#2a4685', gridMinor: '#172a55',
+  ink: '#e4ecff', alert: '#ff8b7b'
 };
 
 /**
- * mount(element, model, options) -> { setMarkers, setMode, setSelection, reset, resize, dispose }
+ * mount(element, model, options) -> { setMarkers, setMode, setSelection, setCar, reset, resize, dispose,
+ *                                     mode, carState, carScreen }
  *
  * model: geometry + rooms layers (private and showcase are ignored).
  * options:
  *   onMarker(id)     a marker was tapped
  *   onRoom(id|null)  a room floor was tapped with the roof off; null for empty space
  *   onMode(mode)     the mode changed ('roof' | 'open'), also after the reveal
+ *   onCar()          the car's body was tapped (either mode, while it shows); no room tap follows
  *   bloom            default true; always off below 720 px width
  *   mode             the starting mode, 'roof' (default) or 'open'
- *   reveal           start with the roof on and lift it after load
+ *   reveal           start with the roof on and lift it after load. With a car, the lift waits
+ *                    for the first setCar (2.5 s at most) and, after an 'arrive', for it to park
  *   labels(roomId)   room label text; the room's own name when it returns nothing
+ *   car              { profile, path }: a vehicle drawn from profile, built hidden. profile is in
+ *                    metres in the car's frame (origin on the ground at its centre, +x forward,
+ *                    y up): length, width, height, side and glass outlines [[x, y], ...],
+ *                    wheels { r, x: [rear, front], track }, lights { front, rear } as lists of
+ *                    [[x, y, z], [x, y, z]] segments. path is [[x, z], ...]; the car drives a
+ *                    smooth curve through it and parks at the last point, facing along the last leg.
+ * setCar('away' | 'parked' | 'arrive'): 'arrive' drives the whole path (3-6 s, restarts if it is
+ *   already driving; 'parked' under reduced motion), 'parked' stands it at the path's end, 'away'
+ *   fades it out. carState is 'away' | 'driving' | 'parked'; carScreen is the car's projected
+ *   centre { x, y } in CSS pixels relative to the element, or null when it is away or behind.
  * markers: { id, pos: [x, y, z], icon, state: 'idle'|'on'|'alert'|'off', value?, label?,
  *            room?, look?: [dx, dz], role?, level?: 0..1, pulse?, warm? }
  *   A marker whose room is a house room shows only with the roof off, unless its state is
@@ -115,7 +129,8 @@ export function mount(element, model, options = {}) {
     msg.textContent = 'See seade ei toeta WebGL-i, mistõttu 3D-vaadet ei saa näidata.';
     stage.appendChild(msg);
     const noop = () => {};
-    return { failed: true, setMarkers: noop, setMode: noop, setSelection: noop, reset: noop, resize: noop, dispose: () => root.remove() };
+    return { failed: true, setMarkers: noop, setMode: noop, setSelection: noop, setCar: noop, reset: noop, resize: noop,
+      dispose: () => root.remove(), mode: 'roof', carState: 'away', carScreen: null };
   }
   const PR = Math.min(window.devicePixelRatio || 1, 2);
   renderer.setPixelRatio(PR);
@@ -430,6 +445,97 @@ export function mount(element, model, options = {}) {
     buildWall(roof, { a: s.a, b: s.b, t: 0.2, top: under(s.top), bot: x => roofFns[s.bot](x) - ROOF_GAP + low.thick }, mR);
   });
 
+  // the car sits outside the roof group, so it shows in both modes, and has its own materials, so
+  // fading it never fades the house
+  function buildCar(p, path) {
+    const g = new THREE.Group();
+    const m = mats();
+    m.wall.opacity = 0.22;
+    const belt = Math.min(...p.glass.map(q => q[1]));
+    // the greenhouse narrows above the beltline, which reads as a car rather than a box
+    const narrow = y => 1 - 0.16 * Math.min(1, Math.max(0, (y - belt) / Math.max(0.01, p.height - belt)));
+    const geo = keep(new THREE.ExtrudeGeometry(new THREE.Shape(p.side.map(([x, y]) => new THREE.Vector2(x, y))), { depth: p.width, bevelEnabled: false }));
+    geo.translate(0, 0, -p.width / 2);
+    const pa = geo.attributes.position;
+    for (let i = 0; i < pa.count; i++) pa.setZ(i, pa.getZ(i) * narrow(pa.getY(i)));
+    const body = new THREE.Mesh(geo, m.wall);
+    body.renderOrder = 2;
+    g.add(body, edges(geo, m.edge, 25));
+
+    const glassShape = new THREE.Shape(p.glass.map(([x, y]) => new THREE.Vector2(x, y)));
+    [-1, 1].forEach(s => {
+      const z = y => s * ((p.width / 2) * narrow(y) + 0.004);
+      g.add(new THREE.LineLoop(keep(new THREE.BufferGeometry().setFromPoints(p.glass.map(([x, y]) => new THREE.Vector3(x, y, z(y))))), m.glassEdge));
+      const fill = keep(new THREE.ShapeGeometry(glassShape));
+      const fa = fill.attributes.position;
+      for (let i = 0; i < fa.count; i++) fa.setZ(i, z(fa.getY(i)));
+      const pane = new THREE.Mesh(fill, m.glass);
+      pane.renderOrder = 3;
+      g.add(pane);
+    });
+
+    // wheels: a tyre with a rim and spokes on its outer face, so the turning shows
+    const { r, track } = p.wheels, tw = Math.min(0.25, track / 6);
+    const tyre = keep(new THREE.CylinderGeometry(r, r, tw, 20));
+    tyre.rotateX(Math.PI / 2);
+    const tyreEdges = keep(new THREE.EdgesGeometry(tyre, 30));
+    const hubs = [-1, 1].map(s => {
+      const pts = [], zf = s * (tw / 2 + 0.003);
+      for (let i = 0; i < 20; i++) {
+        const a = (i / 20) * Math.PI * 2, b = ((i + 1) / 20) * Math.PI * 2;
+        pts.push(new THREE.Vector3(Math.cos(a) * r * 0.68, Math.sin(a) * r * 0.68, zf), new THREE.Vector3(Math.cos(b) * r * 0.68, Math.sin(b) * r * 0.68, zf));
+      }
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * Math.PI * 2;
+        pts.push(new THREE.Vector3(Math.cos(a) * r * 0.12, Math.sin(a) * r * 0.12, zf), new THREE.Vector3(Math.cos(a) * r * 0.68, Math.sin(a) * r * 0.68, zf));
+      }
+      return keep(new THREE.BufferGeometry().setFromPoints(pts));
+    });
+    const wheels = [];
+    p.wheels.x.forEach(x => [-1, 1].forEach((s, i) => {
+      const w = new THREE.Group();
+      w.position.set(x, r, (s * track) / 2);
+      w.add(new THREE.Mesh(tyre, m.furn), new THREE.LineSegments(tyreEdges, m.edge), new THREE.LineSegments(hubs[i], m.furnEdge));
+      g.add(w);
+      wheels.push(w);
+    }));
+
+    // sprites are not faded by applyFade, so their materials are kept for the car's own fade
+    const glowTex = canvasTexture(64, [[0, 'rgba(255,255,255,1)'], [0.3, 'rgba(255,255,255,0.4)'], [1, 'rgba(255,255,255,0)']]);
+    const sprites = [];
+    [['front', C.ink], ['rear', C.alert]].forEach(([k, color]) => {
+      const segs = (p.lights && p.lights[k]) || [];
+      if (!segs.length) return;
+      const pts = segs.flat().map(([x, y, z]) => new THREE.Vector3(x, y, z));
+      g.add(new THREE.LineSegments(keep(new THREE.BufferGeometry().setFromPoints(pts)), lineMat({ color, opacity: 0.95 })));
+      const sm = keep(new THREE.SpriteMaterial({ map: glowTex, color, transparent: true, opacity: 0.6, depthWrite: false, blending: THREE.AdditiveBlending }));
+      sm.userData.base = sm.opacity;
+      sprites.push(sm);
+      segs.forEach(([a, b]) => {
+        const sp = new THREE.Sprite(sm);
+        sp.position.set((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2);
+        sp.scale.set(0.75, 0.75, 1);
+        g.add(sp);
+      });
+    });
+
+    const curve = new THREE.CatmullRomCurve3(path.map(([x, z]) => new THREE.Vector3(x, 0, z)), false, 'centripetal');
+    g.visible = false;
+    scene.add(g);
+    return { g, body, wheels, sprites, curve, length: curve.getLength(), r, centreY: p.height / 2 };
+  }
+  const carOpt = options.car;
+  const car = carOpt && carOpt.profile && Array.isArray(carOpt.path) && carOpt.path.length >= 2 ? buildCar(carOpt.profile, carOpt.path) : null;
+  let carState = 'away', drive = null, carFadeShown = -1;
+  const carFade = { cur: 0, to: 0 };
+  function placeCar(u) {
+    const at = car.curve.getPointAt(u), tan = car.curve.getTangentAt(u);
+    car.g.position.set(at.x, 0, at.z);
+    car.g.rotation.y = Math.atan2(-tan.z, tan.x);
+    const turn = -(u * car.length) / car.r;
+    car.wheels.forEach(w => { w.rotation.z = turn; });
+  }
+
   /* ---------- post-processing, created on first use ---------- */
   let composer = null;
   function getComposer() {
@@ -560,24 +666,36 @@ export function mount(element, model, options = {}) {
   const ray = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
   let hovered = null, downAt = null;
-  function pick(ev) {
-    if (mode !== 'open') return null;
+  function aim(ev) {
     const rect = renderer.domElement.getBoundingClientRect();
     ndc.set(((ev.clientX - rect.left) / rect.width) * 2 - 1, -((ev.clientY - rect.top) / rect.height) * 2 + 1);
     ray.setFromCamera(ndc, camera);
+  }
+  // both tests read the ray that aim() set
+  function pick() {
+    if (mode !== 'open') return null;
     const hits = ray.intersectObjects(floorMeshes, false);
     return hits.length ? hits[0].object : null;
   }
+  // the body mesh, not a bounding box, which would cover the carport floor
+  function carHit() {
+    if (!car || carState === 'away' || !car.g.visible) return false;
+    return ray.intersectObject(car.body, false).length > 0;
+  }
   const onMove = ev => {
     if (ev.pointerType !== 'mouse') return;
-    const h = pick(ev);
+    aim(ev);
+    const overCar = carHit();
+    const h = overCar ? null : pick();
     if (h !== hovered) { hovered = h; invalidate(); }
-    renderer.domElement.style.cursor = h ? 'pointer' : '';
+    renderer.domElement.style.cursor = overCar || h ? 'pointer' : '';
   };
   const onDown = ev => { downAt = [ev.clientX, ev.clientY]; };
   const onUp = ev => {
     if (!downAt || Math.hypot(ev.clientX - downAt[0], ev.clientY - downAt[1]) > 6) return;
-    const h = pick(ev);
+    aim(ev);
+    if (carHit()) { if (options.onCar) options.onCar(); return; }
+    const h = pick();
     if (options.onRoom) options.onRoom(h ? h.userData.room : null);
   };
   renderer.domElement.addEventListener('pointermove', onMove);
@@ -654,6 +772,22 @@ export function mount(element, model, options = {}) {
     glowSprites.forEach(sp => {
       if (!near(sp.material.opacity, glow)) { sp.material.opacity += (glow - sp.material.opacity) * k; moving = true; }
     });
+    if (car) {
+      if (drive) {
+        // frame time, not the clock: a drive started while the page is hidden waits to be seen
+        drive.elapsed += Math.max(0, dt);
+        const t = Math.min(1, drive.elapsed / drive.dur);
+        placeCar(1 - (1 - t) * (1 - t));
+        moving = true;
+        if (t >= 1) { drive = null; carState = 'parked'; carSettled(); }
+      }
+      if (!near(carFade.cur, carFade.to)) { carFade.cur += (carFade.to - carFade.cur) * k; moving = true; } else carFade.cur = carFade.to;
+      if (carFade.cur !== carFadeShown) {
+        carFadeShown = carFade.cur;
+        applyFade(car.g, carFade.cur);
+        car.sprites.forEach(sm => { sm.opacity = sm.userData.base * carFade.cur; });
+      }
+    }
     if (!moving && !dirty) { raf = 0; return; }
     dirty = false;
     raf = requestAnimationFrame(frame);
@@ -680,13 +814,51 @@ export function mount(element, model, options = {}) {
   }
 
   resize();
-  let revealTimer = 0;
+  // with a car, the reveal waits for its first state (2.5 s at most) and for a drive-in to park,
+  // so the roof lifts once rather than during the drive
+  const mountedAt = performance.now();
+  let revealTimer = 0, revealWait = false, revealAfterPark = false;
+  function revealIn(ms) {
+    clearTimeout(revealTimer);
+    revealTimer = setTimeout(() => { revealTimer = 0; revealWait = revealAfterPark = false; setMode('open'); }, reduceMotion ? 0 : Math.max(0, ms));
+  }
   if (options.reveal) {
     setMode('roof', true);
-    revealTimer = setTimeout(() => { revealTimer = 0; setMode('open'); }, reduceMotion ? 0 : 1100);
+    revealWait = !!car;
+    revealIn(car ? 2500 : 1100);
   } else setMode(options.mode === 'open' ? 'open' : 'roof', true);
   // a mode chosen by the user before the reveal fires wins over it
-  const userMode = (m, instant) => { clearTimeout(revealTimer); revealTimer = 0; setMode(m, instant); };
+  const userMode = (m, instant) => { clearTimeout(revealTimer); revealTimer = 0; revealWait = revealAfterPark = false; setMode(m, instant); };
+  function carSettled() {
+    if (revealAfterPark) { revealAfterPark = false; revealIn(0); }
+  }
+
+  function setCar(state) {
+    if (!car) return;
+    if (state === 'arrive' && reduceMotion) state = 'parked';
+    if (state === 'arrive') {
+      drive = { elapsed: 0, dur: Math.min(6, Math.max(3, car.length / 3.2)) };
+      placeCar(0);
+      carState = 'driving';
+      carFade.to = 1;
+    } else if (state === 'parked') {
+      drive = null;
+      placeCar(1);
+      carState = 'parked';
+      carFade.to = 1;
+    } else {
+      drive = null;
+      carState = 'away';
+      carFade.to = 0;
+    }
+    if (revealWait) {
+      revealWait = false;
+      if (carState === 'driving') { clearTimeout(revealTimer); revealTimer = 0; revealAfterPark = true; }
+      else revealIn(1100 - (performance.now() - mountedAt));
+    } else if (carState !== 'driving') carSettled();
+    invalidate();
+  }
+  const carScreenV = new THREE.Vector3();
   invalidate();
 
   function dispose() {
@@ -708,5 +880,15 @@ export function mount(element, model, options = {}) {
     root.remove();
   }
 
-  return { setMarkers, setMode: userMode, setSelection, reset, resize, dispose, get mode() { return mode; } };
+  return {
+    setMarkers, setMode: userMode, setSelection, setCar, reset, resize, dispose,
+    get mode() { return mode; },
+    get carState() { return carState; },
+    get carScreen() {
+      if (!car || carState === 'away') return null;
+      carScreenV.set(car.g.position.x, car.centreY, car.g.position.z).project(camera);
+      if (carScreenV.z >= 1) return null;
+      return { x: ((carScreenV.x + 1) / 2) * width, y: ((1 - carScreenV.y) / 2) * height };
+    }
+  };
 }
