@@ -102,7 +102,6 @@ document.getElementById('reset').innerHTML = icon('reset');
 const FEATURE = 'feature:';
 let sel = null;
 const view = mount(stage, model, {
-  reveal: true,
   onMarker: id => select(sel === id ? null : id),
   onRoom: id => select(id),
   onMode: m => {

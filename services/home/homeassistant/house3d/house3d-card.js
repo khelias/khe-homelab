@@ -2,7 +2,7 @@
 // the card config, written by scripts/ha-dashboard.py; this file carries no house data.
 // Bump HOUSE3D_VERSION on every change to this file or the engine, and the same ?v= on the
 // Lovelace resource URL: HA's /local and the phone app cache aggressively.
-const HOUSE3D_VERSION = 2;
+const HOUSE3D_VERSION = 3;
 const engine = import(`./house3d.js?v=${HOUSE3D_VERSION}`);
 
 const nf1 = new Intl.NumberFormat('et-EE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
@@ -141,7 +141,6 @@ class House3dCard extends HTMLElement {
       this._mod = mod;
       sr.querySelector('[data-act="reset"]').innerHTML = mod.icon('reset');
       this._view = mod.mount(sr.querySelector('.view'), this._config.model, {
-        reveal: true,
         onMarker: id => this._moreInfo(id),
         onRoom: id => this._openRoom(id),
         onMode: m => {

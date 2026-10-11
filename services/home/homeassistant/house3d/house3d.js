@@ -83,12 +83,13 @@ const COLORS = {
  *   onRoom(id|null)  a room floor was tapped with the roof off; null for empty space
  *   onMode(mode)     the mode changed ('roof' | 'open'), also after the reveal
  *   bloom            default true; always off below 720 px width
+ *   mode             the starting mode, 'roof' (default) or 'open'
  *   reveal           start with the roof on and lift it after load
  *   labels(roomId)   room label text; the room's own name when it returns nothing
  * markers: { id, pos: [x, y, z], icon, state: 'idle'|'on'|'alert'|'off', value?, label?,
  *            room?, look?: [dx, dz], role?, level?: 0..1, pulse?, warm? }
- *   A marker whose room is a house room shows only with the roof off; state 'on' warms that
- *   room's floor unless warm is false. role 'pergola-light' drives the pergola's LED glow.
+ *   A marker whose room is a house room shows only with the roof off, unless its state is
+ *   'alert'; state 'on' warms that room's floor unless warm is false. role 'pergola-light' drives the pergola's LED glow.
  */
 export function mount(element, model, options = {}) {
   const root = document.createElement('div');
@@ -149,8 +150,9 @@ export function mount(element, model, options = {}) {
   const ext = Math.max(lotBox[2] - lotBox[0], lotBox[3] - lotBox[1]);
   const E = ext / 41; // the prototype's framing was tuned on a 41 m lot
   const HOME_TARGET = new THREE.Vector3((wallBox[0] + wallBox[2]) / 2, 0.3, (wallBox[1] + wallBox[3]) / 2);
-  const HOME_DIR = new THREE.Vector3(-0.5, 0.66, 0.56).normalize();
-  const PORTRAIT_DIR = new THREE.Vector3(-0.22, 0.86, 0.46).normalize();
+  // the model's z runs away from the street, so the home view looks in from -z, the street side
+  const HOME_DIR = new THREE.Vector3(-0.5, 0.66, -0.56).normalize();
+  const PORTRAIT_DIR = new THREE.Vector3(-0.22, 0.86, -0.46).normalize();
 
   const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 300 * E);
   const controls = new OrbitControls(camera, renderer.domElement);
@@ -652,11 +654,12 @@ export function mount(element, model, options = {}) {
 
     const reveal = Math.max(0, 1 - fade.cur * 1.6);
     for (const rec of markers.values()) {
-      const m = rec.data, el = rec.el, indoor = isIndoor(m);
+      // an alert indoors shows through the roof, so a closed view never hides it
+      const m = rec.data, el = rec.el, covered = isIndoor(m) && m.state !== 'alert';
       v.set(m.pos[0], m.pos[1], m.pos[2]).project(camera);
-      if ((indoor && reveal <= 0.02) || v.z >= 1) { if (el.style.display !== 'none') el.style.display = 'none'; continue; }
+      if ((covered && reveal <= 0.02) || v.z >= 1) { if (el.style.display !== 'none') el.style.display = 'none'; continue; }
       el.style.display = '';
-      el.style.opacity = (indoor ? reveal : 1).toFixed(2);
+      el.style.opacity = (covered ? reveal : 1).toFixed(2);
       el.style.transform = `translate(${((v.x + 1) / 2) * width}px, ${((1 - v.y) / 2) * height}px) translate(-50%, -50%)`;
     }
     labels.forEach(l => {
@@ -675,7 +678,7 @@ export function mount(element, model, options = {}) {
   if (options.reveal) {
     setMode('roof', true);
     revealTimer = setTimeout(() => { revealTimer = 0; setMode('open'); }, reduceMotion ? 0 : 1100);
-  } else setMode('open', true);
+  } else setMode(options.mode === 'open' ? 'open' : 'roof', true);
   // a mode chosen by the user before the reveal fires wins over it
   const userMode = (m, instant) => { clearTimeout(revealTimer); revealTimer = 0; setMode(m, instant); };
   invalidate();
