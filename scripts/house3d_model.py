@@ -25,7 +25,11 @@ BLOCK = re.compile(r"^```json house3d:(\w+)[ \t]*\n(.*?)^```[ \t]*$", re.M | re.
 
 def read_layers(path):
     """Return {layer: dict} for every house3d block in the Markdown file."""
-    text = open(path, encoding="utf-8").read()
+    return parse_layers(open(path, encoding="utf-8").read())
+
+
+def parse_layers(text):
+    """read_layers for Markdown already in memory."""
     layers = {}
     for name, body in BLOCK.findall(text):
         if name in layers:
@@ -46,6 +50,15 @@ def merge(layers, names):
 
 def load(path, names=LAYERS):
     return merge(read_layers(path), names)
+
+
+def with_room_names(model):
+    """A merged model that includes the private layer, with the family room names in place
+    of the neutral ones and room_names removed."""
+    names = model.pop("room_names", {})
+    # new room dicts: merge() shares them with the layers, and the rooms layer is shareable
+    model["rooms"] = [dict(r, name=names.get(r["id"], r["name"])) for r in model["rooms"]]
+    return model
 
 
 def _num(v):

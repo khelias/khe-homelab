@@ -688,6 +688,13 @@ adding the mount recreates HA; later file changes arrive live through it.
   `scripts/ha-dashboard.py` reads it (`HOUSE3D_MODEL`, else the sibling
   khe-meta checkout) and writes everything but the showcase layer into the
   card config, which lives only in HA's `.storage`.
+- **Placing devices:** `scripts/house3d-place.py serve <model>` serves
+  `place.html` on 127.0.0.1 with the private layer from memory. Pick a device,
+  click or drag it into place on the plan, turn a camera with the Suund
+  slider, then copy the changes; `pbpaste | scripts/house3d-place.py apply
+  <model> -` rewrites those device lines in the model (heights stay by type).
+  Commit the model in khe-meta and rerun `ha-dashboard.py`. HA serves
+  `place.html` too, but without a model it shows nothing.
 - **Privacy scan:** `scripts/house3d-build.py --scan <model>
   services/home/homeassistant/house3d/` before every commit that touches the
   directory. It fails on any device name, entity id, family room name or
