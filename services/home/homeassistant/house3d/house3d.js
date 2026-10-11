@@ -619,11 +619,12 @@ export function mount(element, model, options = {}) {
     dirty = true;
     if (!raf && !disposed && visible) { last = performance.now(); raf = requestAnimationFrame(frame); }
   }
+  // raf keeps this callback's id while it runs, so an invalidate() from inside it (controls.update
+  // fires 'change') cannot schedule a second chain; it is cleared only where the loop stops
   function frame(now) {
-    raf = 0;
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
-    if (!visible) return;
+    if (!visible) { raf = 0; return; }
     const k = reduceMotion ? 1 : 1 - Math.exp(-dt * 4.2);
     let moving = controls.update();
     if (!near(fade.cur, fade.to)) { fade.cur += (fade.to - fade.cur) * k; moving = true; } else fade.cur = fade.to;
@@ -645,7 +646,7 @@ export function mount(element, model, options = {}) {
     glowSprites.forEach(sp => {
       if (!near(sp.material.opacity, glow)) { sp.material.opacity += (glow - sp.material.opacity) * k; moving = true; }
     });
-    if (!moving && !dirty) return;
+    if (!moving && !dirty) { raf = 0; return; }
     dirty = false;
     raf = requestAnimationFrame(frame);
 
