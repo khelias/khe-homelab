@@ -27,8 +27,7 @@ DEVICES_KEY = re.compile(r"""["']?\bdevices["']?\s*:""")
 
 def _num(v):
     """Regex for a number as JS or JSON might write it: 5 matches 5 and 5.0, 1.3 matches 1.30."""
-    s = repr(float(v))
-    whole, frac = s.split(".")
+    whole, frac = f"{float(v):.6f}".split(".")
     frac = frac.rstrip("0")
     body = re.escape(whole) + (r"\." + frac + "0*" if frac else r"(?:\.0+)?")
     return r"(?<![\d.])" + body + r"(?![\d])"

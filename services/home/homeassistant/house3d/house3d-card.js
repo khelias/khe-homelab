@@ -52,7 +52,7 @@ const STYLE = `
 .view { position: absolute; inset: 0; }
 .bar { position: absolute; top: 12px; right: 12px; display: flex; gap: 8px; align-items: center; }
 .seg { display: flex; padding: 3px; gap: 2px; background: var(--panel); border: 1px solid var(--edge); border-radius: 10px; }
-.seg button, .icon-btn { font: 500 13px/1 inherit; color: var(--muted); background: transparent; border: 0; border-radius: 7px; padding: 9px 12px; cursor: pointer; white-space: nowrap; }
+.seg button, .icon-btn { font: inherit; font-size: 13px; font-weight: 500; line-height: 1; color: var(--muted); background: transparent; border: 0; border-radius: 7px; padding: 9px 12px; cursor: pointer; white-space: nowrap; }
 .seg button[aria-pressed="true"] { color: var(--bg); background: var(--line); }
 .icon-btn { display: grid; place-items: center; width: 40px; height: 40px; padding: 0; background: var(--panel); border: 1px solid var(--edge); border-radius: 10px; }
 .icon-btn svg { width: 18px; height: 18px; }
@@ -68,7 +68,7 @@ button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 .close svg { width: 18px; height: 18px; }
 .list { display: grid; gap: 6px; }
 .list button { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: center; text-align: left; width: 100%;
-  font: 400 14px/1.2 inherit; color: var(--ink); background: var(--chip); border: 1px solid transparent; border-radius: 9px; padding: 9px 10px; cursor: pointer; }
+  font: inherit; font-size: 14px; line-height: 1.2; color: var(--ink); background: var(--chip); border: 1px solid transparent; border-radius: 9px; padding: 9px 10px; cursor: pointer; }
 .list button svg { width: 18px; height: 18px; color: var(--line); }
 .list button.on svg { color: var(--amber); }
 .list button.alert svg { color: var(--alert); }
@@ -101,7 +101,8 @@ class House3dCard extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     if (!this._view) return;
-    let changed = false;
+    // the first push after mount always runs, so entities missing from HA still show dimmed
+    let changed = !this._pushed;
     for (const d of this._devices) {
       const st = hass.states[d.entity];
       if (this._states.get(d.entity) !== st) { this._states.set(d.entity, st); changed = true; }
@@ -121,6 +122,7 @@ class House3dCard extends HTMLElement {
   _unmount() {
     if (this._view) { this._view.dispose(); this._view = null; }
     this._mounting = null;
+    this._pushed = false;
   }
 
   _render() {
@@ -155,6 +157,7 @@ class House3dCard extends HTMLElement {
         if (ev.target.closest('[data-act="close"]')) this._openRoom(null);
       });
       this._states.clear();
+      this._pushed = false;
       if (this._hass) this.hass = this._hass;
     }).catch(err => {
       sr.querySelector('.view').innerHTML = `<div class="msg">3D-vaate laadimine ebaõnnestus: ${esc(err && err.message || err)}</div>`;
@@ -162,6 +165,7 @@ class House3dCard extends HTMLElement {
   }
 
   _push() {
+    this._pushed = true;
     this._view.setMarkers(this._devices.map(d => toMarker(d, this._states.get(d.entity))));
     if (this._room) this._openRoom(this._room);
   }

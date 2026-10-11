@@ -667,13 +667,17 @@ export function mount(element, model, options = {}) {
   }
 
   resize();
+  let revealTimer = 0;
   if (options.reveal) {
     setMode('roof', true);
-    setTimeout(() => { if (raf) setMode('open'); }, reduceMotion ? 0 : 1100);
+    revealTimer = setTimeout(() => { revealTimer = 0; setMode('open'); }, reduceMotion ? 0 : 1100);
   } else setMode('open', true);
+  // a mode chosen by the user before the reveal fires wins over it
+  const userMode = (m, instant) => { clearTimeout(revealTimer); revealTimer = 0; setMode(m, instant); };
   raf = requestAnimationFrame(frame);
 
   function dispose() {
+    clearTimeout(revealTimer);
     cancelAnimationFrame(raf);
     raf = 0;
     if (ro) ro.disconnect();
@@ -690,5 +694,5 @@ export function mount(element, model, options = {}) {
     root.remove();
   }
 
-  return { setMarkers, setMode, setSelection, reset, resize, dispose, get mode() { return mode; } };
+  return { setMarkers, setMode: userMode, setSelection, reset, resize, dispose, get mode() { return mode; } };
 }

@@ -848,7 +848,9 @@ soojuspump_seaded = {"title": "Soojuspumba seaded", "path": "soojuspump-seaded",
 # The merged model, with the family's room names, then lives only in HA's .storage.
 def house3d_view():
     path = os.environ.get("HOUSE3D_MODEL") or str(Path(__file__).resolve().parents[2] / "khe-meta/house/house-model.md")
-    if not os.path.exists(path): return []
+    if not os.path.exists(path):
+        print(f"house3d: no model at {path}, the 3D view is left out (saving removes a live one)", file=sys.stderr)
+        return []
     layers = house3d_model.read_layers(path)
     problems = house3d_model.validate(layers)
     if problems: raise SystemExit("house3d model: " + "; ".join(problems))
