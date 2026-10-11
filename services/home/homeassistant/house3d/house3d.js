@@ -266,7 +266,6 @@ export function mount(element, model, options = {}) {
     return tex;
   }
 
-  // ground: a soft pool of light under the lot and a one-metre grid
   {
     const tex = canvasTexture(256, [[0, 'rgba(32,58,120,0.6)'], [0.45, 'rgba(16,30,68,0.4)'], [1, 'rgba(6,12,27,0)']]);
     const pl = new THREE.Mesh(new THREE.PlaneGeometry(ext * 2.7, ext * 2.7), basic({ map: tex }));
@@ -281,7 +280,6 @@ export function mount(element, model, options = {}) {
     siteG.add(grid);
   }
 
-  // site: decks, paving, play area, lot line, hedges, fences, outdoor units
   {
     const deckM = basic({ color: C.teal, opacity: 0.04 });
     const deckE = lineMat({ color: C.teal, opacity: 0.45 });
@@ -298,7 +296,6 @@ export function mount(element, model, options = {}) {
     if (site.porch) box(siteG, pathM, pathE, site.porch, [0, 0.03]);
     if (site.sandpit) box(siteG, pathM, pathE, site.sandpit.rect, [0, site.sandpit.height]);
     if (site.swing) {
-      // two A-frames at the ends and a beam between them
       const [x0, z0, x1, z1] = site.swing.rect, h = site.swing.height;
       [z0, z1].forEach(z => box(siteG, pathM, pathE, [x0, z - 0.05, x1, z + 0.05], [0, h]));
       box(siteG, pathM, pathE, [x0, z0, x1, z1], [h - 0.1, h]);
@@ -522,7 +519,7 @@ export function mount(element, model, options = {}) {
     const led = list.find(m => m.role === 'pergola-light');
     pergolaLight = led && led.state === 'on' ? (led.level ?? 1) : 0;
     rebuildFans(list);
-    dirty = true;
+    invalidate();
   }
 
   /* ---------- modes and selection ---------- */
@@ -532,13 +529,13 @@ export function mount(element, model, options = {}) {
     mode = m === 'open' ? 'open' : 'roof';
     fade.to = mode === 'roof' ? 1 : 0;
     if (instant || reduceMotion) fade.cur = fade.to;
-    dirty = true;
+    invalidate();
     if (options.onMode) options.onMode(mode);
   }
   function setSelection(id) {
     sel = id || null;
     markers.forEach(renderMarker);
-    dirty = true;
+    invalidate();
   }
   function applyFade(group, f) {
     group.traverse(o => {
@@ -566,7 +563,7 @@ export function mount(element, model, options = {}) {
   const onMove = ev => {
     if (ev.pointerType !== 'mouse') return;
     const h = pick(ev);
-    if (h !== hovered) { hovered = h; dirty = true; }
+    if (h !== hovered) { hovered = h; invalidate(); }
     renderer.domElement.style.cursor = h ? 'pointer' : '';
   };
   const onDown = ev => { downAt = [ev.clientX, ev.clientY]; };
@@ -578,10 +575,11 @@ export function mount(element, model, options = {}) {
   renderer.domElement.addEventListener('pointermove', onMove);
   renderer.domElement.addEventListener('pointerdown', onDown);
   renderer.domElement.addEventListener('pointerup', onUp);
-  controls.addEventListener('change', () => { dirty = true; });
+  controls.addEventListener('change', () => invalidate());
+  controls.addEventListener('start', () => invalidate());
 
   /* ---------- framing and size ---------- */
-  let width = 1, height = 1;
+  let width = 1, height = 1, framed = false;
   function homeDistance() {
     const a = camera.aspect;
     return (a >= 1 ? Math.max(46, 58 / a) : 42 / Math.pow(a, 1.05)) * E;
@@ -592,33 +590,37 @@ export function mount(element, model, options = {}) {
     scene.fog.far = homeDistance() * 2.2;
     camera.position.copy(HOME_TARGET).addScaledVector(camera.aspect < 1 ? PORTRAIT_DIR : HOME_DIR, homeDistance());
     controls.update();
-    dirty = true;
+    invalidate();
   }
   function resize() {
     const w = Math.max(1, root.clientWidth), h = Math.max(1, root.clientHeight);
     if (w === width && h === height) return;
-    const first = width === 1 && height === 1;
     width = w; height = h;
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     renderer.setSize(w, h, false);
     if (composer) composer.setSize(w, h);
     root.classList.toggle('h3d-narrow', w < BLOOM_MIN_WIDTH);
-    if (first) reset();
-    dirty = true;
+    // frame once, at the first real size: a later hide and show keeps the user's orbit
+    if (!framed && w > 1 && h > 1) { framed = true; reset(); }
+    invalidate();
   }
   const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(() => resize()) : null;
   if (ro) ro.observe(root);
   let visible = true;
-  const io = typeof IntersectionObserver === 'function' ? new IntersectionObserver(es => { visible = es[es.length - 1].isIntersecting; dirty = true; }) : null;
+  const io = typeof IntersectionObserver === 'function' ? new IntersectionObserver(es => { visible = es[es.length - 1].isIntersecting; invalidate(); }) : null;
   if (io) io.observe(root);
 
-  /* ---------- loop: renders only while something moves ---------- */
-  let dirty = true, raf = 0, last = performance.now();
+  /* ---------- loop: runs only while something moves, a change restarts it ---------- */
+  let dirty = true, raf = 0, last = 0, disposed = false;
   const v = new THREE.Vector3();
   const near = (a, b) => Math.abs(a - b) < 0.002;
+  function invalidate() {
+    dirty = true;
+    if (!raf && !disposed && visible) { last = performance.now(); raf = requestAnimationFrame(frame); }
+  }
   function frame(now) {
-    raf = requestAnimationFrame(frame);
+    raf = 0;
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
     if (!visible) return;
@@ -645,6 +647,7 @@ export function mount(element, model, options = {}) {
     });
     if (!moving && !dirty) return;
     dirty = false;
+    raf = requestAnimationFrame(frame);
 
     const reveal = Math.max(0, 1 - fade.cur * 1.6);
     for (const rec of markers.values()) {
@@ -674,9 +677,10 @@ export function mount(element, model, options = {}) {
   } else setMode('open', true);
   // a mode chosen by the user before the reveal fires wins over it
   const userMode = (m, instant) => { clearTimeout(revealTimer); revealTimer = 0; setMode(m, instant); };
-  raf = requestAnimationFrame(frame);
+  invalidate();
 
   function dispose() {
+    disposed = true;
     clearTimeout(revealTimer);
     cancelAnimationFrame(raf);
     raf = 0;

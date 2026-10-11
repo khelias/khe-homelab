@@ -98,6 +98,8 @@ if (show.title) { document.getElementById('title').textContent = show.title; doc
 document.getElementById('intro').textContent = show.intro || '';
 document.getElementById('reset').innerHTML = icon('reset');
 
+// feature marker ids are prefixed so a feature never shares an id with a room (the sauna is both)
+const FEATURE = 'feature:';
 let sel = null;
 const view = mount(stage, model, {
   reveal: true,
@@ -105,18 +107,18 @@ const view = mount(stage, model, {
   onRoom: id => select(id),
   onMode: m => {
     document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === m)));
-    if (m === 'roof' && sel && model.rooms.some(r => r.id === sel)) select(null);
+    if (m === 'roof' && sel && !sel.startsWith(FEATURE)) select(null);
   }
 });
-view.setMarkers(features.map(f => ({ id: f.id, pos: f.pos, icon: f.icon, label: f.name, state: 'idle' })));
+view.setMarkers(features.map(f => ({ id: FEATURE + f.id, pos: f.pos, icon: f.icon, label: f.name, state: 'idle' })));
 document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => view.setMode(b.dataset.mode)));
 document.getElementById('reset').addEventListener('click', () => view.reset());
 
 function select(id) {
   sel = id;
   view.setSelection(id);
-  const room = model.rooms.find(r => r.id === id);
-  const feature = features.find(f => f.id === id);
+  const feature = id && id.startsWith(FEATURE) ? features.find(f => FEATURE + f.id === id) : null;
+  const room = id && !feature ? model.rooms.find(r => r.id === id) : null;
   if (!room && !feature) { panel.hidden = true; panel.innerHTML = ''; return; }
   const head = (ic, title, sub) => `<div class="p-head"><div class="p-icon">${icon(ic)}</div>
     <div class="p-title"><h2>${esc(title)}</h2>${sub ? `<p>${esc(sub)}</p>` : ''}</div>

@@ -43,7 +43,7 @@ export function toMarker(d, st) {
 
 const STYLE = `
 :host { display: block; height: 480px; }
-:host([panel]) { height: 100%; min-height: calc(100vh - var(--header-height, 56px)); }
+:host([panel]) { height: 100%; min-height: calc(100vh - var(--header-height, 56px)); min-height: calc(100dvh - var(--header-height, 56px)); }
 .wrap { display: block; position: relative; width: 100%; height: 100%; overflow: hidden; border-radius: var(--ha-card-border-radius, 12px);
   --ink: #e4ecff; --muted: #8a9bc2; --line: #6fe3ff; --amber: #ffc56e; --alert: #ff8b7b; --bg: #060c1b;
   --panel: rgba(10, 18, 38, 0.9); --edge: rgba(111, 227, 255, 0.18); --chip: rgba(111, 227, 255, 0.08);
@@ -167,7 +167,17 @@ class House3dCard extends HTMLElement {
   _push() {
     this._pushed = true;
     this._view.setMarkers(this._devices.map(d => toMarker(d, this._states.get(d.entity))));
-    if (this._room) this._openRoom(this._room);
+    if (this._room) this._refreshRoom();
+  }
+
+  // update the open sheet's rows in place: replacing them would drop focus and a tap in progress
+  _refreshRoom() {
+    this.shadowRoot.querySelectorAll('.sheet [data-entity]').forEach(row => {
+      const d = this._devices.find(x => x.entity === row.dataset.entity);
+      const st = this._states.get(d.entity);
+      row.className = toMarker(d, st).state;
+      row.querySelector('.st').textContent = this._stateText(st);
+    });
   }
 
   _moreInfo(entityId) {

@@ -246,6 +246,10 @@ def main(argv=None):
     if unknown:
         print(f"unknown layer(s): {', '.join(unknown)}")
         return 2
+    missing = [n for n in names if n not in layers]
+    if missing:
+        print(f"{a.file}: layer(s) not in the file: {', '.join(missing)}")
+        return 1
     json.dump(merge(layers, names), sys.stdout, ensure_ascii=False, indent=1)
     print()
     return 0

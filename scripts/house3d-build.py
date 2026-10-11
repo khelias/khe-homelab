@@ -16,6 +16,7 @@ no location and are skipped). Run it over services/home/homeassistant/house3d/ b
 every khe-homelab commit that touches it.
 """
 import json, os, re, shutil, sys
+from decimal import Decimal
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -27,7 +28,8 @@ DEVICES_KEY = re.compile(r"""["']?\bdevices["']?\s*:""")
 
 def _num(v):
     """Regex for a number as JS or JSON might write it: 5 matches 5 and 5.0, 1.3 matches 1.30."""
-    whole, frac = f"{float(v):.6f}".split(".")
+    # the shortest exact decimal, without exponent or rounding; -0.0 is written 0
+    whole, _, frac = format(Decimal(repr(abs(float(v)) if v == 0 else float(v))), "f").partition(".")
     frac = frac.rstrip("0")
     body = re.escape(whole) + (r"\." + frac + "0*" if frac else r"(?:\.0+)?")
     return r"(?<![\d.])" + body + r"(?![\d])"
@@ -56,6 +58,9 @@ def scan(model, paths):
     hits = []
     files = []
     for p in map(Path, paths):
+        if not p.exists():
+            # a mistyped path must not pass as a clean scan
+            raise SystemExit(f"scan: {p} does not exist")
         files.extend(sorted(f for f in p.rglob("*") if f.is_file()) if p.is_dir() else [p])
     for f in files:
         try:
@@ -88,6 +93,7 @@ def run_scan(model, paths):
 def build(model_path, outdir):
     layers = full_model(model_path)
     public = house3d_model.merge(layers, house3d_model.PUBLIC)
+    public.pop("georef", None)  # the viewer does not use it, and a public page should not pin the house
     out = Path(outdir)
     out.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(SRC / "viewer.html", out / "index.html")
