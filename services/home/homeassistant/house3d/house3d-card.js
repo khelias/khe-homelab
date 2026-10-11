@@ -2,12 +2,45 @@
 // the card config, written by scripts/ha-dashboard.py; this file carries no house data.
 // Bump HOUSE3D_VERSION on every change to this file or the engine, and the same ?v= on the
 // Lovelace resource URL: HA's /local and the phone app cache aggressively.
-const HOUSE3D_VERSION = 4;
+const HOUSE3D_VERSION = 5;
 const engine = import(`./house3d.js?v=${HOUSE3D_VERSION}`);
 
 const nf1 = new Intl.NumberFormat('et-EE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const esc = s => String(s).replace(/[&<>"']/g, ch => `&#${ch.charCodeAt(0)};`);
 const num = v => (v === null || v === undefined || v === '' || isNaN(Number(v)) ? null : Number(v));
+
+// The car drives in once per arrival per browser: the last arrival key seen is stored per entity.
+// Storage can throw (private mode, blocked site data), so a module-level copy keeps a remount from
+// replaying even then.
+const seenMemory = new Map();
+const seenKey = entity => `house3d-car-seen:${entity}`;
+function readSeen(entity) {
+  try {
+    const v = localStorage.getItem(seenKey(entity));
+    if (v !== null) return v;
+  } catch (e) { /* the in-memory copy answers */ }
+  return seenMemory.has(seenKey(entity)) ? seenMemory.get(seenKey(entity)) : null;
+}
+function writeSeen(entity, key) {
+  seenMemory.set(seenKey(entity), key);
+  try { localStorage.setItem(seenKey(entity), key); } catch (e) { /* the in-memory copy stands */ }
+}
+
+// true when the car is home ('home' from a tracker, 'on' from the arrival helper), null when the
+// state says nothing (unavailable, unknown), false otherwise and for a missing entity
+export function carHome(st) {
+  if (!st) return false;
+  if (st.state === 'unavailable' || st.state === 'unknown') return null;
+  return st.state === 'home' || st.state === 'on';
+}
+
+// the arrival helper's arrived_at when the entity has that attribute (null: parked without a
+// drive-in), else last_changed
+export function arrivalKey(st) {
+  const a = st.attributes || {};
+  if ('arrived_at' in a) return a.arrived_at === null || a.arrived_at === undefined ? null : String(a.arrived_at);
+  return st.last_changed ? String(st.last_changed) : null;
+}
 
 // One device and its entity state -> a generic engine marker.
 export function toMarker(d, st) {
@@ -94,6 +127,7 @@ class House3dCard extends HTMLElement {
     const changed = this._config && this._config.model !== config.model;
     this._config = config;
     this._devices = config.model.devices || [];
+    this._car = config.model.car && config.model.car.profile && config.model.car.path ? config.model.car : null;
     if (changed) { this._unmount(); this._states.clear(); }
     this._render();
   }
@@ -107,6 +141,8 @@ class House3dCard extends HTMLElement {
       const st = hass.states[d.entity];
       if (this._states.get(d.entity) !== st) { this._states.set(d.entity, st); changed = true; }
     }
+    const carEntity = this._car && this._car.entity;
+    if (carEntity && this._carSt !== hass.states[carEntity]) { this._carSt = hass.states[carEntity]; changed = true; }
     if (changed) this._push();
   }
   get hass() { return this._hass; }
@@ -141,6 +177,8 @@ class House3dCard extends HTMLElement {
     if (this._view) { this._view.dispose(); this._view = null; }
     this._mounting = null;
     this._pushed = false;
+    this._carSt = undefined;
+    this._carHome = undefined;
   }
 
   _render() {
@@ -164,7 +202,10 @@ class House3dCard extends HTMLElement {
         onMode: m => {
           sr.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === m)));
           if (m === 'roof') this._openRoom(null);
-        }
+        },
+        car: this._car ? { profile: this._car.profile, path: this._car.path } : undefined,
+        // a tap on the car replays the drive-in; the stored arrival stays as it is
+        onCar: () => { if (this._carHome) this._view.setCar('arrive'); }
       });
       sr.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => this._view.setMode(b.dataset.mode)));
       sr.querySelector('[data-act="reset"]').addEventListener('click', () => this._view.reset());
@@ -175,6 +216,8 @@ class House3dCard extends HTMLElement {
       });
       this._states.clear();
       this._pushed = false;
+      this._carSt = undefined;
+      this._carHome = undefined;
       if (this._hass) this.hass = this._hass;
     }).catch(err => {
       sr.querySelector('.view').innerHTML = `<div class="msg">3D-vaate laadimine ebaõnnestus: ${esc(err && err.message || err)}</div>`;
@@ -184,7 +227,27 @@ class House3dCard extends HTMLElement {
   _push() {
     this._pushed = true;
     this._view.setMarkers(this._devices.map(d => toMarker(d, this._states.get(d.entity))));
+    this._pushCar();
     if (this._room) this._refreshRoom();
+  }
+
+  // acts only when home/away changes, so attribute updates (a new location) never replay the drive-in
+  _pushCar() {
+    const car = this._car;
+    if (!car) return;
+    const st = car.entity ? this._carSt : undefined;
+    const first = this._carHome === undefined, was = this._carHome;
+    const now = carHome(st);
+    // unavailable and unknown keep the last known value; on the first push they count as away
+    const home = now === null ? !!was : now;
+    this._carHome = home;
+    if (!first && home === was) return;
+    if (!home) return this._view.setCar('away');
+    const key = arrivalKey(st);
+    if (key === null) return this._view.setCar('parked');
+    if (first && readSeen(car.entity) === key) return this._view.setCar('parked');
+    writeSeen(car.entity, key);
+    this._view.setCar('arrive');
   }
 
   // update the open sheet's rows in place: replacing them would drop focus and a tap in progress

@@ -6,10 +6,13 @@ blocks with the info string `json house3d:<layer>`:
 
   geometry  walls, roofs, furniture, site            shareable
   rooms     rooms with neutral names                 shareable
-  private   family room names and every HA device    HA only, never published
+  private   family room names, every HA device and   HA only, never published
+            the car (profile and drive-in path)
   showcase  title, room texts, feature points        standalone viewer only
 
-Each block is a JSON object; merging layers is a plain union of their keys.
+Each block is a JSON object; merging layers is a plain union of their keys. The car
+is optional; when present, validation checks its profile and that its path ends with
+the car parked straight inside its room.
 
 Usage:  house3d_model.py --check FILE
         house3d_model.py --layers geometry,rooms,showcase FILE   (or --layers all)
@@ -200,6 +203,9 @@ def validate(layers):
         if "look" in d and not _point(d["look"]):
             bad(f"{where}: look must be [dx, dz]")
 
+    if "car" in model:
+        _validate_car(model["car"], {r.get("id"): r for r in rooms}, bad)
+
     show = model.get("showcase", {})
     for rid in show.get("rooms", {}):
         if rid not in known:
@@ -212,13 +218,75 @@ def validate(layers):
     return problems
 
 
+def _validate_car(car, rooms, bad):
+    if not isinstance(car, dict):
+        return bad("car: not a JSON object")
+    if "entity" in car and not (isinstance(car["entity"], str) and "." in car["entity"]):
+        bad("car: entity is not an entity id")
+    if not (isinstance(car.get("name"), str) and car["name"]):
+        bad("car: name missing")
+    room = rooms.get(car.get("room"))
+    if not room:
+        bad(f"car: room {car.get('room')!r} does not exist")
+
+    prof = car.get("profile")
+    if not isinstance(prof, dict):
+        return bad("car: profile is not a JSON object")
+    dims_ok = True
+    for k in ("length", "width", "height"):
+        if not (_num(prof.get(k)) and prof[k] > 0):
+            bad(f"car.profile: {k} is not a positive number")
+            dims_ok = False
+    for k in ("side", "glass"):
+        pts = prof.get(k)
+        if not (isinstance(pts, list) and len(pts) >= 3 and all(_point(p) for p in pts)):
+            bad(f"car.profile: {k} needs three or more [x, y] points")
+    wheels = prof.get("wheels")
+    if not (isinstance(wheels, dict) and _num(wheels.get("r")) and wheels["r"] > 0
+            and _point(wheels.get("x")) and _num(wheels.get("track")) and wheels["track"] > 0):
+        bad("car.profile: wheels needs r > 0, x [rear, front] and a positive track")
+    lights = prof.get("lights")
+    if not isinstance(lights, dict):
+        bad("car.profile: lights is not a JSON object")
+    else:
+        for k in ("front", "rear"):
+            segs = lights.get(k, [])
+            if not (isinstance(segs, list) and all(isinstance(s, list) and len(s) == 2 and all(_point(p, 3) for p in s) for s in segs)):
+                bad(f"car.profile.lights: {k} must be a list of [[x, y, z], [x, y, z]] segments")
+
+    path = car.get("path")
+    if not (isinstance(path, list) and len(path) >= 3 and all(_point(p) for p in path)):
+        return bad("car: path needs three or more [x, z] points")
+    a, b, c = path[-3:]
+    if math.dist(a, c) == 0:
+        return bad("car: path's last three points do not set a direction")
+    # distance of the middle point from the line through the outer two
+    off = abs((c[0] - a[0]) * (b[1] - a[1]) - (c[1] - a[1]) * (b[0] - a[0])) / math.dist(a, c)
+    if off > 0.01:
+        bad(f"car: path's last three points are {off:.3f} m off a straight line (1 cm allowed)")
+    if not (room and dims_ok):
+        return
+    # the parked footprint, turned along the last segment, must fit one of the room's rects
+    b, c = path[-2:]
+    ux, uz = (c[0] - b[0]) / math.dist(b, c), (c[1] - b[1]) / math.dist(b, c)
+    hl, hw = prof["length"] / 2, prof["width"] / 2
+    corners = [(c[0] + ux * s * hl - uz * t * hw, c[1] + uz * s * hl + ux * t * hw) for s in (-1, 1) for t in (-1, 1)]
+    inside = lambda q: all(q[0] - 1e-6 <= x <= q[2] + 1e-6 and q[1] - 1e-6 <= z <= q[3] + 1e-6 for x, z in corners)
+    if not any(_rect(q) and inside(q) for q in room.get("rects", [])):
+        span = ", ".join(f"[{x:.2f}, {z:.2f}]" for x, z in corners)
+        bad(f"car: path ends with the car outside room {car['room']} (corners {span})")
+
+
 def private_strings(model):
-    """Every string a public output must not contain: entity ids, device names and
-    family room names. Pass a model that includes the private layer."""
+    """Every string a public output must not contain: entity ids, device names,
+    family room names and the car's entity and name. Pass a model that includes the
+    private layer."""
     out = set()
     for d in model.get("devices", []):
         out.update(s for s in (d.get("entity"), d.get("name")) if s)
     out.update(model.get("room_names", {}).values())
+    car = model.get("car") or {}
+    out.update(s for s in (car.get("entity"), car.get("name")) if isinstance(s, str) and s)
     return sorted(out)
 
 
