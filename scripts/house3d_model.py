@@ -101,6 +101,17 @@ def _segments_cross(p, q, a, b):
     return False
 
 
+def _crossing(ring):
+    """The first pair of non-adjacent edges (indexes) of a closed ring that meet, or None."""
+    edges = list(zip(ring, ring[1:] + ring[:1]))
+    n = len(edges)
+    for i in range(n):
+        for j in range(i + 2, n):
+            if (i, j) != (0, n - 1) and _segments_cross(*edges[i], *edges[j]):
+                return i, j
+    return None
+
+
 def gate_sweep(gate):
     """(out, in): how far a gate's leaves reach to the street side and to the lot side of its line."""
     w = math.dist(gate["a"], gate["b"])
@@ -221,9 +232,20 @@ def validate(layers):
         for i, seg in enumerate(site.get(key, [])):
             if not (isinstance(seg, list) and len(seg) == 2 and all(_point(p) for p in seg)):
                 bad(f"site.{key}[{i}]: must be [[x, z], [x, z]]")
+    # an item is a rect [x0, z0, x1, z1] or an outline [[x, z], ...]; one problem per item
     for key in ("decks", "paving"):
-        for i, r in enumerate(site.get(key, [])):
-            rect(f"site.{key}[{i}]", r)
+        for i, v in enumerate(site.get(key, [])):
+            where = f"site.{key}[{i}]"
+            if not (isinstance(v, list) and v and isinstance(v[0], list)):
+                rect(where, v)
+            elif not (len(v) >= 3 and all(_point(p) for p in v)):
+                bad(f"{where}: an outline needs three or more [x, z] points")
+            elif _area(v) < 1:
+                bad(f"{where}: outline area {_area(v):.2f} m2 is under 1 m2")
+            elif any(p == q for p, q in zip(v, v[1:] + v[:1])):
+                bad(f"{where}: outline repeats a point (it closes by itself, do not repeat the first point)")
+            elif (c := _crossing(v)):
+                bad(f"{where}: outline edges {c[0]} and {c[1]} cross")
     for key in ("porch",):
         if key in site:
             rect(f"site.{key}", site[key])

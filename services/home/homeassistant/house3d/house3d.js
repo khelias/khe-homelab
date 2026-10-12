@@ -83,7 +83,8 @@ const COLORS = {
  * mount(element, model, options) -> { setMarkers, setMode, setSelection, setCar, reset, resize, dispose,
  *                                     mode, carState, carScreen }
  *
- * model: geometry + rooms layers (private and showcase are ignored). site.gates: [{ a, b, kind,
+ * model: geometry + rooms layers (private and showcase are ignored). site.decks and site.paving:
+ *   items that are rects [x0, z0, x1, z1] or outlines [[x, z], ...]. site.gates: [{ a, b, kind,
  *   height, opens?, slide?, name? }], drawn closed in the fence line; kind 'sliding' (one leaf, set
  *   to the lot side, sliding past the end named by slide, 'a' or 'b'), 'swing1' (one leaf hinged
  *   at a) or 'swing2' (two leaves hinged at a and b), a swing gate opening 'in' (to the lot) or
@@ -279,6 +280,15 @@ export function mount(element, model, options = {}) {
     return mesh;
   }
 
+  // an upright prism on an outline [[x, z], ...], from y0 to y1
+  function prism(pts, y0, y1) {
+    const geo = new THREE.ExtrudeGeometry(new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x, z))), { depth: y1 - y0, bevelEnabled: false });
+    // shape y becomes world z, the extrusion runs down from y1
+    geo.rotateX(Math.PI / 2);
+    geo.translate(0, y1, 0);
+    return geo;
+  }
+
   /* ---------- build ---------- */
   const siteG = new THREE.Group();
   const house = new THREE.Group();
@@ -322,13 +332,42 @@ export function mount(element, model, options = {}) {
     const plankM = lineMat({ color: C.teal, opacity: 0.09 });
     const pathM = basic({ color: C.lineSoft, opacity: 0.05 });
     const pathE = lineMat({ color: C.lineSoft, opacity: 0.45 });
-    (site.decks || []).forEach(r => {
-      box(siteG, deckM, deckE, r, [0, 0.12]);
-      const [x0, z0, x1, z1] = r, pts = [];
-      for (let z = z0 + 0.4; z < z1; z += 0.4) pts.push(new THREE.Vector3(x0, 0.125, z), new THREE.Vector3(x1, 0.125, z));
+    // a deck or paving item is a rect [x0, z0, x1, z1] or an outline [[x, z], ...]
+    const isOutline = v => Array.isArray(v[0]);
+    function slab(v, mat, emat, y) {
+      if (!isOutline(v)) return box(siteG, mat, emat, v, y);
+      const geo = prism(v, y[0], y[1]);
+      const m = new THREE.Mesh(geo, mat);
+      m.add(edges(geo, emat));
+      siteG.add(m);
+      return m;
+    }
+    // an outline's planks run where each line z crosses it: an edge counts when its ends lie on
+    // either side of z (one end exactly on z counts as below), so level edges never count and the
+    // crossings pair up
+    function outlinePlanks(v, pts) {
+      const zs = v.map(p => p[1]), zMin = Math.min(...zs), zMax = Math.max(...zs);
+      for (let i = 1; zMin + 0.4 * i < zMax; i++) {
+        const z = zMin + 0.4 * i, xs = [];
+        v.forEach(([xa, za], k) => {
+          const [xb, zb] = v[(k + 1) % v.length];
+          if ((za > z) !== (zb > z)) xs.push(xa + ((z - za) * (xb - xa)) / (zb - za));
+        });
+        xs.sort((p, q) => p - q);
+        for (let k = 0; k + 1 < xs.length; k += 2) pts.push(new THREE.Vector3(xs[k], 0.125, z), new THREE.Vector3(xs[k + 1], 0.125, z));
+      }
+    }
+    (site.decks || []).forEach(v => {
+      slab(v, deckM, deckE, [0, 0.12]);
+      const pts = [];
+      if (isOutline(v)) outlinePlanks(v, pts);
+      else {
+        const [x0, z0, x1, z1] = v;
+        for (let z = z0 + 0.4; z < z1; z += 0.4) pts.push(new THREE.Vector3(x0, 0.125, z), new THREE.Vector3(x1, 0.125, z));
+      }
       siteG.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), plankM));
     });
-    (site.paving || []).forEach(r => box(siteG, pathM, pathE, r, [0, 0.02]));
+    (site.paving || []).forEach(v => slab(v, pathM, pathE, [0, 0.02]));
     if (site.porch) box(siteG, pathM, pathE, site.porch, [0, 0.03]);
     if (site.sandpit) box(siteG, pathM, pathE, site.sandpit.rect, [0, site.sandpit.height]);
     if (site.swing) {
@@ -445,10 +484,7 @@ export function mount(element, model, options = {}) {
     const bldM = basic({ color: C.wall, opacity: 0.05, side: THREE.DoubleSide });
     const bldE = lineMat({ color: C.lineSoft, opacity: 0.3 });
     (options.surroundings.buildings || []).forEach(b => {
-      const geo = new THREE.ExtrudeGeometry(new THREE.Shape(b.outline.map(([x, z]) => new THREE.Vector2(x, z))), { depth: b.height, bevelEnabled: false });
-      // shape y becomes world z, the extrusion runs from the ground up
-      geo.rotateX(Math.PI / 2);
-      geo.translate(0, b.height, 0);
+      const geo = prism(b.outline, 0, b.height);
       const m = new THREE.Mesh(geo, bldM);
       m.add(edges(geo, bldE));
       ctxG.add(m);

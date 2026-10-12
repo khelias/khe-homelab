@@ -164,7 +164,10 @@ const rect = (r, cls, parent) => el('rect', { x: r[0], y: r[1], width: r[2] - r[
 el('text', { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: Math.min(...zs) - 1.4, class: 'street' }).textContent = '↑ tänav';
 el('polygon', { points: lot.map(p => p.join(',')).join(' '), class: 'lot' });
 (model.site.hedges || []).forEach(([a, b]) => el('line', { x1: a[0], y1: a[1], x2: b[0], y2: b[1], class: 'hedge' }));
-[...(model.site.decks || []), ...(model.site.paving || []), model.site.porch].filter(Boolean).forEach(r => rect(r, 'site'));
+// a deck or paving item is a rect [x0, z0, x1, z1] or an outline [[x, z], ...]
+[...(model.site.decks || []), ...(model.site.paving || [])].forEach(v => Array.isArray(v[0])
+  ? el('polygon', { points: v.map(p => p.join(',')).join(' '), class: 'site' }) : rect(v, 'site'));
+if (model.site.porch) rect(model.site.porch, 'site');
 ['sandpit', 'swing', 'pergola', 'garage_roof'].forEach(k => model.site[k] && rect(model.site[k].rect, 'site'));
 (model.site.outdoor_units || []).forEach(u => rect(u.rect, 'furn'));
 const roomEls = {};
