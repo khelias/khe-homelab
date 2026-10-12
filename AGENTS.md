@@ -38,7 +38,7 @@ scripts/           setup, deploy, backup, hardening, validate-compose,
                    ha-dashboard.py (HA Overview generator),
                    ha-ws.py (HA WebSocket commands from the CLI),
                    house3d-* and house3d_model.py (3D view build, vendoring,
-                   device placement, model)
+                   device and tree placement, model)
 ```
 
 Image tags live in each `docker-compose.yml`; Renovate opens the bump PRs,

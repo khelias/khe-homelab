@@ -28,6 +28,7 @@ export const ICONS = {
   close: '<path d="M6 6l12 12M18 6 6 18"/>',
   room: '<path d="M4 4h16v16H4zM4 12h7v8M15 4v6"/>',
   reset: '<path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/>',
+  tree: '<path d="M12 2.5a5 5 0 0 0-4.8 6.4A4.3 4.3 0 0 0 8.5 17.5h7a4.3 4.3 0 0 0 1.3-8.6A5 5 0 0 0 12 2.5z"/><path d="M12 21.5v-8M12 15.5l-2.5-2M12 14l2.2-1.8"/>',
   info: '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.5v.5"/>'
 };
 export const icon = k => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[k] || ICONS.info}</svg>`;
@@ -337,6 +338,20 @@ export function mount(element, model, options = {}) {
       m.position.set((xa + xb) / 2, 0.8, (za + zb) / 2);
       m.rotation.y = -Math.atan2(zb - za, xb - xa);
       m.add(edges(geo, hedgeE));
+      siteG.add(m);
+    });
+    const trunkE = lineMat({ color: C.lineSoft, opacity: 0.5 });
+    const TRUNK = { apple: 0.3, birch: 0.4, maple: 0.3 };
+    // the size goes on scale, the outline comes from the unscaled shape: its 18-22.5 degree edges
+    // all clear EdgesGeometry's 15 degree cut, a geometry squashed to a birch's shape loses some
+    const crownGeo = new THREE.IcosahedronGeometry(1, 1), crownEdges = new THREE.EdgesGeometry(crownGeo, 15);
+    (site.trees || []).forEach(({ kind, pos: [x, z], height, crown }) => {
+      const top = height * (TRUNK[kind] || 0.3), w = Math.min(Math.max(height * 0.025, 0.1), 0.35);
+      box(siteG, hedgeM, trunkE, [x - w / 2, z - w / 2, x + w / 2, z + w / 2], [0, top]);
+      const m = new THREE.Mesh(crownGeo, hedgeM);
+      m.position.set(x, (top + height) / 2, z);
+      m.scale.set(crown / 2, (height - top) / 2, crown / 2);
+      m.add(new THREE.LineSegments(crownEdges, hedgeE));
       siteG.add(m);
     });
     const fenceE = lineMat({ color: C.lineSoft, opacity: 0.38 });

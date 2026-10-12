@@ -683,16 +683,20 @@ adding the mount recreates HA; later file changes arrive live through it.
 - **three.js updates** are manual, Renovate does not see the vendored copy:
   `scripts/house3d-vendor.sh <version>`, point the engine's imports at the new
   directory, bump the version, remove the old directory.
-- **The model** (walls, rooms, devices) is not in this repo. It is the
+- **The model** (walls, rooms, trees, devices) is not in this repo. It is the
   `house3d:*` blocks of khe-meta's `house/house-model.md`;
   `scripts/ha-dashboard.py` reads it (`HOUSE3D_MODEL`, else the sibling
   khe-meta checkout) and writes everything but the showcase layer into the
   card config, which lives only in HA's `.storage`.
-- **Placing devices:** `scripts/house3d-place.py serve <model>` serves
-  `place.html` on 127.0.0.1 with the private layer from memory. Pick a device,
-  click or drag it into place on the plan, turn a camera with the Suund
-  slider, then copy the changes; `pbpaste | scripts/house3d-place.py apply
-  <model> -` rewrites those device lines in the model (heights stay by type).
+- **Placing devices and trees:** `scripts/house3d-place.py serve <model>`
+  serves `place.html` on 127.0.0.1 with the private layer from memory. Pick a
+  device or a tree, click or drag it into place on the plan, turn a camera
+  with the Suund slider, size a tree with the Kõrgus and Võra sliders, then
+  copy the changes, `{"devices": {...}, "trees": {...}}` with only the groups
+  that changed; `pbpaste | scripts/house3d-place.py apply <model> -` rewrites
+  those device lines in the private block (heights stay by type) and those
+  tree lines in the geometry block's `site.trees`. Trees are geometry, so they
+  show in the standalone viewer too and the privacy scan does not cover them.
   Commit the model in khe-meta and rerun `ha-dashboard.py`. HA serves
   `place.html` too, but without a model it shows nothing.
 - **Privacy scan:** `scripts/house3d-build.py --scan <model>

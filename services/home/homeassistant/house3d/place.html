@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Seadmete paigutus</title>
+<title>Seadmete ja puude paigutus</title>
 <style>
 :root { --bg: #060c1b; --panel: #0c1631; --edge: rgba(111, 227, 255, 0.18); --line: #6fe3ff; --ink: #e4ecff; --muted: #8a9bc2; --amber: #ffc56e; --ok: #6fe3b4; color-scheme: dark; }
 * { box-sizing: border-box; }
@@ -51,11 +51,13 @@ svg#plan { width: 100%; height: 100%; display: block; cursor: crosshair; touch-a
 .marker { cursor: grab; }
 .fan { fill: rgba(111, 227, 255, .10); stroke: rgba(111, 227, 255, .5); stroke-width: .04; pointer-events: none; }
 .fan.sel { fill: rgba(255, 197, 110, .16); stroke: var(--amber); }
-#cam[hidden] { display: none; }
-#cam { display: grid; gap: 6px; padding-bottom: 6px; border-bottom: 1px solid var(--edge); }
-#cam label { display: grid; grid-template-columns: 78px 1fr 52px; gap: 8px; align-items: center; font-size: 13px; }
-#cam output { text-align: right; font: 12px ui-monospace, Menlo, monospace; color: var(--amber); }
-#cam input { width: 100%; accent-color: var(--amber); }
+.crown { fill: rgba(71, 217, 196, .07); stroke: rgba(71, 217, 196, .6); stroke-width: .05; stroke-dasharray: .3 .2; pointer-events: none; }
+.crown.sel { fill: rgba(255, 197, 110, .12); stroke: var(--amber); }
+#cam[hidden], #tree[hidden] { display: none; }
+#cam, #tree { display: grid; gap: 6px; padding-bottom: 6px; border-bottom: 1px solid var(--edge); }
+#cam label, #tree label { display: grid; grid-template-columns: 78px 1fr 52px; gap: 8px; align-items: center; font-size: 13px; }
+#cam output, #tree output { text-align: right; font: 12px ui-monospace, Menlo, monospace; color: var(--amber); }
+#cam input, #tree input { width: 100%; accent-color: var(--amber); }
 #cam .note { font-size: 12px; color: var(--muted); }
 .mlabel { fill: var(--ink); font-size: .36px; pointer-events: none; paint-order: stroke; stroke: var(--bg); stroke-width: .12px; }
 </style>
@@ -63,13 +65,17 @@ svg#plan { width: 100%; height: 100%; display: block; cursor: crosshair; touch-a
 <body>
 <aside>
   <header>
-    <h1>Seadmete paigutus</h1>
-    <p>Vali seade nimekirjast või plaanilt, siis klõpsa plaanil õigesse kohta. Seadet saab ka lohistada. Kaamerat pööra liuguriga Suund. Tänav on üleval. Näpista või Ctrl+ratas suumib, kahe sõrmega libistus nihutab.</p>
+    <h1>Seadmete ja puude paigutus</h1>
+    <p>Vali seade või puu nimekirjast või plaanilt, siis klõpsa plaanil õigesse kohta. Seadet või puud saab ka lohistada. Kaamerat pööra liuguriga Suund, puu suurust muuda liuguritega Kõrgus ja Võra. Tänav on üleval. Näpista või Ctrl+ratas suumib, kahe sõrmega libistus nihutab.</p>
   </header>
   <div id="list"></div>
   <footer>
     <div id="cam" hidden>
       <label>Suund <input type="range" id="dir" min="0" max="359" step="1"><output id="dirV"></output></label>
+    </div>
+    <div id="tree" hidden>
+      <label>Kõrgus <input type="range" id="height" min="1" max="25" step="0.5"><output id="heightV"></output></label>
+      <label>Võra <input type="range" id="crown" min="0.5" max="15" step="0.5"><output id="crownV"></output></label>
     </div>
     <div class="row"><button class="btn" id="copy">Kopeeri muudatused</button><button class="btn ghost" id="reset">Taasta valitu</button></div>
     <div class="row"><button class="btn ghost" id="vDev">Seadmed</button><button class="btn ghost" id="vLot">Krunt</button><button class="btn ghost" id="zIn">+</button><button class="btn ghost" id="zOut">−</button></div>
@@ -83,12 +89,13 @@ svg#plan { width: 100%; height: 100%; display: block; cursor: crosshair; touch-a
   <div id="coords"></div>
 </main>
 <script type="module">
-// Placement page for the house 3D model's private layer, served with the model by
-// scripts/house3d-place.py; it holds no house data itself.
+// Placement page for the house 3D model's devices (private layer) and trees (geometry layer),
+// served with the model by scripts/house3d-place.py; it holds no house data itself.
 import { icon } from './house3d.js';
 const NS = 'http://www.w3.org/2000/svg';
 const esc = s => String(s).replace(/[&<>"']/g, ch => `&#${ch.charCodeAt(0)};`);
 const r2 = v => Math.round(v * 100) / 100;
+const metres = v => `${String(v).replace('.', ',')} m`;
 
 const res = await fetch('model.json');
 if (!res.ok) {
@@ -98,16 +105,37 @@ if (!res.ok) {
 const model = await res.json();
 const rooms = model.rooms;
 const roomById = Object.fromEntries(rooms.map(r => [r.id, r]));
-const orig = Object.fromEntries(model.devices.map(d => [d.entity, JSON.parse(JSON.stringify(d))]));
+const clone = v => JSON.parse(JSON.stringify(v));
+const orig = Object.fromEntries(model.devices.map(d => [d.entity, clone(d)]));
 const editable = d => ({ pos: d.pos, look: d.look, room: d.room });
+// trees are keyed tree:<id> in the selection and the saved edits, so they never meet an entity id
+const tkey = t => `tree:${t.id}`;
+const isTree = k => !!k && k.startsWith('tree:');
+const origT = Object.fromEntries((model.site.trees || []).map(t => [tkey(t), clone(t)]));
+const treeEditable = t => ({ pos: t.pos, height: t.height, crown: t.crown });
 // unsent edits survive a reload, but only while the model still has the values they started from
 let saved = {};
 try { saved = JSON.parse(localStorage.getItem('house3d-place') || '{}'); } catch (e) {}
-const devs = model.devices.map(d => {
-  const s = saved[d.entity];
-  return s && JSON.stringify(s.base) === JSON.stringify(editable(d)) ? { ...d, ...s.now } : { ...d };
-});
+const restore = (key, item, ed) => {
+  const s = saved[key];
+  return s && JSON.stringify(s.base) === JSON.stringify(ed(item)) ? { ...item, ...s.now } : { ...item };
+};
+const devs = model.devices.map(d => restore(d.entity, d, editable));
 const byId = Object.fromEntries(devs.map(d => [d.entity, d]));
+const trees = (model.site.trees || []).map(t => restore(tkey(t), t, treeEditable));
+const treeByKey = Object.fromEntries(trees.map(t => [tkey(t), t]));
+const KINDS = { apple: 'Õunapuu', birch: 'Kask', maple: 'Vaher' };
+const treeName = {};
+{
+  const total = {}, seen = {};
+  trees.forEach(t => { total[t.kind] = (total[t.kind] || 0) + 1; });
+  trees.forEach(t => {
+    seen[t.kind] = (seen[t.kind] || 0) + 1;
+    treeName[tkey(t)] = !KINDS[t.kind] ? t.id : total[t.kind] > 1 ? `${KINDS[t.kind]} ${seen[t.kind]}` : KINDS[t.kind];
+  });
+}
+const nameOf = k => (isTree(k) ? treeName[k] : byId[k].name);
+const planPos = k => (isTree(k) ? treeByKey[k].pos : [byId[k].pos[0], byId[k].pos[2]]);
 
 // room of a point: the rectangle it is in, else the nearest within a wall's thickness; outdoor devices stay outdoor
 function roomAt(x, z, d) {
@@ -167,97 +195,148 @@ rooms.forEach(r => {
 const fanLayer = el('g', {});
 const markerLayer = el('g', {});
 const mEls = {};
-devs.forEach(d => {
+function marker(key, type, name) {
   const g = el('g', { class: 'marker' }, markerLayer);
   el('circle', { r: 0.36, class: 'bg' }, g);
   const ic = el('svg', { x: -0.24, y: -0.24, width: 0.48, height: 0.48, viewBox: '0 0 24 24' }, g);
-  ic.innerHTML = icon(d.type).replace(/^<svg[^>]*>|<\/svg>$/g, '');
+  ic.innerHTML = icon(type).replace(/^<svg[^>]*>|<\/svg>$/g, '');
   ic.setAttribute('fill', 'none'); ic.setAttribute('stroke', 'currentColor'); ic.setAttribute('stroke-width', '1.8');
   ic.setAttribute('stroke-linecap', 'round'); ic.setAttribute('stroke-linejoin', 'round');
   const label = el('text', { x: 0.45, y: 0.12, class: 'mlabel' }, g);
-  label.textContent = d.name;
+  label.textContent = name;
   label.style.display = 'none';
-  g.addEventListener('pointerdown', ev => { ev.stopPropagation(); if (sel !== d.entity) select(d.entity); dragging = d.entity; dragFrom = toPlan(ev); dragMoved = false; svg.setPointerCapture(ev.pointerId); });
-  mEls[d.entity] = { g, label };
-});
+  g.addEventListener('pointerdown', ev => { ev.stopPropagation(); if (sel !== key) select(key); dragging = key; dragFrom = toPlan(ev); dragMoved = false; svg.setPointerCapture(ev.pointerId); });
+  mEls[key] = { g, label };
+}
+devs.forEach(d => marker(d.entity, d.type, d.name));
+trees.forEach(t => marker(tkey(t), 'tree', treeName[tkey(t)]));
 
 /* ---------- state ---------- */
 let sel = null, dragging = null, dragFrom = null, dragMoved = false;
 const changed = d => JSON.stringify(editable(orig[d.entity])) !== JSON.stringify(editable(d));
+const changedT = t => JSON.stringify(treeEditable(origT[tkey(t)])) !== JSON.stringify(treeEditable(t));
 // the slider's degrees run clockwise from the street side, up on the plan
 const lookDeg = look => Math.round((Math.atan2(look[0], -look[1]) * 180 / Math.PI + 360) % 360);
+function mark(key, x, z, isChanged) {
+  const m = mEls[key];
+  m.g.setAttribute('transform', `translate(${x} ${z})`);
+  m.g.classList.toggle('sel', key === sel);
+  m.g.classList.toggle('done', isChanged);
+  m.label.style.display = key === sel ? '' : 'none';
+}
 function draw() {
   fanLayer.innerHTML = '';
   devs.forEach(d => {
-    const m = mEls[d.entity];
-    m.g.setAttribute('transform', `translate(${d.pos[0]} ${d.pos[2]})`);
-    m.g.classList.toggle('sel', d.entity === sel);
-    m.g.classList.toggle('done', changed(d));
-    m.label.style.display = d.entity === sel ? '' : 'none';
+    mark(d.entity, d.pos[0], d.pos[2], changed(d));
     if (d.look) {
       const ang = Math.atan2(d.look[1], d.look[0]), half = 30 * Math.PI / 180, R = 7, pts = [[d.pos[0], d.pos[2]]];
       for (let i = 0; i <= 12; i++) { const t = ang - half + 2 * half * i / 12; pts.push([d.pos[0] + Math.cos(t) * R, d.pos[2] + Math.sin(t) * R]); }
       el('polygon', { points: pts.map(p => p.join(',')).join(' '), class: 'fan' + (d.entity === sel ? ' sel' : '') }, fanLayer);
     }
   });
+  trees.forEach(t => {
+    const k = tkey(t);
+    mark(k, t.pos[0], t.pos[1], changedT(t));
+    el('circle', { cx: t.pos[0], cy: t.pos[1], r: t.crown / 2, class: 'crown' + (k === sel ? ' sel' : '') }, fanLayer);
+  });
   if (sel) markerLayer.appendChild(mEls[sel].g);
-  Object.entries(roomEls).forEach(([id, els]) => els.forEach(e => e.classList.toggle('hl', !!sel && byId[sel].room === id)));
+  const selRoom = sel && !isTree(sel) ? byId[sel].room : null;
+  Object.entries(roomEls).forEach(([id, els]) => els.forEach(e => e.classList.toggle('hl', selRoom === id)));
   renderList();
-  const ch = devs.filter(changed);
-  const out = Object.fromEntries(ch.map(d => [d.entity, editable(d)]));
-  document.getElementById('out').value = ch.length ? JSON.stringify(out) : '';
-  document.getElementById('count').textContent = `Muudetud ${ch.length} / ${devs.length}`;
-  try { localStorage.setItem('house3d-place', JSON.stringify(Object.fromEntries(ch.map(d => [d.entity, { base: editable(orig[d.entity]), now: editable(d) }])))); } catch (e) {}
-  const cam = document.getElementById('cam'), sd = sel && byId[sel];
+  const ch = devs.filter(changed), chT = trees.filter(changedT);
+  const out = {};
+  if (ch.length) out.devices = Object.fromEntries(ch.map(d => [d.entity, editable(d)]));
+  if (chT.length) out.trees = Object.fromEntries(chT.map(t => [t.id, treeEditable(t)]));
+  document.getElementById('out').value = ch.length + chT.length ? JSON.stringify(out) : '';
+  document.getElementById('count').textContent = `Muudetud ${ch.length + chT.length} / ${devs.length + trees.length}`;
+  const keep = [...ch.map(d => [d.entity, { base: editable(orig[d.entity]), now: editable(d) }]),
+    ...chT.map(t => [tkey(t), { base: treeEditable(origT[tkey(t)]), now: treeEditable(t) }])];
+  try { localStorage.setItem('house3d-place', JSON.stringify(Object.fromEntries(keep))); } catch (e) {}
+  const cam = document.getElementById('cam'), sd = sel && !isTree(sel) && byId[sel];
   cam.hidden = !(sd && sd.look);
   if (!cam.hidden) {
     const deg = lookDeg(sd.look);
     document.getElementById('dir').value = deg;
     document.getElementById('dirV').textContent = `${deg}°`;
   }
+  const size = document.getElementById('tree'), st = isTree(sel) && treeByKey[sel];
+  size.hidden = !st;
+  if (st) {
+    document.getElementById('height').value = st.height;
+    document.getElementById('heightV').textContent = metres(st.height);
+    document.getElementById('crown').value = st.crown;
+    document.getElementById('crownV').textContent = metres(st.crown);
+  }
   const hint = document.getElementById('hint');
-  if (!sel) hint.innerHTML = 'Vali seade nimekirjast või plaanilt.';
-  else hint.innerHTML = `<b>${esc(byId[sel].name)}</b>: klõpsa plaanil õigesse kohta või lohista. ${byId[sel].look ? 'Pööramiseks kasuta vasakul liugurit Suund.' : ''}`;
+  if (!sel) hint.innerHTML = 'Vali seade või puu nimekirjast või plaanilt.';
+  else if (st) hint.innerHTML = `<b>${esc(nameOf(sel))}</b>: klõpsa plaanil õigesse kohta või lohista. Suurust muuda liuguritega Kõrgus ja Võra.`;
+  else hint.innerHTML = `<b>${esc(nameOf(sel))}</b>: klõpsa plaanil õigesse kohta või lohista. ${sd.look ? 'Pööramiseks kasuta vasakul liugurit Suund.' : ''}`;
 }
 function renderList() {
   const list = document.getElementById('list');
+  const row = (key, type, name, isChanged) => `<button class="dev${key === sel ? ' sel' : ''}${isChanged ? ' done' : ''}" data-e="${esc(key)}">${icon(type)}<span>${esc(name)}</span><span class="st">${isChanged ? 'muudetud' : ''}</span></button>`;
   const groups = {};
   devs.forEach(d => { (groups[d.room] = groups[d.room] || []).push(d); });
   const order = [...rooms.map(r => r.id), 'oues'].filter(id => groups[id]);
   list.innerHTML = order.map(id => `<div class="group">${esc(id === 'oues' ? 'Õues' : roomById[id].name)}</div>` +
-    groups[id].map(d => `<button class="dev${d.entity === sel ? ' sel' : ''}${changed(d) ? ' done' : ''}" data-e="${esc(d.entity)}">${icon(d.type)}<span>${esc(d.name)}</span><span class="st">${changed(d) ? 'muudetud' : ''}</span></button>`).join('')).join('');
+    groups[id].map(d => row(d.entity, d.type, d.name, changed(d))).join('')).join('') +
+    (trees.length ? '<div class="group">Puud</div>' + trees.map(t => row(tkey(t), 'tree', treeName[tkey(t)], changedT(t))).join('') : '');
 }
 function select(id) { sel = id; draw(); }
-document.getElementById('list').addEventListener('click', ev => { const b = ev.target.closest('[data-e]'); if (b) select(b.dataset.e); });
 
 const toPlan = ev => { const p = svg.createSVGPoint(); p.x = ev.clientX; p.y = ev.clientY; const q = p.matrixTransform(svg.getScreenCTM().inverse()); return [q.x, q.y]; };
-function place(d, x, z) { d.pos = [r2(x), d.pos[1], r2(z)]; d.room = roomAt(x, z, d); }
+function inView([x, z]) {
+  const b = svg.getBoundingClientRect(), [x0, z0] = toPlan({ clientX: b.left, clientY: b.top }), [x1, z1] = toPlan({ clientX: b.right, clientY: b.bottom });
+  return x >= x0 && x <= x1 && z >= z0 && z <= z1;
+}
+document.getElementById('list').addEventListener('click', ev => {
+  const b = ev.target.closest('[data-e]');
+  if (!b) return;
+  select(b.dataset.e);
+  if (!inView(planPos(sel))) setView(LOT_VIEW);
+});
+function place(key, x, z) {
+  if (isTree(key)) { treeByKey[key].pos = [r2(x), r2(z)]; return; }
+  const d = byId[key];
+  d.pos = [r2(x), d.pos[1], r2(z)];
+  d.room = roomAt(x, z, d);
+}
 svg.addEventListener('pointermove', ev => {
   const [x, z] = toPlan(ev);
   document.getElementById('coords').textContent = `x ${x.toFixed(2)}  z ${z.toFixed(2)}`;
   // a press on a marker only selects it until the pointer has really moved
   if (dragging && !dragMoved && Math.hypot(x - dragFrom[0], z - dragFrom[1]) > 0.15) dragMoved = true;
-  if (dragging && dragMoved) { place(byId[dragging], x, z); draw(); }
+  if (dragging && dragMoved) { place(dragging, x, z); draw(); }
 });
 svg.addEventListener('pointerup', ev => {
   if (dragging) { dragging = null; return; }
   if (!sel) return;
   const [x, z] = toPlan(ev);
-  place(byId[sel], x, z);
+  place(sel, x, z);
   draw();
 });
 document.getElementById('reset').addEventListener('click', () => {
   if (!sel) return;
-  const o = orig[sel], d = byId[sel];
-  d.pos = o.pos.slice(); d.room = o.room; if (o.look) d.look = o.look.slice();
+  if (isTree(sel)) {
+    const o = origT[sel], t = treeByKey[sel];
+    t.pos = o.pos.slice(); t.height = o.height; t.crown = o.crown;
+  } else {
+    const o = orig[sel], d = byId[sel];
+    d.pos = o.pos.slice(); d.room = o.room; if (o.look) d.look = o.look.slice();
+  }
   draw();
 });
 document.getElementById('dir').addEventListener('input', ev => {
-  if (!sel) return;
+  if (!sel || isTree(sel)) return;
   const a = Number(ev.target.value) * Math.PI / 180;
   byId[sel].look = [r2(Math.sin(a)), r2(-Math.cos(a))];
   draw();
 });
+['height', 'crown'].forEach(k => document.getElementById(k).addEventListener('input', ev => {
+  if (!isTree(sel)) return;
+  treeByKey[sel][k] = Number(ev.target.value);
+  draw();
+}));
 document.getElementById('copy').addEventListener('click', async () => {
   const t = document.getElementById('out');
   if (!t.value) return;

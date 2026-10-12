@@ -180,6 +180,27 @@ def validate(layers):
         rect(f"site.outdoor_units[{i}]", u.get("rect"))
         if not (_point(u.get("y")) and u["y"][0] < u["y"][1]):
             bad(f"site.outdoor_units[{i}]: y must be [y0, y1] with y0 < y1")
+    trees = site.get("trees", [])
+    if not isinstance(trees, list):
+        bad("site.trees: not a list")
+        trees = []
+    ids("site.trees", [t["id"] for t in trees if isinstance(t, dict) and isinstance(t.get("id"), str)])
+    for i, t in enumerate(trees):
+        if not isinstance(t, dict):
+            bad(f"site.trees[{i}]: not a JSON object")
+            continue
+        if isinstance(t.get("id"), str) and t["id"]:
+            where = f"tree {t['id']}"
+        else:
+            where = f"site.trees[{i}]"
+            bad(f"{where}: id is not a non-empty string")
+        if not (isinstance(t.get("kind"), str) and t["kind"]):
+            bad(f"{where}: kind missing")
+        if not _point(t.get("pos")):
+            bad(f"{where}: pos must be [x, z]")
+        for k in ("height", "crown"):
+            if not (_num(t.get(k)) and t[k] > 0):
+                bad(f"{where}: {k} is not a positive number")
 
     rooms = model.get("rooms", [])
     room_ids = [r.get("id") for r in rooms]
