@@ -25,13 +25,15 @@
 //   hit(ray)?       the tap and hover test on the raycaster: null, { car: true } or
 //                   { room, target }. Layers are tried in reverse build order, so the car wins
 //                   over the floors, and a layer that is off is skipped
-//   setOn(on)?      the layer was switched, also before the first frame (no invalidate there)
+//   setOn(on)?      the layer was switched, also before the first frame
 //   api?            what the core re-exports (setCar, carState, carScreen) or another layer
 //                   calls through ctx.layer(id)
 //   dispose()?      frees what the kit's list and the scene traversal do not
 // ctx: THREE, kit, C (kit.C), model, options, frame { lotBox, wallBox, ext, E, lotCx, lotCz },
 //   roof { fns, flat, under, topFn, gap }, ceiling, reduceMotion, state (read-only: mode,
 //   roofFade, hovered, selection), layer(id), screen(x, y, z) -> { x, y } | null, invalidate().
+//   build() and the first setOn() run before the loop exists: they must not call invalidate()
+//   or screen().
 // The core puts each layer's group and lift under a wrapper group, and switching a layer sets
 // only the wrapper's visible. Nothing leaves the scene, so dispose() still reaches every object.
 import * as THREE from './vendor/three-0.186.1/build/three.module.js';
@@ -140,7 +142,7 @@ const STYLE = `
  *   (1.2 s); the gate closes once the car is through. 'parked' stands it at the path's end, 'away'
  *   fades it out; both close the gate at once. carState is 'away' | 'driving' | 'parked'; carScreen
  *   is the car's projected centre { x, y } in CSS pixels relative to the element, or null when it
- *   is away or behind. Without a car, setCar does nothing, carState is 'away', carScreen null.
+ *   is away, switched off or behind. Without a car, setCar does nothing, carState is 'away', carScreen null.
  * layers: [{ id, on }] for the switchable layers present and listed now; setLayer(id, on) switches
  *   one and ignores an unknown id. Switchable: 'markers' (the overlay; off hides every marker but
  *   an alert), 'fans' (listed while a marker has a look), 'trees', 'surroundings' and 'car' (off
@@ -275,6 +277,8 @@ export function mount(element, model, options = {}) {
     const e = layers.find(x => x.L.toggle && x.L.id === id);
     if (!e || e.on === !!on) return;
     switchLayer(e, !!on);
+    // a layer switched off under the mouse no longer takes the hover
+    if (!e.on) { hovered = null; renderer.domElement.style.cursor = ''; }
     invalidate();
   }
   // a stored choice applies before the first frame, also to a layer not listed yet

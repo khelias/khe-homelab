@@ -196,7 +196,7 @@ export default function build({ THREE, kit, C, options, reduceMotion, layer, scr
     api: {
       setCar,
       get carState() { return carState; },
-      get carScreen() { return carState === 'away' ? null : screen(car.g.position.x, car.centreY, car.g.position.z); }
+      get carScreen() { return carState === 'away' || !on ? null : screen(car.g.position.x, car.centreY, car.g.position.z); }
     }
   };
 }
