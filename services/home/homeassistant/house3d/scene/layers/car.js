@@ -86,7 +86,7 @@ export default function build({ THREE, kit, C, options, reduceMotion, layer, scr
     return { g, body, wheels, sprites, curve, length: curve.getLength(), r, centreY: p.height / 2 };
   }
   const car = buildCar(carOpt.profile, carOpt.path);
-  let carState = 'away', drive = null, carFadeShown = -1;
+  let carState = 'away', drive = null, carFadeShown = -1, on = true;
   const carFade = { cur: 0, to: 0 };
   function placeCar(u) {
     const at = car.curve.getPointAt(u), tan = car.curve.getTangentAt(u);
@@ -152,8 +152,9 @@ export default function build({ THREE, kit, C, options, reduceMotion, layer, scr
     return moving;
   }
 
+  // a hidden car never drives, so the gate never opens for it
   function setCar(state) {
-    if (state === 'arrive' && reduceMotion) state = 'parked';
+    if (state === 'arrive' && (reduceMotion || !on)) state = 'parked';
     if (state === 'arrive') {
       drive = { elapsed: 0, dur: Math.min(6, Math.max(3, car.length / 3.2)), wait: driveGate ? GATE_S : 0, closing: false };
       gateTo(1);
@@ -175,9 +176,20 @@ export default function build({ THREE, kit, C, options, reduceMotion, layer, scr
     invalidate();
   }
 
+  // switched off: a running drive ends parked and the gate closes at once; switched back on, the
+  // car shows the state it is in
+  function setOn(v) {
+    on = v;
+    if (on) return;
+    if (drive) { drive = null; placeCar(1); carState = 'parked'; }
+    gateNow(0);
+  }
+
   return {
     id: 'car',
     group: car.g,
+    toggle: true,
+    setOn,
     update,
     // the body mesh, not a bounding box, which would cover the carport floor
     hit: ray => (carState !== 'away' && car.g.visible && ray.intersectObject(car.body, false).length ? { car: true } : null),

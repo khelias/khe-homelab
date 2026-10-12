@@ -26,5 +26,5 @@ export default function build({ THREE, kit, C, options }) {
       group.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(ring.map(([x, z]) => new THREE.Vector3(x, 0.005, z))), roadE));
     });
   });
-  return { id: 'surroundings', group };
+  return { id: 'surroundings', group, toggle: true };
 }

@@ -698,6 +698,11 @@ adding the mount recreates HA; later file changes arrive live through it.
   remount would share its state. No check enforces this yet: this repo's
   `check:` and CI run `bash -n` only, and the per-file module check and the
   import grep arrive with the move to its own Home Assistant repo.
+- **Kihid:** the card's layers button opens a sheet that switches the
+  devices' markers (an alert always shows), the camera view fans, the trees,
+  the car (off, an arrival parks it and the gate stays shut) and the
+  neighbours and street; the choice is kept per browser in `localStorage`
+  under `house3d-layers`.
 - **three.js updates** are manual, Renovate does not see the vendored copy:
   `scripts/house3d-vendor.sh <version>`, point the engine's imports at the new
   directory, bump the version, remove the old directory.

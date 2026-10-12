@@ -66,6 +66,7 @@ export const ICONS = {
   room: '<path d="M4 4h16v16H4zM4 12h7v8M15 4v6"/>',
   reset: '<path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/>',
   tree: '<path d="M12 2.5a5 5 0 0 0-4.8 6.4A4.3 4.3 0 0 0 8.5 17.5h7a4.3 4.3 0 0 0 1.3-8.6A5 5 0 0 0 12 2.5z"/><path d="M12 21.5v-8M12 15.5l-2.5-2M12 14l2.2-1.8"/>',
+  layers: '<path d="M12 3.5 3 8l9 4.5L21 8z"/><path d="m3 12 9 4.5 9-4.5"/><path d="m3 16 9 4.5 9-4.5"/>',
   info: '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.5v.5"/>'
 };
 export const icon = k => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[k] || ICONS.info}</svg>`;
@@ -141,7 +142,10 @@ const STYLE = `
  *   is the car's projected centre { x, y } in CSS pixels relative to the element, or null when it
  *   is away or behind. Without a car, setCar does nothing, carState is 'away', carScreen null.
  * layers: [{ id, on }] for the switchable layers present and listed now; setLayer(id, on) switches
- *   one and ignores an unknown id.
+ *   one and ignores an unknown id. Switchable: 'markers' (the overlay; off hides every marker but
+ *   an alert), 'fans' (listed while a marker has a look), 'trees', 'surroundings' and 'car' (off
+ *   parks a running drive and closes the gate at once, and 'arrive' then parks). A layer that is
+ *   off takes no taps.
  * markers: { id, pos: [x, y, z], icon, state: 'idle'|'on'|'alert'|'off', value?, label?,
  *            room?, look?: [dx, dz], role?, level?: 0..1, pulse?, warm? }
  *   A marker whose room is a house room shows only with the roof off, unless its state is
@@ -249,7 +253,9 @@ export function mount(element, model, options = {}) {
     layer: id => byId[id] || null,
     invalidate: () => invalidate()
   };
-  const layers = [];
+  // the marker overlay is the core's own, switched like a layer; it has no group
+  const markerLayer = { L: { id: 'markers', toggle: true, listed: () => markers.size > 0 }, wrap: null, on: true };
+  const layers = [markerLayer];
   BUILDERS.forEach(mod => {
     const L = mod.default(ctx);
     if (!L) return;
@@ -262,7 +268,7 @@ export function mount(element, model, options = {}) {
   });
   function switchLayer(e, on) {
     e.on = on;
-    e.wrap.visible = on;
+    if (e.wrap) e.wrap.visible = on;
     if (e.L.setOn) e.L.setOn(on);
   }
   function setLayer(id, on) {
@@ -461,7 +467,7 @@ export function mount(element, model, options = {}) {
       // an alert indoors shows through the roof, so a closed view never hides it
       const m = rec.data, el = rec.el, covered = isIndoor(m) && m.state !== 'alert';
       v.set(m.pos[0], m.pos[1], m.pos[2]).project(camera);
-      if ((covered && roofOpen <= 0.02) || v.z >= 1) { if (el.style.display !== 'none') el.style.display = 'none'; continue; }
+      if ((!markerLayer.on && m.state !== 'alert') || (covered && roofOpen <= 0.02) || v.z >= 1) { if (el.style.display !== 'none') el.style.display = 'none'; continue; }
       el.style.display = '';
       el.style.opacity = (covered ? roofOpen : 1).toFixed(2);
       el.style.transform = `translate(${((v.x + 1) / 2) * width}px, ${((1 - v.y) / 2) * height}px) translate(-50%, -50%)`;

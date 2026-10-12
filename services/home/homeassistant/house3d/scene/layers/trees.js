@@ -20,5 +20,5 @@ export default function build({ THREE, kit, C, model }) {
     m.add(new THREE.LineSegments(crownEdges, hedgeE));
     group.add(m);
   });
-  return { id: 'trees', group };
+  return { id: 'trees', group, toggle: true };
 }

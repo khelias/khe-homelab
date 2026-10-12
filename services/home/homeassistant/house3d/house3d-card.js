@@ -2,7 +2,7 @@
 // the card config, written by scripts/ha-dashboard.py; this file carries no house data.
 // Bump HOUSE3D_VERSION on every change to this file or the engine, and the same ?v= on the
 // Lovelace resource URL: HA's /local and the phone app cache aggressively.
-const HOUSE3D_VERSION = 9;
+const HOUSE3D_VERSION = 10;
 const engine = import(`./house3d.js?v=${HOUSE3D_VERSION}`);
 
 const nf1 = new Intl.NumberFormat('et-EE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
@@ -24,6 +24,22 @@ function readSeen(entity) {
 function writeSeen(entity, key) {
   seenMemory.set(seenKey(entity), key);
   try { localStorage.setItem(seenKey(entity), key); } catch (e) { /* the in-memory copy stands */ }
+}
+
+// The Kihid sheet's switches, in this order; the choice is kept per browser like the arrival key.
+const LAYER_LABELS = { markers: 'Seadmed', fans: 'Kaamerate vaated', trees: 'Puud', car: 'Auto', surroundings: 'Ümbrus' };
+const LAYER_ORDER = Object.keys(LAYER_LABELS);
+const LAYERS_KEY = 'house3d-layers';
+function readLayers() {
+  try {
+    const v = JSON.parse(localStorage.getItem(LAYERS_KEY));
+    if (v && typeof v === 'object' && !Array.isArray(v)) return v;
+  } catch (e) { /* the in-memory copy answers */ }
+  return { ...(seenMemory.get(LAYERS_KEY) || {}) };
+}
+function writeLayers(layers) {
+  seenMemory.set(LAYERS_KEY, layers);
+  try { localStorage.setItem(LAYERS_KEY, JSON.stringify(layers)); } catch (e) { /* the in-memory copy stands */ }
 }
 
 // true when the car is home ('home' from a tracker, 'on' from the arrival helper), null when the
@@ -106,6 +122,12 @@ button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 .list button.alert svg { color: var(--alert); }
 .list .st { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .empty { color: var(--muted); }
+.list.switches button { grid-template-columns: 1fr auto; }
+.sw { position: relative; width: 34px; height: 20px; border-radius: 10px; background: rgba(138, 155, 194, 0.25); transition: background-color .15s; }
+.sw::after { content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: var(--muted); transition: transform .15s, background-color .15s; }
+[aria-checked="true"] .sw { background: rgba(111, 227, 255, 0.35); }
+[aria-checked="true"] .sw::after { transform: translateX(14px); background: var(--line); }
+@media (prefers-reduced-motion: reduce) { .sw, .sw::after { transition: none; } }
 .msg { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; color: var(--muted); text-align: center; background: var(--bg); }
 .credit { position: absolute; top: 10px; left: 12px; max-width: calc(100% - 24px); font-size: 11px; line-height: 1.3; color: var(--muted); opacity: .8; pointer-events: none; }
 @media (max-width: 600px) {
@@ -189,14 +211,17 @@ class House3dCard extends HTMLElement {
       <div class="bar"><div class="seg" role="group" aria-label="Vaade">
         <button type="button" data-mode="roof" aria-pressed="true">Katusega</button>
         <button type="button" data-mode="open" aria-pressed="false">Katuseta</button></div>
-        <button type="button" class="icon-btn" data-act="reset" aria-label="Lähtesta vaade" title="Lähtesta vaade"></button></div>
+        <button type="button" class="icon-btn" data-act="reset" aria-label="Lähtesta vaade" title="Lähtesta vaade"></button>
+        <button type="button" class="icon-btn" data-act="layers" aria-label="Kihid" title="Kihid" aria-expanded="false"></button></div>
       <aside class="sheet" hidden aria-live="polite"></aside>${this._credit()}</ha-card>`;
+    this._sheet = null;
     const token = (this._mounting = {});
     engine.then(mod => {
       if (this._mounting !== token || !this.isConnected) return;
       this._mounting = null;
       this._mod = mod;
       sr.querySelector('[data-act="reset"]').innerHTML = mod.icon('reset');
+      sr.querySelector('[data-act="layers"]').innerHTML = mod.icon('layers');
       this._view = mod.mount(sr.querySelector('.view'), this._config.model, {
         onMarker: id => this._moreInfo(id),
         onRoom: id => this._openRoom(id),
@@ -204,6 +229,7 @@ class House3dCard extends HTMLElement {
           sr.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === m)));
           if (m === 'roof') this._openRoom(null);
         },
+        layers: readLayers(),
         car: this._car ? { profile: this._car.profile, path: this._car.path } : undefined,
         surroundings: this._config.model.surroundings,
         // a tap on the car replays the drive-in; the stored arrival stays as it is
@@ -211,10 +237,13 @@ class House3dCard extends HTMLElement {
       });
       sr.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => this._view.setMode(b.dataset.mode)));
       sr.querySelector('[data-act="reset"]').addEventListener('click', () => this._view.reset());
+      sr.querySelector('[data-act="layers"]').addEventListener('click', () => (this._sheet === 'layers' ? this._closeSheet() : this._openLayers()));
       sr.querySelector('.sheet').addEventListener('click', ev => {
         const row = ev.target.closest('[data-entity]');
         if (row) return this._moreInfo(row.dataset.entity);
-        if (ev.target.closest('[data-act="close"]')) this._openRoom(null);
+        const sw = ev.target.closest('[data-layer]');
+        if (sw) return this._switchLayer(sw.dataset.layer, sw.getAttribute('aria-checked') !== 'true');
+        if (ev.target.closest('[data-act="close"]')) return this._sheet === 'layers' ? this._closeSheet() : this._openRoom(null);
       });
       this._states.clear();
       this._pushed = false;
@@ -239,7 +268,8 @@ class House3dCard extends HTMLElement {
     this._pushed = true;
     this._view.setMarkers(this._devices.map(d => toMarker(d, this._states.get(d.entity))));
     this._pushCar();
-    if (this._room) this._refreshRoom();
+    if (this._sheet === 'room') this._refreshRoom();
+    else if (this._sheet === 'layers') this._renderLayers();
   }
 
   // acts only when home/away changes, so attribute updates (a new location) never replay the drive-in
@@ -282,12 +312,24 @@ class House3dCard extends HTMLElement {
     return st.state;
   }
 
+  _closeSheet() {
+    const sheet = this.shadowRoot.querySelector('.sheet');
+    this._sheet = null;
+    sheet.hidden = true;
+    sheet.innerHTML = '';
+    this.shadowRoot.querySelector('[data-act="layers"]').setAttribute('aria-expanded', 'false');
+  }
+
+  // a room sheet and Kihid replace each other; a tap on empty space and the roof going on close
+  // only a room sheet
   _openRoom(id) {
     const sheet = this.shadowRoot.querySelector('.sheet');
     const room = id && this._config.model.rooms.find(r => r.id === id);
+    if (!room && this._sheet === 'layers') return;
     this._room = room ? id : null;
     if (this._view) this._view.setSelection(this._room);
-    if (!room) { sheet.hidden = true; sheet.innerHTML = ''; return; }
+    if (!room) return this._closeSheet();
+    this.shadowRoot.querySelector('[data-act="layers"]').setAttribute('aria-expanded', 'false');
     const mod = this._mod;
     const devs = this._devices.filter(d => d.room === id);
     const rows = devs.map(d => {
@@ -298,6 +340,45 @@ class House3dCard extends HTMLElement {
       <button type="button" class="close" data-act="close" aria-label="Sulge">${mod.icon('close')}</button></div>
       ${rows ? `<div class="list">${rows}</div>` : '<div class="empty">Selles ruumis seadmeid pole.</div>'}`;
     sheet.hidden = false;
+    this._sheet = 'room';
+  }
+
+  _openLayers() {
+    const sheet = this.shadowRoot.querySelector('.sheet');
+    this._room = null;
+    if (this._view) this._view.setSelection(null);
+    sheet.innerHTML = `<div class="head"><div><h2>Kihid</h2></div>
+      <button type="button" class="close" data-act="close" aria-label="Sulge">${this._mod.icon('close')}</button></div>
+      <div class="list switches"></div>`;
+    this._sheet = 'layers';
+    this._renderLayers();
+    sheet.hidden = false;
+    this.shadowRoot.querySelector('[data-act="layers"]').setAttribute('aria-expanded', 'true');
+  }
+
+  // rows are replaced only when the set of layers changes, so a switch keeps its focus
+  _renderLayers() {
+    const list = this.shadowRoot.querySelector('.sheet .switches');
+    if (!list || !this._view) return;
+    const rank = id => (LAYER_ORDER.includes(id) ? LAYER_ORDER.indexOf(id) : LAYER_ORDER.length);
+    const layers = this._view.layers.slice().sort((a, b) => rank(a.id) - rank(b.id));
+    const ids = layers.map(l => l.id).join(' ');
+    if (list.dataset.ids !== ids || !layers.length) {
+      list.dataset.ids = ids;
+      list.innerHTML = layers.length ? layers.map(l => `<button type="button" role="switch" data-layer="${esc(l.id)}" aria-checked="${l.on}">
+        <span>${esc(LAYER_LABELS[l.id] || l.id)}</span><span class="sw" aria-hidden="true"></span></button>`).join('')
+        : '<div class="empty">Lülitatavaid kihte pole.</div>';
+      return;
+    }
+    list.querySelectorAll('[data-layer]').forEach((row, i) => row.setAttribute('aria-checked', String(layers[i].on)));
+  }
+
+  _switchLayer(id, on) {
+    this._view.setLayer(id, on);
+    const stored = readLayers();
+    stored[id] = on;
+    writeLayers(stored);
+    this._renderLayers();
   }
 }
 

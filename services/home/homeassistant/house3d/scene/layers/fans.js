@@ -30,5 +30,5 @@ export default function build({ THREE, kit, C }) {
       group.add(fan, e);
     });
   }
-  return { id: 'fans', group, markers, listed: () => count > 0 };
+  return { id: 'fans', group, toggle: true, markers, listed: () => count > 0 };
 }
