@@ -2,7 +2,7 @@
 // the card config, written by scripts/ha-dashboard.py; this file carries no house data.
 // Bump HOUSE3D_VERSION on every change to this file or the engine, and the same ?v= on the
 // Lovelace resource URL: HA's /local and the phone app cache aggressively.
-const HOUSE3D_VERSION = 6;
+const HOUSE3D_VERSION = 7;
 const engine = import(`./house3d.js?v=${HOUSE3D_VERSION}`);
 
 const nf1 = new Intl.NumberFormat('et-EE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
@@ -107,6 +107,7 @@ button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 .list .st { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .empty { color: var(--muted); }
 .msg { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; color: var(--muted); text-align: center; background: var(--bg); }
+.credit { position: absolute; top: 10px; left: 12px; max-width: calc(100% - 24px); font-size: 11px; line-height: 1.3; color: var(--muted); opacity: .8; pointer-events: none; }
 @media (max-width: 600px) {
   .bar { top: auto; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); right: 50%; transform: translateX(50%); }
   .sheet { top: auto; left: 0; right: 0; bottom: 0; width: auto; max-height: 62%; border-radius: 16px 16px 0 0;
@@ -189,7 +190,7 @@ class House3dCard extends HTMLElement {
         <button type="button" data-mode="roof" aria-pressed="true">Katusega</button>
         <button type="button" data-mode="open" aria-pressed="false">Katuseta</button></div>
         <button type="button" class="icon-btn" data-act="reset" aria-label="Lähtesta vaade" title="Lähtesta vaade"></button></div>
-      <aside class="sheet" hidden aria-live="polite"></aside></ha-card>`;
+      <aside class="sheet" hidden aria-live="polite"></aside>${this._credit()}</ha-card>`;
     const token = (this._mounting = {});
     engine.then(mod => {
       if (this._mounting !== token || !this.isConnected) return;
@@ -204,6 +205,7 @@ class House3dCard extends HTMLElement {
           if (m === 'roof') this._openRoom(null);
         },
         car: this._car ? { profile: this._car.profile, path: this._car.path } : undefined,
+        surroundings: this._config.model.surroundings,
         // a tap on the car replays the drive-in; the stored arrival stays as it is
         onCar: () => { if (this._carHome) this._view.setCar('arrive'); }
       });
@@ -222,6 +224,15 @@ class House3dCard extends HTMLElement {
     }).catch(err => {
       sr.querySelector('.view').innerHTML = `<div class="msg">3D-vaate laadimine ebaõnnestus: ${esc(err && err.message || err)}</div>`;
     });
+  }
+
+  // the licence asks for the licensor, the dataset and its date; the bottom corners hold the
+  // phone's button bar, so the line sits top left
+  _credit() {
+    const sur = this._config.model.surroundings;
+    if (!sur) return '';
+    const d = /(\d{4})-(\d{2})-(\d{2})/.exec(sur.source || '');
+    return `<div class="credit">Ümbrus: Maa- ja Ruumiamet, ETAK${d ? `, ${d[3]}.${d[2]}.${d[1]}` : ''}</div>`;
   }
 
   _push() {

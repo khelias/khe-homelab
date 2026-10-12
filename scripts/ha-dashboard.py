@@ -854,7 +854,7 @@ def house3d_view():
     layers = house3d_model.read_layers(path)
     problems = house3d_model.validate(layers)
     if problems: raise SystemExit("house3d model: " + "; ".join(problems))
-    model = house3d_model.with_room_names(house3d_model.merge(layers, ("geometry", "rooms", "private")))
+    model = house3d_model.with_room_names(house3d_model.merge(layers, ("geometry", "rooms", "private", "surroundings")))
     return [{"title": "3D", "path": "maja-3d", "icon": "mdi:floor-plan", "type": "panel",
              "cards": [{"type": "custom:house3d-card", "model": model}]}]
 

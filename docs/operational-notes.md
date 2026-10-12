@@ -702,8 +702,10 @@ adding the mount recreates HA; later file changes arrive live through it.
 - **Privacy scan:** `scripts/house3d-build.py --scan <model>
   services/home/homeassistant/house3d/` before every commit that touches the
   directory. It fails on any device name, entity id, family room name or
-  device coordinate, and on the car's name, entity, path and outline points.
-  The same script builds the standalone viewer from the shareable layers only.
+  device coordinate, on the car's name, entity, path and outline points, on
+  the surroundings' building and road vertices and on the georeference's
+  origin. The same script builds the standalone viewer from the shareable
+  layers only.
 - **The car** stands in the carport when it is home and drives in from the
   street the first time the view opens after it arrived; a tap on it replays
   the drive. The engine only draws a generic vehicle from data: the car's
@@ -720,6 +722,26 @@ adding the mount recreates HA; later file changes arrive live through it.
   moves on every cloud outage and HA restart, which would replay the drive,
   while the helper restores its state and sets `arrived_at` only on a real
   arrival. Without an entity the car stays hidden.
+- **Gates** are `site.gates` in the geometry layer, drawn closed in the fence
+  line; `kind` (`sliding`, `swing1`, `swing2`) is data. The gate the car's
+  path crosses is the drive gate: on an arrival it opens first (1.2 s, the car
+  waiting at the start), the car drives, and the gate closes once the car's
+  tail is past its leaves' sweep. No motor and no HA entity, a view effect
+  only; `parked`, `away` and reduced motion leave it closed. The validator
+  makes the path start far enough out for the whole car to clear the closed
+  gate.
+- **Neighbours and the street** are the optional `house3d:surroundings` layer:
+  the buildings around the lot as flat-topped boxes and the street's road
+  area, from Maa- ja Ruumiamet's ETAK. Together they fix the house's
+  location, so the layer is private like the devices: `ha-dashboard.py` puts
+  it into the card config, the standalone viewer never gets it, and the scan
+  covers it. `scripts/house3d-surroundings.py <model> <ETAK_EESTI_GPKG.gpkg>`
+  writes it (`--write`; a dry run prints the checks) from the whole-Estonia
+  GeoPackage, read offline so the service never learns the area. It stops
+  unless ETAK's house footprint matches the model's walls within 1 m and a
+  street runs along the lot's front. The licence (Maa- ja Ruumiamet open
+  data, 01.01.2025) asks for the licensor, the dataset and its date, which
+  the card shows top left.
 
 ### HVAC integrations
 

@@ -6,7 +6,8 @@ Usage:  house3d-build.py MODEL OUTDIR           build, then scan OUTDIR
 
 The build writes OUTDIR/index.html (viewer.html), house3d.js, vendor/ and model.json from
 the geometry, rooms and showcase layers of MODEL (khe-meta house/house-model.md). The
-private layer never goes in. Publishing the folder is a separate decision.
+private and surroundings layers and the georeference never go in. Publishing the folder
+is a separate decision.
 
 The scan reads the private layer of MODEL and fails on every occurrence of an entity id,
 a device name, a family room name or the car's entity and name
@@ -15,10 +16,13 @@ out as text: its [x, y, z] position, its ground [x, z] pair and a camera's look 
 (integer-only directions such as [0, 1] carry no location and are skipped). The car's
 path points and side outline points count too, as [x, z] and [x, y] pairs, but only
 pairs with a coordinate of two or more decimals: round pairs such as 0.5, 0.5 occur in
-the vendored three.js. Run it over services/home/homeassistant/house3d/ before every
-khe-homelab commit that touches it.
+the vendored three.js. So do the surroundings layer's building and road vertices, by the
+same two-decimal rule, and the georeference's origin_E and origin_N, as written in the
+model and in whole metres; their labels name the layer and an index, never the
+values. Run it over
+services/home/homeassistant/house3d/ before every khe-homelab commit that touches it.
 """
-import json, os, re, shutil, sys
+import json, math, os, re, shutil, sys
 from decimal import Decimal
 from pathlib import Path
 
@@ -56,9 +60,21 @@ def patterns(model):
     car = model.get("car") or {}
     pairs = [(f"car path point {i}", p) for i, p in enumerate(car.get("path", []))]
     pairs += [(f"car outline point {i}", p) for i, p in enumerate((car.get("profile") or {}).get("side", []))]
+    sur = model.get("surroundings") or {}
+    for i, b in enumerate(sur.get("buildings", [])):
+        pairs += [(f"surroundings building {i}", p) for p in b.get("outline", [])]
+    for i, r in enumerate(sur.get("roads", [])):
+        pairs += [(f"surroundings road {i}", p) for ring in [r.get("outline", [])] + r.get("holes", []) for p in ring]
     for label, p in pairs:
         if any(_decimals(v) >= 2 for v in p):
             out.append((label, _seq(p)))
+    geo = model.get("georef") or {}
+    for k in ("origin_E", "origin_N"):
+        v = geo.get(k)
+        if isinstance(v, (int, float)):
+            out.append((f"georef {k}", re.compile(_num(v))))
+            for whole in sorted({round(v), math.floor(v)}):
+                out.append((f"georef {k} in whole metres", re.compile(_num(whole))))
     return out
 
 
@@ -107,6 +123,7 @@ def build(model_path, outdir):
     layers = full_model(model_path)
     public = house3d_model.merge(layers, house3d_model.PUBLIC)
     public.pop("georef", None)  # the viewer does not use it, and a public page should not pin the house
+    assert "surroundings" not in public, "the surroundings layer fixes the location; it never goes public"
     out = Path(outdir)
     out.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(SRC / "viewer.html", out / "index.html")

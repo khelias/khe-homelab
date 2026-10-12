@@ -11,6 +11,9 @@ import { OutputPass } from './vendor/three-0.186.1/examples/jsm/postprocessing/O
 const D2R = Math.PI / 180;
 const ROOF_GAP = 0.06; // walls stop just under the roof so the two outlines do not z-fight
 const BLOOM_MIN_WIDTH = 720;
+const SLIDE_OFFSET = 0.12; // a sliding leaf runs this far to the lot side of the fence line, past its rails
+const GATE_S = 1.2; // the drive gate's opening and closing time
+const CAR_CLEARANCE = 0.3; // the car's tail clears the gate leaves' sweep by this before the gate closes
 
 export const ICONS = {
   light: '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.3 1.1 2.2h5c0-.9.4-1.6 1.1-2.2A6 6 0 0 0 12 3z"/>',
@@ -80,7 +83,11 @@ const COLORS = {
  * mount(element, model, options) -> { setMarkers, setMode, setSelection, setCar, reset, resize, dispose,
  *                                     mode, carState, carScreen }
  *
- * model: geometry + rooms layers (private and showcase are ignored).
+ * model: geometry + rooms layers (private and showcase are ignored). site.gates: [{ a, b, kind,
+ *   height, opens?, slide?, name? }], drawn closed in the fence line; kind 'sliding' (one leaf, set
+ *   to the lot side, sliding past the end named by slide, 'a' or 'b'), 'swing1' (one leaf hinged
+ *   at a) or 'swing2' (two leaves hinged at a and b), a swing gate opening 'in' (to the lot) or
+ *   'out'. With a car, the gate its path crosses is the drive gate, and only it moves.
  * options:
  *   onMarker(id)     a marker was tapped
  *   onRoom(id|null)  a room floor was tapped with the roof off; null for empty space
@@ -97,10 +104,15 @@ const COLORS = {
  *                    wheels { r, x: [rear, front], track }, lights { front, rear } as lists of
  *                    [[x, y, z], [x, y, z]] segments. path is [[x, z], ...]; the car drives a
  *                    smooth curve through it and parks at the last point, facing along the last leg.
+ *   surroundings     { buildings: [{ outline: [[x, z], ...], height }], roads: [{ outline, holes? }] }:
+ *                    the neighbouring buildings as flat-topped boxes and the street as a flat
+ *                    surface, faint, never tapped
  * setCar('away' | 'parked' | 'arrive'): 'arrive' drives the whole path (3-6 s, restarts if it is
- *   already driving; 'parked' under reduced motion), 'parked' stands it at the path's end, 'away'
- *   fades it out. carState is 'away' | 'driving' | 'parked'; carScreen is the car's projected
- *   centre { x, y } in CSS pixels relative to the element, or null when it is away or behind.
+ *   already driving; 'parked' under reduced motion), after the drive gate, if any, has opened
+ *   (GATE_S); the gate closes once the car is through. 'parked' stands it at the path's end, 'away'
+ *   fades it out; both close the gate at once. carState is 'away' | 'driving' | 'parked'; carScreen
+ *   is the car's projected centre { x, y } in CSS pixels relative to the element, or null when it
+ *   is away or behind.
  * markers: { id, pos: [x, y, z], icon, state: 'idle'|'on'|'alert'|'off', value?, label?,
  *            room?, look?: [dx, dz], role?, level?: 0..1, pulse?, warm? }
  *   A marker whose room is a house room shows only with the roof off, unless its state is
@@ -365,6 +377,98 @@ export function mount(element, model, options = {}) {
       siteG.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), fenceE));
     });
   }
+
+  // gates in the fence line, drawn like the fence. Each leaf hangs on a pivot so the drive gate
+  // can open for the car; a post two gates share is drawn once.
+  const gateE = lineMat({ color: C.lineSoft, opacity: 0.5 });
+  const postM = basic({ color: C.wall, opacity: 0.35 });
+  const postE = lineMat({ color: C.lineSoft, opacity: 0.6 });
+  const gatePosts = new Set();
+  const yawOf = (dx, dz) => Math.atan2(-dz, dx); // rotation.y that turns local +x along (dx, dz)
+  function leafGeo(len, h) {
+    const n = Math.max(1, Math.round(len / 0.12)), pts = [];
+    [0.05, h].forEach(y => pts.push(new THREE.Vector3(0, y, 0), new THREE.Vector3(len, y, 0)));
+    for (let i = 0; i <= n; i++) pts.push(new THREE.Vector3((len * i) / n, 0.05, 0), new THREE.Vector3((len * i) / n, h, 0));
+    return new THREE.BufferGeometry().setFromPoints(pts);
+  }
+  function buildGate(g) {
+    const [ax, az] = g.a, [bx, bz] = g.b, w = Math.hypot(bx - ax, bz - az), ux = (bx - ax) / w, uz = (bz - az) / w;
+    // the lot side, as scripts/house3d_model.py gate_inward() takes it
+    let nx = -uz, nz = ux;
+    if ((lotCx - ax) * nx + (lotCz - az) * nz < 0) { nx = -nx; nz = -nz; }
+    [g.a, g.b].forEach(([x, z]) => {
+      const key = `${x.toFixed(2)},${z.toFixed(2)}`;
+      if (gatePosts.has(key)) return;
+      gatePosts.add(key);
+      box(siteG, postM, postE, [x - 0.05, z - 0.05, x + 0.05, z + 0.05], [0, g.height + 0.1]);
+    });
+    const side = g.opens === 'out' ? -1 : 1, leaves = [];
+    const leaf = (x, z, dx, dz, len) => {
+      const pivot = new THREE.Object3D();
+      pivot.position.set(x, 0, z);
+      pivot.rotation.y = yawOf(dx, dz);
+      pivot.add(new THREE.LineSegments(leafGeo(len, g.height), gateE));
+      siteG.add(pivot);
+      const turn = yawOf(side * nx, side * nz) - pivot.rotation.y;
+      leaves.push({ pivot, x, z, closed: pivot.rotation.y, turn: Math.atan2(Math.sin(turn), Math.cos(turn)) });
+    };
+    let sweepIn = 0;
+    if (g.kind === 'sliding') {
+      leaf(ax + nx * SLIDE_OFFSET, az + nz * SLIDE_OFFSET, ux, uz, w);
+      sweepIn = SLIDE_OFFSET;
+    } else if (g.kind === 'swing2') {
+      leaf(ax, az, ux, uz, w / 2);
+      leaf(bx, bz, -ux, -uz, w / 2);
+      sweepIn = side > 0 ? w / 2 : 0;
+    } else {
+      leaf(ax, az, ux, uz, w);
+      sweepIn = side > 0 ? w : 0;
+    }
+    const s = g.slide === 'a' ? -1 : 1;
+    return { g, w, nx, nz, leaves, sweepIn, slide: [s * ux, s * uz] };
+  }
+  const gates = (site.gates || []).map(buildGate);
+  // f from 0 (closed) to 1: a sliding leaf moves f times its width past its slide end, a swing leaf
+  // turns f times a quarter towards its opens side
+  function setGate(gate, f) {
+    gate.leaves.forEach(l => {
+      if (gate.g.kind === 'sliding') l.pivot.position.set(l.x + gate.slide[0] * f * gate.w, 0, l.z + gate.slide[1] * f * gate.w);
+      else l.pivot.rotation.y = l.closed + l.turn * f;
+    });
+  }
+
+  // the surroundings (private, HA only): the neighbours' buildings and the street, fainter than
+  // the lot and outside every tap test
+  const ctxG = new THREE.Group();
+  scene.add(ctxG);
+  if (options.surroundings) {
+    const bldM = basic({ color: C.wall, opacity: 0.05, side: THREE.DoubleSide });
+    const bldE = lineMat({ color: C.lineSoft, opacity: 0.3 });
+    (options.surroundings.buildings || []).forEach(b => {
+      const geo = new THREE.ExtrudeGeometry(new THREE.Shape(b.outline.map(([x, z]) => new THREE.Vector2(x, z))), { depth: b.height, bevelEnabled: false });
+      // shape y becomes world z, the extrusion runs from the ground up
+      geo.rotateX(Math.PI / 2);
+      geo.translate(0, b.height, 0);
+      const m = new THREE.Mesh(geo, bldM);
+      m.add(edges(geo, bldE));
+      ctxG.add(m);
+    });
+    const roadM = basic({ color: C.gridMajor, opacity: 0.25, side: THREE.DoubleSide });
+    const roadE = lineMat({ color: C.lineSoft, opacity: 0.3 });
+    (options.surroundings.roads || []).forEach(r => {
+      const shape = new THREE.Shape(r.outline.map(([x, z]) => new THREE.Vector2(x, z)));
+      (r.holes || []).forEach(h => shape.holes.push(new THREE.Path(h.map(([x, z]) => new THREE.Vector2(x, z)))));
+      const geo = new THREE.ShapeGeometry(shape);
+      geo.rotateX(Math.PI / 2);
+      const m = new THREE.Mesh(geo, roadM);
+      m.position.y = 0.005;
+      ctxG.add(m);
+      [r.outline, ...(r.holes || [])].forEach(ring => {
+        ctxG.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(ring.map(([x, z]) => new THREE.Vector3(x, 0.005, z))), roadE));
+      });
+    });
+  }
+
   const frameM = basic({ color: C.wall, opacity: 0.35 });
   const frameE = lineMat({ color: C.line, opacity: 0.75 });
   (site.outdoor_units || []).forEach(u => box(siteG, frameM, frameE, u.rect, u.y));
@@ -549,6 +653,32 @@ export function mount(element, model, options = {}) {
     car.g.rotation.y = Math.atan2(-tan.z, tan.x);
     const turn = -(u * car.length) / car.r;
     car.wheels.forEach(w => { w.rotation.z = turn; });
+  }
+
+  // the drive gate is the one the car's path crosses, its waypoints taken as straight legs (as
+  // the validator takes them); it opens before the drive-in and closes once the car is through
+  const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const between = (p, q, a, b) => Math.min(p[0], q[0]) <= Math.max(a[0], b[0]) && Math.min(a[0], b[0]) <= Math.max(p[0], q[0])
+    && Math.min(p[1], q[1]) <= Math.max(a[1], b[1]) && Math.min(a[1], b[1]) <= Math.max(p[1], q[1]);
+  const meets = (p, q, a, b) => {
+    const d1 = cross(a, b, p), d2 = cross(a, b, q), d3 = cross(p, q, a), d4 = cross(p, q, b);
+    return (d1 * d2 <= 0) && (d3 * d4 <= 0) && between(p, q, a, b);
+  };
+  const driveGate = car ? gates.find(gt => carOpt.path.some((p, i) => i > 0 && meets(carOpt.path[i - 1], p, gt.g.a, gt.g.b))) || null : null;
+  let gateF = 0, gateRun = null;
+  function gateTo(to) {
+    if (driveGate) gateRun = { from: gateF, to, elapsed: 0 };
+  }
+  function gateNow(f) {
+    gateRun = null;
+    gateF = f;
+    if (driveGate) setGate(driveGate, f);
+  }
+  // the car's tail is past the gate line by the leaves' inward sweep and a margin
+  function carThrough() {
+    const hl = carOpt.profile.length / 2, yaw = car.g.rotation.y;
+    const tx = car.g.position.x - Math.cos(yaw) * hl, tz = car.g.position.z + Math.sin(yaw) * hl;
+    return (tx - driveGate.g.a[0]) * driveGate.nx + (tz - driveGate.g.a[1]) * driveGate.nz >= driveGate.sweepIn + CAR_CLEARANCE;
   }
 
   /* ---------- post-processing, created on first use ---------- */
@@ -789,12 +919,29 @@ export function mount(element, model, options = {}) {
     });
     if (car) {
       if (drive) {
-        // frame time, not the clock: a drive started while the page is hidden waits to be seen
-        drive.elapsed += Math.max(0, dt);
+        // frame time, not the clock: a drive started while the page is hidden waits to be seen.
+        // The car stands at the start while the gate opens, then drives.
+        let step = Math.max(0, dt);
+        if (drive.wait > 0) {
+          const w = Math.min(drive.wait, step);
+          drive.wait -= w;
+          step -= w;
+        }
+        drive.elapsed += step;
         const t = Math.min(1, drive.elapsed / drive.dur);
         placeCar(1 - (1 - t) * (1 - t));
         moving = true;
+        // the close runs on its own clock from here, so the end of the drive does not cut it short
+        if (driveGate && !drive.closing && (t >= 1 || carThrough())) { drive.closing = true; gateTo(0); }
         if (t >= 1) { drive = null; carState = 'parked'; carSettled(); }
+      }
+      if (gateRun) {
+        gateRun.elapsed += Math.max(0, dt);
+        const s = Math.min(1, gateRun.elapsed / GATE_S);
+        gateF = gateRun.from + (gateRun.to - gateRun.from) * s * s * (3 - 2 * s);
+        setGate(driveGate, gateF);
+        moving = true;
+        if (s >= 1) gateRun = null;
       }
       if (!near(carFade.cur, carFade.to)) { carFade.cur += (carFade.to - carFade.cur) * k; moving = true; } else carFade.cur = carFade.to;
       if (carFade.cur !== carFadeShown) {
@@ -852,17 +999,20 @@ export function mount(element, model, options = {}) {
     if (!car) return;
     if (state === 'arrive' && reduceMotion) state = 'parked';
     if (state === 'arrive') {
-      drive = { elapsed: 0, dur: Math.min(6, Math.max(3, car.length / 3.2)) };
+      drive = { elapsed: 0, dur: Math.min(6, Math.max(3, car.length / 3.2)), wait: driveGate ? GATE_S : 0, closing: false };
+      gateTo(1);
       placeCar(0);
       carState = 'driving';
       carFade.to = 1;
     } else if (state === 'parked') {
       drive = null;
+      gateNow(0);
       placeCar(1);
       carState = 'parked';
       carFade.to = 1;
     } else {
       drive = null;
+      gateNow(0);
       carState = 'away';
       carFade.to = 0;
     }

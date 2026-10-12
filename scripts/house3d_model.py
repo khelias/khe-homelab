@@ -2,17 +2,21 @@
 """Read and validate the house 3D model for the HA card and the standalone viewer.
 
 The model lives in the private khe-meta repo (house/house-model.md) as four fenced
-blocks with the info string `json house3d:<layer>`:
+blocks plus the optional surroundings, each with the info string `json house3d:<layer>`:
 
-  geometry  walls, roofs, furniture, site            shareable
-  rooms     rooms with neutral names                 shareable
-  private   family room names, every HA device and   HA only, never published
-            the car (profile and drive-in path)
-  showcase  title, room texts, feature points        standalone viewer only
+  geometry      walls, roofs, furniture, site            shareable
+  rooms         rooms with neutral names                 shareable
+  private       family room names, every HA device and   HA only, never published
+                the car (profile and drive-in path)
+  showcase      title, room texts, feature points        standalone viewer only
+  surroundings  neighbouring buildings and the street,   HA only, never published
+                machine-written by house3d-surroundings.py
 
 Each block is a JSON object; merging layers is a plain union of their keys. The car
 is optional; when present, validation checks its profile and that its path ends with
-the car parked straight inside its room.
+the car parked straight inside its room. With site.gates, the gate the car's path
+crosses is the drive gate, and the path has to start far enough out for the car to
+clear it while it opens.
 
 Usage:  house3d_model.py --check FILE
         house3d_model.py --layers geometry,rooms,showcase FILE   (or --layers all)
@@ -20,9 +24,13 @@ Import: load(path, layers), validate(layers), private_strings(model)
 """
 import argparse, json, math, re, sys
 
-LAYERS = ("geometry", "rooms", "private", "showcase")
+REQUIRED = ("geometry", "rooms", "private", "showcase")
+LAYERS = REQUIRED + ("surroundings",)
 PUBLIC = ("geometry", "rooms", "showcase")
 OUTDOOR = "oues"
+GATE_KINDS = ("sliding", "swing1", "swing2")
+SLIDE_OFFSET = 0.12  # a sliding leaf runs this far to the lot side of the fence line, past its rails
+CAR_CLEARANCE = 0.3  # between the car and a gate leaf's sweep
 BLOCK = re.compile(r"^```json house3d:(\w+)[ \t]*\n(.*?)^```[ \t]*$", re.M | re.S)
 
 
@@ -76,13 +84,59 @@ def _rect(v):
     return _point(v, 4) and v[0] < v[2] and v[1] < v[3]
 
 
+def _area(ring):
+    return abs(sum(x0 * z1 - x1 * z0 for (x0, z0), (x1, z1) in zip(ring, ring[1:] + ring[:1]))) / 2
+
+
+def _cross(o, a, b):
+    return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+
+def _segments_cross(p, q, a, b):
+    """True when segment p-q meets segment a-b (touching counts)."""
+    d1, d2, d3, d4 = _cross(a, b, p), _cross(a, b, q), _cross(p, q, a), _cross(p, q, b)
+    if ((d1 > 0) != (d2 > 0) or d1 == 0 or d2 == 0) and ((d3 > 0) != (d4 > 0) or d3 == 0 or d4 == 0):
+        return min(p[0], q[0]) <= max(a[0], b[0]) and min(a[0], b[0]) <= max(p[0], q[0]) and \
+            min(p[1], q[1]) <= max(a[1], b[1]) and min(a[1], b[1]) <= max(p[1], q[1])
+    return False
+
+
+def gate_sweep(gate):
+    """(out, in): how far a gate's leaves reach to the street side and to the lot side of its line."""
+    w = math.dist(gate["a"], gate["b"])
+    if gate["kind"] == "sliding":
+        return 0.0, SLIDE_OFFSET
+    reach = w if gate["kind"] == "swing1" else w / 2
+    return (reach, 0.0) if gate["opens"] == "out" else (0.0, reach)
+
+
+def gate_inward(gate, lot):
+    """The unit normal of a gate's line that points into the lot (towards the lot's bbox centre,
+    as the engine does)."""
+    (ax, az), (bx, bz) = gate["a"], gate["b"]
+    w = math.dist(gate["a"], gate["b"])
+    nx, nz = -(bz - az) / w, (bx - ax) / w
+    cx = (min(p[0] for p in lot) + max(p[0] for p in lot)) / 2
+    cz = (min(p[1] for p in lot) + max(p[1] for p in lot)) / 2
+    return (nx, nz) if (cx - ax) * nx + (cz - az) * nz >= 0 else (-nx, -nz)
+
+
+def drive_gates(model):
+    """Indexes of the gates in site.gates that the car's path, as straight legs, crosses."""
+    path = (model.get("car") or {}).get("path") or []
+    gates = (model.get("site") or {}).get("gates") or []
+    return [i for i, g in enumerate(gates) if isinstance(g, dict) and _point(g.get("a")) and _point(g.get("b"))
+            and any(_segments_cross(p, q, g["a"], g["b"]) for p, q in zip(path, path[1:]))]
+
+
 def validate(layers):
     """Return a list of problems, empty when the model is usable."""
     problems = []
     bad = problems.append
     for name in LAYERS:
         if name not in layers:
-            bad(f"layer {name} is missing")
+            if name in REQUIRED:
+                bad(f"layer {name} is missing")
         elif not isinstance(layers[name], dict):
             bad(f"layer {name} is not a JSON object")
     if problems:
@@ -180,6 +234,7 @@ def validate(layers):
         rect(f"site.outdoor_units[{i}]", u.get("rect"))
         if not (_point(u.get("y")) and u["y"][0] < u["y"][1]):
             bad(f"site.outdoor_units[{i}]: y must be [y0, y1] with y0 < y1")
+    good_gates = _validate_gates(site.get("gates", []), bad)
     trees = site.get("trees", [])
     if not isinstance(trees, list):
         bad("site.trees: not a list")
@@ -237,8 +292,16 @@ def validate(layers):
         if "look" in d and not _point(d["look"]):
             bad(f"{where}: look must be [dx, dz]")
 
+    car_ok = False
     if "car" in model:
+        n = len(problems)
         _validate_car(model["car"], {r.get("id"): r for r in rooms}, bad)
+        car_ok = len(problems) == n
+    lot = site.get("lot")
+    if car_ok and site.get("gates") and isinstance(lot, list) and len(lot) >= 3 and all(_point(p) for p in lot):
+        _validate_drive(model, good_gates, bad)
+    if "surroundings" in layers:
+        _validate_surroundings(layers["surroundings"], bad)
 
     show = model.get("showcase", {})
     for rid in show.get("rooms", {}):
@@ -250,6 +313,119 @@ def validate(layers):
         if not _point(f.get("pos"), 3):
             bad(f"showcase feature {f.get('id')}: pos must be [x, y, z]")
     return problems
+
+
+def _validate_gates(gates, bad):
+    """Check site.gates; return the indexes of the gates that are whole."""
+    if not isinstance(gates, list):
+        bad("site.gates: not a list")
+        return set()
+    good, placed = set(), []
+    for i, g in enumerate(gates):
+        where = f"site.gates[{i}]"
+        if not isinstance(g, dict):
+            bad(f"{where}: not a JSON object")
+            continue
+        if isinstance(g.get("name"), str) and g["name"]:
+            where = f"gate {g['name']}"
+        elif "name" in g:
+            bad(f"{where}: name is not a non-empty string")
+        n = 0
+        if _point(g.get("a")) and _point(g.get("b")) and math.dist(g["a"], g["b"]) > 0:
+            placed.append(i)
+        else:
+            bad(f"{where}: a and b must be two distinct [x, z] points")
+            n += 1
+        if not (_num(g.get("height")) and g["height"] > 0):
+            bad(f"{where}: height is not a positive number")
+            n += 1
+        kind = g.get("kind")
+        if kind not in GATE_KINDS:
+            bad(f"{where}: kind {kind!r} is not {', '.join(GATE_KINDS[:-1])} or {GATE_KINDS[-1]}")
+            n += 1
+        elif kind == "sliding" and g.get("slide") not in ("a", "b"):
+            bad(f"{where}: a sliding gate needs slide a or b, the end its leaf slides past")
+            n += 1
+        elif kind != "sliding" and g.get("opens") not in ("in", "out"):
+            bad(f"{where}: a swing gate needs opens in or out")
+            n += 1
+        if not n:
+            good.add(i)
+    # two gates on one line may share a post, not a stretch of the line
+    for i in placed:
+        g = gates[i]
+        w = math.dist(g["a"], g["b"])
+        ux, uz = (g["b"][0] - g["a"][0]) / w, (g["b"][1] - g["a"][1]) / w
+        for j in (j for j in placed if j > i):
+            h = gates[j]
+            if any(abs(_cross(g["a"], g["b"], p)) / w > 0.01 for p in (h["a"], h["b"])):
+                continue
+            along = lambda p: (p[0] - g["a"][0]) * ux + (p[1] - g["a"][1]) * uz
+            lo, hi = sorted((along(h["a"]), along(h["b"])))
+            if min(w, hi) - max(0, lo) > 1e-6:
+                bad(f"site.gates[{i}] and site.gates[{j}] overlap along their line")
+    return good
+
+
+def _validate_drive(model, good, bad):
+    """The car must stand wholly outside the drive gate, clear of its leaves, before it opens."""
+    gates = model["site"]["gates"]
+    crossed = drive_gates(model)
+    if len(crossed) > 1:
+        return bad(f"car: path crosses {len(crossed)} gates (site.gates {crossed}); at most one may be the drive gate")
+    if not crossed or crossed[0] not in good:
+        return
+    g = gates[crossed[0]]
+    nx, nz = gate_inward(g, model["site"]["lot"])
+    start = model["car"]["path"][0]
+    before = -((start[0] - g["a"][0]) * nx + (start[1] - g["a"][1]) * nz)
+    out = gate_sweep(g)[0]
+    need = model["car"]["profile"]["length"] / 2 + out + CAR_CLEARANCE
+    if before < need - 1e-6:
+        bad(f"car: path starts {before:.2f} m before the drive gate's line, needs {need:.2f} m "
+            f"(half the car, the leaves' outward sweep {out:.2f} m and {CAR_CLEARANCE} m)")
+
+
+def _ring(where, ring, bad):
+    if not (isinstance(ring, list) and len(ring) >= 3 and all(_point(p) for p in ring)):
+        return bad(f"{where}: needs three or more [x, z] points")
+    if _area(ring) < 1:
+        bad(f"{where}: area {_area(ring):.2f} m2 is under 1 m2")
+
+
+def _validate_surroundings(layer, bad):
+    if set(layer) != {"surroundings"}:
+        return bad(f"layer surroundings: holds {sorted(layer)}, only the key surroundings belongs there")
+    s = layer["surroundings"]
+    if not isinstance(s, dict):
+        return bad("surroundings: not a JSON object")
+    if not (isinstance(s.get("source"), str) and s["source"].strip()):
+        bad("surroundings: source is not a non-empty string")
+    for key in ("buildings", "roads"):
+        if not isinstance(s.get(key), list):
+            bad(f"surroundings: {key} is not a list")
+    for i, b in enumerate(s.get("buildings") if isinstance(s.get("buildings"), list) else []):
+        where = f"surroundings.buildings[{i}]"
+        if not isinstance(b, dict):
+            bad(f"{where}: not a JSON object")
+            continue
+        _ring(f"{where}.outline", b.get("outline"), bad)
+        if not (_num(b.get("height")) and 0 < b["height"] <= 100):
+            bad(f"{where}: height {b.get('height')!r} is not in (0, 100]")
+        if "assumed" in b and not isinstance(b["assumed"], bool):
+            bad(f"{where}: assumed is not true or false")
+    for i, r in enumerate(s.get("roads") if isinstance(s.get("roads"), list) else []):
+        where = f"surroundings.roads[{i}]"
+        if not isinstance(r, dict):
+            bad(f"{where}: not a JSON object")
+            continue
+        _ring(f"{where}.outline", r.get("outline"), bad)
+        holes = r.get("holes", [])
+        if not isinstance(holes, list):
+            bad(f"{where}: holes is not a list")
+            continue
+        for j, h in enumerate(holes):
+            _ring(f"{where}.holes[{j}]", h, bad)
 
 
 def _validate_car(car, rooms, bad):
@@ -343,7 +519,8 @@ def main(argv=None):
         if not problems:
             print(f"{a.file}: ok ({', '.join(sorted(layers))})")
         return 1 if problems else 0
-    names = LAYERS if a.layers == "all" else tuple(a.layers.split(","))
+    # all: the required layers, and the optional ones the file has
+    names = tuple(n for n in LAYERS if n in REQUIRED or n in layers) if a.layers == "all" else tuple(a.layers.split(","))
     unknown = [n for n in names if n not in LAYERS]
     if unknown:
         print(f"unknown layer(s): {', '.join(unknown)}")
