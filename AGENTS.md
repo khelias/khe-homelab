@@ -29,8 +29,9 @@ services/
                    Uptime Kuma, Homepage, autoheal
   media/           Immich
   home/            Home Assistant, Mosquitto, PAI (Paradox alarm)
-    homeassistant/house3d/  3D house view: engine, HA card, standalone viewer,
-                   placement page, vendored three.js (house data stays in khe-meta)
+    homeassistant/house3d/  3D house view: engine (core house3d.js, scene/ layer
+                   modules), HA card, standalone viewer, placement page,
+                   vendored three.js (house data stays in khe-meta)
   apps/            landing, games, pages, trips
   observability/   Loki, Grafana, Alloy, Alertmanager (one stack)
 infrastructure/    Proxmox, network, Cloudflare, Tailscale docs

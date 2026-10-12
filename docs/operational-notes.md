@@ -668,8 +668,9 @@ package, and the dashboard tile shows the label with a `more-info` tap action
 on the select (`"entity": <select>`), so the picker is one tap away as before.
 
 **The 3D house view (`house3d`) is a read-only mount, not part of `config/www`.**
-The code lives in `services/home/homeassistant/house3d/` (engine `house3d.js`,
-card `house3d-card.js`, standalone `viewer.html`, vendored three.js) and the
+The code lives in `services/home/homeassistant/house3d/` (engine `house3d.js`
+and its `scene/` modules, card `house3d-card.js`, standalone `viewer.html`,
+vendored three.js) and the
 compose file mounts it at `/config/www/house3d:ro`, so HA serves it as
 `/local/house3d/`. It is kept out of `config/www` because `config/*` is
 gitignored and the container has left root-owned directories there before
@@ -678,8 +679,25 @@ adding the mount recreates HA; later file changes arrive live through it.
 - **Cache:** `/local` and the phone app keep old files. Every change to the
   card or the engine bumps `HOUSE3D_VERSION` in `house3d-card.js` and the same
   `?v=` on the Lovelace resource (`scripts/ha-ws.py` with
-  `lovelace/resources/update`). The vendor directory is versioned
-  (`vendor/three-<version>/`), so its URLs change with it.
+  `lovelace/resources/update`). The engine loads its `scene/` modules with
+  its own URL's query, so the card's `?v=` covers them too. The vendor
+  directory is versioned (`vendor/three-<version>/`), so its URLs change with
+  it.
+- **Engine layout:** `house3d.js` is the core (renderer, camera and framing,
+  the marker overlay, roof mode, taps, the frame loop, the layer registry) and
+  builds no geometry. `scene/kit.js` makes each mount's colours, materials and
+  geometry helpers, and `scene/layers/` holds one module per scene layer
+  (ground, site, trees, gates, surroundings, pergola, building, car, camera
+  view fans). A new scene layer is a module there plus its line in the
+  engine's `LAYERS` list; the contract (`build(ctx)` and its hooks) is in the
+  engine's header. Modules under `scene/` load nothing themselves, no `import`
+  of any kind and no `export ... from`: they get three.js and the rest
+  through `ctx`, because a module loaded by a static import would come
+  without `?v=` and could stay stale in the cache. Their module scope holds
+  constants only, since a module runs once per URL and a second card or a
+  remount would share its state. No check enforces this yet: this repo's
+  `check:` and CI run `bash -n` only, and the per-file module check and the
+  import grep arrive with the move to its own Home Assistant repo.
 - **three.js updates** are manual, Renovate does not see the vendored copy:
   `scripts/house3d-vendor.sh <version>`, point the engine's imports at the new
   directory, bump the version, remove the old directory.

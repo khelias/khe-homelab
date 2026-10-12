@@ -4,8 +4,8 @@
 Usage:  house3d-build.py MODEL OUTDIR           build, then scan OUTDIR
         house3d-build.py --scan MODEL PATH...   scan files or trees, exit 1 on any hit
 
-The build writes OUTDIR/index.html (viewer.html), house3d.js, vendor/ and model.json from
-the geometry, rooms and showcase layers of MODEL (khe-meta house/house-model.md). The
+The build writes OUTDIR/index.html (viewer.html), house3d.js, scene/, vendor/ and model.json
+from the geometry, rooms and showcase layers of MODEL (khe-meta house/house-model.md). The
 private and surroundings layers and the georeference never go in. Publishing the folder
 is a separate decision.
 
@@ -128,6 +128,7 @@ def build(model_path, outdir):
     out.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(SRC / "viewer.html", out / "index.html")
     shutil.copyfile(SRC / "house3d.js", out / "house3d.js")
+    shutil.copytree(SRC / "scene", out / "scene", dirs_exist_ok=True)
     shutil.copytree(SRC / "vendor", out / "vendor", dirs_exist_ok=True)
     (out / "model.json").write_text(json.dumps(public, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     print(f"built {out}")

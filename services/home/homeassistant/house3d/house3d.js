@@ -1,6 +1,39 @@
 // House 3D view engine: builds the scene from a house3d model (see scripts/house3d_model.py)
 // and draws generic markers over it. The HA card and the standalone viewer are thin shells
 // around mount(); neither the engine nor this directory carries any house data.
+//
+// This file is the core: renderer and bloom, camera, controls and framing, the marker and label
+// overlay, roof mode, taps and hover, the frame loop, resize and dispose, and the layer
+// registry. It builds no scene geometry. scene/kit.js makes each mount's colours, materials and
+// geometry helpers; scene/layers/ holds one module per scene layer, listed in LAYERS below in
+// build order. A new scene layer is a module there and its line in LAYERS.
+//
+// Modules under scene/ load nothing themselves: no import of any kind and no re-export. They get
+// THREE, the kit and everything else through ctx. The core loads them with its own URL's query,
+// so house3d.js?v=N loads scene/kit.js?v=N and every layer at that version. HA's /local and the
+// phone app cache hard and only the URL the card builds carries ?v=, so a module loaded without
+// it could stay stale. Module scope under scene/ holds constants only: a module runs once per
+// URL, so mutable state there would be shared by a remount or a second card.
+//
+// Layer contract: a layer module's default export is build(ctx), which returns null when the
+// model has nothing for it, otherwise:
+//   id, group       the layer's name and its objects
+//   lift?           a group that rises and fades with the roof mode (the building's upper part)
+//   toggle?         true for a switchable layer; listed()? says whether view.layers shows it now
+//   update(dt, k)?  per frame, dt in seconds and k the easing step; true while still animating
+//   markers(list)?  every setMarkers list
+//   hit(ray)?       the tap and hover test on the raycaster: null, { car: true } or
+//                   { room, target }. Layers are tried in reverse build order, so the car wins
+//                   over the floors, and a layer that is off is skipped
+//   setOn(on)?      the layer was switched, also before the first frame (no invalidate there)
+//   api?            what the core re-exports (setCar, carState, carScreen) or another layer
+//                   calls through ctx.layer(id)
+//   dispose()?      frees what the kit's list and the scene traversal do not
+// ctx: THREE, kit, C (kit.C), model, options, frame { lotBox, wallBox, ext, E, lotCx, lotCz },
+//   roof { fns, flat, under, topFn, gap }, ceiling, reduceMotion, state (read-only: mode,
+//   roofFade, hovered, selection), layer(id), screen(x, y, z) -> { x, y } | null, invalidate().
+// The core puts each layer's group and lift under a wrapper group, and switching a layer sets
+// only the wrapper's visible. Nothing leaves the scene, so dispose() still reaches every object.
 import * as THREE from './vendor/three-0.186.1/build/three.module.js';
 import { OrbitControls } from './vendor/three-0.186.1/examples/jsm/controls/OrbitControls.js';
 import { EffectComposer } from './vendor/three-0.186.1/examples/jsm/postprocessing/EffectComposer.js';
@@ -8,12 +41,13 @@ import { RenderPass } from './vendor/three-0.186.1/examples/jsm/postprocessing/R
 import { UnrealBloomPass } from './vendor/three-0.186.1/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from './vendor/three-0.186.1/examples/jsm/postprocessing/OutputPass.js';
 
+const LAYERS = ['ground', 'site', 'trees', 'gates', 'surroundings', 'pergola', 'building', 'car', 'fans'];
+const QUERY = new URL(import.meta.url).search;
+const [{ createKit }, ...BUILDERS] = await Promise.all(['kit', ...LAYERS.map(id => `layers/${id}`)].map(p => import(`./scene/${p}.js${QUERY}`)));
+
 const D2R = Math.PI / 180;
 const ROOF_GAP = 0.06; // walls stop just under the roof so the two outlines do not z-fight
 const BLOOM_MIN_WIDTH = 720;
-const SLIDE_OFFSET = 0.12; // a sliding leaf runs this far to the lot side of the fence line, past its rails
-const GATE_S = 1.2; // the drive gate's opening and closing time
-const CAR_CLEARANCE = 0.3; // the car's tail clears the gate leaves' sweep by this before the gate closes
 
 export const ICONS = {
   light: '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.3 1.1 2.2h5c0-.9.4-1.6 1.1-2.2A6 6 0 0 0 12 3z"/>',
@@ -72,16 +106,9 @@ const STYLE = `
   color: var(--h3d-muted); text-align: center; font: 14px/1.45 system-ui, sans-serif; }
 `;
 
-const COLORS = {
-  bg: '#060c1b', line: '#6fe3ff', lineSoft: '#5d86d8', roof: '#9aa6ff', roofFill: '#252f6e', wall: '#1b2c5e',
-  glass: '#5fd8ff', floor: '#0e1a3c', warm: '#6b4a1c', hover: '#24407f', sel: '#2b5aa0', amber: '#ffc56e',
-  teal: '#47d9c4', hedge: '#123b45', furniture: '#7f9bff', gridMajor: '#2a4685', gridMinor: '#172a55',
-  ink: '#e4ecff', alert: '#ff8b7b'
-};
-
 /**
- * mount(element, model, options) -> { setMarkers, setMode, setSelection, setCar, reset, resize, dispose,
- *                                     mode, carState, carScreen }
+ * mount(element, model, options) -> { setMarkers, setMode, setSelection, setCar, setLayer, reset, resize,
+ *                                     dispose, mode, carState, carScreen, layers }
  *
  * model: geometry + rooms layers (private and showcase are ignored). site.decks and site.paving:
  *   items that are rects [x0, z0, x1, z1] or outlines [[x, z], ...]. site.gates: [{ a, b, kind,
@@ -92,13 +119,12 @@ const COLORS = {
  * options:
  *   onMarker(id)     a marker was tapped
  *   onRoom(id|null)  a room floor was tapped with the roof off; null for empty space
- *   onMode(mode)     the mode changed ('roof' | 'open'), also after the reveal
+ *   onMode(mode)     the mode changed ('roof' | 'open')
  *   onCar()          the car's body was tapped (either mode, while it shows); no room tap follows
  *   bloom            default true; always off below 720 px width
  *   mode             the starting mode, 'roof' (default) or 'open'
- *   reveal           start with the roof on and lift it after load. With a car, the lift waits
- *                    for the first setCar (2.5 s at most) and, after an 'arrive', for it to park
  *   labels(roomId)   room label text; the room's own name when it returns nothing
+ *   layers           { id: bool }: the starting state of the switchable layers, default on
  *   car              { profile, path }: a vehicle drawn from profile, built hidden. profile is in
  *                    metres in the car's frame (origin on the ground at its centre, +x forward,
  *                    y up): length, width, height, side and glass outlines [[x, y], ...],
@@ -110,10 +136,12 @@ const COLORS = {
  *                    surface, faint, never tapped
  * setCar('away' | 'parked' | 'arrive'): 'arrive' drives the whole path (3-6 s, restarts if it is
  *   already driving; 'parked' under reduced motion), after the drive gate, if any, has opened
- *   (GATE_S); the gate closes once the car is through. 'parked' stands it at the path's end, 'away'
+ *   (1.2 s); the gate closes once the car is through. 'parked' stands it at the path's end, 'away'
  *   fades it out; both close the gate at once. carState is 'away' | 'driving' | 'parked'; carScreen
  *   is the car's projected centre { x, y } in CSS pixels relative to the element, or null when it
- *   is away or behind.
+ *   is away or behind. Without a car, setCar does nothing, carState is 'away', carScreen null.
+ * layers: [{ id, on }] for the switchable layers present and listed now; setLayer(id, on) switches
+ *   one and ignores an unknown id.
  * markers: { id, pos: [x, y, z], icon, state: 'idle'|'on'|'alert'|'off', value?, label?,
  *            room?, look?: [dx, dz], role?, level?: 0..1, pulse?, warm? }
  *   A marker whose room is a house room shows only with the roof off, unless its state is
@@ -143,21 +171,20 @@ export function mount(element, model, options = {}) {
     msg.textContent = 'See seade ei toeta WebGL-i, mistõttu 3D-vaadet ei saa näidata.';
     stage.appendChild(msg);
     const noop = () => {};
-    return { failed: true, setMarkers: noop, setMode: noop, setSelection: noop, setCar: noop, reset: noop, resize: noop,
-      dispose: () => root.remove(), mode: 'roof', carState: 'away', carScreen: null };
+    return { failed: true, setMarkers: noop, setMode: noop, setSelection: noop, setCar: noop, setLayer: noop, reset: noop, resize: noop,
+      dispose: () => root.remove(), mode: 'roof', carState: 'away', carScreen: null, layers: [] };
   }
   const PR = Math.min(window.devicePixelRatio || 1, 2);
   renderer.setPixelRatio(PR);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   stage.appendChild(renderer.domElement);
 
-  const C = Object.fromEntries(Object.entries(COLORS).map(([k, v]) => [k, new THREE.Color(v)]));
+  const kit = createKit(THREE), C = kit.C;
   const scene = new THREE.Scene();
   scene.background = C.bg;
   scene.fog = new THREE.Fog(C.bg, 34, 78);
 
   /* ---------- model ---------- */
-  const ceiling = model.ceiling;
   const rooms = model.rooms || [];
   const roomById = Object.fromEntries(rooms.map(r => [r.id, r]));
   const site = model.site || {};
@@ -198,524 +225,55 @@ export function mount(element, model, options = {}) {
   controls.maxPolarAngle = 1.38;
   controls.screenSpacePanning = false;
 
-  /* ---------- materials ---------- */
-  const disposables = [];
-  const keep = x => (disposables.push(x), x);
-  const basic = o => keep(new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, ...o }));
-  const lineMat = o => keep(new THREE.LineBasicMaterial({ transparent: true, ...o }));
-  function mats(tint) {
-    return {
-      wall: basic({ color: C.wall, opacity: 0.13, side: THREE.DoubleSide }),
-      edge: lineMat({ color: tint || C.line, opacity: 0.75 }),
-      glass: basic({ color: C.glass, opacity: 0.06, side: THREE.DoubleSide }),
-      glassEdge: lineMat({ color: C.glass, opacity: 0.6 }),
-      furn: basic({ color: C.wall, opacity: 0.2 }),
-      furnEdge: lineMat({ color: C.furniture, opacity: 0.45 })
-    };
-  }
-  const edges = (geo, mat, thresh) => new THREE.LineSegments(new THREE.EdgesGeometry(geo, thresh || 15), mat);
-
-  function buildWall(group, w, m) {
-    const dx = w.b[0] - w.a[0], dz = w.b[1] - w.a[1];
-    const L = Math.hypot(dx, dz), ux = dx / L, uz = dz / L;
-    const top = u => w.top(w.a[0] + ux * u, w.a[1] + uz * u);
-    const bot = u => (w.bot ? w.bot(w.a[0] + ux * u, w.a[1] + uz * u) : 0);
-    const shape = new THREE.Shape();
-    const ops = w.openings || [];
-    const doors = ops.filter(o => o.kind !== 'window').sort((p, q) => p.c - q.c);
-    const steps = Math.max(1, Math.ceil(L / 0.25));
-    shape.moveTo(0, bot(0));
-    if (w.bot) for (let i = 1; i < steps; i++) shape.lineTo((L * i) / steps, bot((L * i) / steps));
-    doors.forEach(d => {
-      shape.lineTo(d.c - d.w / 2, 0);
-      shape.lineTo(d.c - d.w / 2, d.h);
-      shape.lineTo(d.c + d.w / 2, d.h);
-      shape.lineTo(d.c + d.w / 2, 0);
-    });
-    shape.lineTo(L, bot(L));
-    for (let i = steps; i >= 0; i--) {
-      const u = (L * i) / steps;
-      shape.lineTo(u, top(u));
-    }
-    ops.filter(o => o.kind === 'window').forEach(o => {
-      const h = new THREE.Path();
-      h.moveTo(o.c - o.w / 2, o.sill);
-      h.lineTo(o.c + o.w / 2, o.sill);
-      h.lineTo(o.c + o.w / 2, o.sill + o.h);
-      h.lineTo(o.c - o.w / 2, o.sill + o.h);
-      h.lineTo(o.c - o.w / 2, o.sill);
-      shape.holes.push(h);
-    });
-    const geo = new THREE.ExtrudeGeometry(shape, { depth: w.t, bevelEnabled: false });
-    geo.translate(0, 0, -w.t / 2);
-    const g = new THREE.Group();
-    g.position.set(w.a[0], 0, w.a[1]);
-    g.rotation.y = Math.atan2(-uz, ux);
-    const mesh = new THREE.Mesh(geo, m.wall);
-    mesh.renderOrder = 2;
-    g.add(mesh, edges(geo, m.edge, 20));
-    ops.filter(o => o.kind !== 'door').forEach(o => {
-      const sill = o.sill || 0;
-      const pg = new THREE.PlaneGeometry(o.w, o.h);
-      const p = new THREE.Mesh(pg, m.glass);
-      p.position.set(o.c, sill + o.h / 2, 0);
-      p.renderOrder = 3;
-      const pe = edges(pg, m.glassEdge);
-      pe.position.copy(p.position);
-      g.add(p, pe);
-      if (o.kind === 'glassdoor') {
-        const mull = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(o.c, 0, 0), new THREE.Vector3(o.c, o.h, 0)]);
-        g.add(new THREE.LineSegments(mull, m.glassEdge));
-      }
-    });
-    group.add(g);
-  }
-
-  function box(group, mat, emat, [x0, z0, x1, z1], [y0, y1]) {
-    const geo = new THREE.BoxGeometry(x1 - x0, y1 - y0, z1 - z0);
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.set((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
-    mesh.add(edges(geo, emat));
-    group.add(mesh);
-    return mesh;
-  }
-
-  // an upright prism on an outline [[x, z], ...], from y0 to y1
-  function prism(pts, y0, y1) {
-    const geo = new THREE.ExtrudeGeometry(new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x, z))), { depth: y1 - y0, bevelEnabled: false });
-    // shape y becomes world z, the extrusion runs down from y1
-    geo.rotateX(Math.PI / 2);
-    geo.translate(0, y1, 0);
-    return geo;
-  }
-
-  /* ---------- build ---------- */
-  const siteG = new THREE.Group();
-  const house = new THREE.Group();
-  const roof = new THREE.Group();
-  const fans = new THREE.Group();
-  scene.add(siteG, house, roof, fans);
-  const mH = mats(), mR = mats(C.roof);
-  mR.wall.opacity = 0.28;
-  mR.wall.color = C.roofFill;
-
-  function canvasTexture(size, stops) {
-    const cv = document.createElement('canvas');
-    cv.width = cv.height = size;
-    const x = cv.getContext('2d');
-    const gr = x.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
-    stops.forEach(([at, c]) => gr.addColorStop(at, c));
-    x.fillStyle = gr;
-    x.fillRect(0, 0, size, size);
-    const tex = keep(new THREE.CanvasTexture(cv));
-    tex.colorSpace = THREE.SRGBColorSpace;
-    return tex;
-  }
-
-  {
-    const tex = canvasTexture(256, [[0, 'rgba(32,58,120,0.6)'], [0.45, 'rgba(16,30,68,0.4)'], [1, 'rgba(6,12,27,0)']]);
-    const pl = new THREE.Mesh(new THREE.PlaneGeometry(ext * 2.7, ext * 2.7), basic({ map: tex }));
-    pl.rotation.x = -Math.PI / 2;
-    pl.position.set(lotCx, -0.02, lotCz);
-    siteG.add(pl);
-    const n = Math.round(ext * 2);
-    const grid = new THREE.GridHelper(n, n, C.gridMajor, C.gridMinor);
-    grid.material.transparent = true;
-    grid.material.opacity = 0.45;
-    grid.position.set(Math.round(lotCx), -0.01, Math.round(lotCz));
-    siteG.add(grid);
-  }
-
-  {
-    const deckM = basic({ color: C.teal, opacity: 0.04 });
-    const deckE = lineMat({ color: C.teal, opacity: 0.45 });
-    const plankM = lineMat({ color: C.teal, opacity: 0.09 });
-    const pathM = basic({ color: C.lineSoft, opacity: 0.05 });
-    const pathE = lineMat({ color: C.lineSoft, opacity: 0.45 });
-    // a deck or paving item is a rect [x0, z0, x1, z1] or an outline [[x, z], ...]
-    const isOutline = v => Array.isArray(v[0]);
-    function slab(v, mat, emat, y) {
-      if (!isOutline(v)) return box(siteG, mat, emat, v, y);
-      const geo = prism(v, y[0], y[1]);
-      const m = new THREE.Mesh(geo, mat);
-      m.add(edges(geo, emat));
-      siteG.add(m);
-      return m;
-    }
-    // an outline's planks run where each line z crosses it: an edge counts when its ends lie on
-    // either side of z (one end exactly on z counts as below), so level edges never count and the
-    // crossings pair up
-    function outlinePlanks(v, pts) {
-      const zs = v.map(p => p[1]), zMin = Math.min(...zs), zMax = Math.max(...zs);
-      for (let i = 1; zMin + 0.4 * i < zMax; i++) {
-        const z = zMin + 0.4 * i, xs = [];
-        v.forEach(([xa, za], k) => {
-          const [xb, zb] = v[(k + 1) % v.length];
-          if ((za > z) !== (zb > z)) xs.push(xa + ((z - za) * (xb - xa)) / (zb - za));
-        });
-        xs.sort((p, q) => p - q);
-        for (let k = 0; k + 1 < xs.length; k += 2) pts.push(new THREE.Vector3(xs[k], 0.125, z), new THREE.Vector3(xs[k + 1], 0.125, z));
-      }
-    }
-    (site.decks || []).forEach(v => {
-      slab(v, deckM, deckE, [0, 0.12]);
-      const pts = [];
-      if (isOutline(v)) outlinePlanks(v, pts);
-      else {
-        const [x0, z0, x1, z1] = v;
-        for (let z = z0 + 0.4; z < z1; z += 0.4) pts.push(new THREE.Vector3(x0, 0.125, z), new THREE.Vector3(x1, 0.125, z));
-      }
-      siteG.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), plankM));
-    });
-    (site.paving || []).forEach(v => slab(v, pathM, pathE, [0, 0.02]));
-    if (site.porch) box(siteG, pathM, pathE, site.porch, [0, 0.03]);
-    if (site.sandpit) box(siteG, pathM, pathE, site.sandpit.rect, [0, site.sandpit.height]);
-    if (site.swing) {
-      const [x0, z0, x1, z1] = site.swing.rect, h = site.swing.height;
-      [z0, z1].forEach(z => box(siteG, pathM, pathE, [x0, z - 0.05, x1, z + 0.05], [0, h]));
-      box(siteG, pathM, pathE, [x0, z0, x1, z1], [h - 0.1, h]);
-    }
-    if (site.lot) {
-      const lotLine = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(site.lot.map(([x, z]) => new THREE.Vector3(x, 0.03, z))),
-        keep(new THREE.LineDashedMaterial({ color: C.roof, transparent: true, opacity: 0.6, dashSize: 0.6, gapSize: 0.4 })));
-      lotLine.computeLineDistances();
-      siteG.add(lotLine);
-    }
-    const hedgeM = basic({ color: C.hedge, opacity: 0.2 });
-    const hedgeE = lineMat({ color: C.teal, opacity: 0.28 });
-    (site.hedges || []).forEach(([[xa, za], [xb, zb]]) => {
-      const geo = new THREE.BoxGeometry(Math.hypot(xb - xa, zb - za), 1.6, 0.8);
-      const m = new THREE.Mesh(geo, hedgeM);
-      m.position.set((xa + xb) / 2, 0.8, (za + zb) / 2);
-      m.rotation.y = -Math.atan2(zb - za, xb - xa);
-      m.add(edges(geo, hedgeE));
-      siteG.add(m);
-    });
-    const trunkE = lineMat({ color: C.lineSoft, opacity: 0.5 });
-    const TRUNK = { apple: 0.3, birch: 0.4, maple: 0.3 };
-    // the size goes on scale, the outline comes from the unscaled shape: its 18-22.5 degree edges
-    // all clear EdgesGeometry's 15 degree cut, a geometry squashed to a birch's shape loses some
-    const crownGeo = new THREE.IcosahedronGeometry(1, 1), crownEdges = new THREE.EdgesGeometry(crownGeo, 15);
-    (site.trees || []).forEach(({ kind, pos: [x, z], height, crown }) => {
-      const top = height * (TRUNK[kind] || 0.3), w = Math.min(Math.max(height * 0.025, 0.1), 0.35);
-      box(siteG, hedgeM, trunkE, [x - w / 2, z - w / 2, x + w / 2, z + w / 2], [0, top]);
-      const m = new THREE.Mesh(crownGeo, hedgeM);
-      m.position.set(x, (top + height) / 2, z);
-      m.scale.set(crown / 2, (height - top) / 2, crown / 2);
-      m.add(new THREE.LineSegments(crownEdges, hedgeE));
-      siteG.add(m);
-    });
-    const fenceE = lineMat({ color: C.lineSoft, opacity: 0.38 });
-    (site.fences || []).forEach(([[xa, za], [xb, zb]]) => {
-      const n = Math.max(1, Math.round(Math.hypot(xb - xa, zb - za) / 2.5)), pts = [];
-      [0.05, 1.2].forEach(y => pts.push(new THREE.Vector3(xa, y, za), new THREE.Vector3(xb, y, zb)));
-      for (let i = 0; i <= n; i++) {
-        const x = xa + ((xb - xa) * i) / n, z = za + ((zb - za) * i) / n;
-        pts.push(new THREE.Vector3(x, 0, z), new THREE.Vector3(x, 1.2, z));
-      }
-      siteG.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), fenceE));
-    });
-  }
-
-  // gates in the fence line, drawn like the fence. Each leaf hangs on a pivot so the drive gate
-  // can open for the car; a post two gates share is drawn once.
-  const gateE = lineMat({ color: C.lineSoft, opacity: 0.5 });
-  const postM = basic({ color: C.wall, opacity: 0.35 });
-  const postE = lineMat({ color: C.lineSoft, opacity: 0.6 });
-  const gatePosts = new Set();
-  const yawOf = (dx, dz) => Math.atan2(-dz, dx); // rotation.y that turns local +x along (dx, dz)
-  function leafGeo(len, h) {
-    const n = Math.max(1, Math.round(len / 0.12)), pts = [];
-    [0.05, h].forEach(y => pts.push(new THREE.Vector3(0, y, 0), new THREE.Vector3(len, y, 0)));
-    for (let i = 0; i <= n; i++) pts.push(new THREE.Vector3((len * i) / n, 0.05, 0), new THREE.Vector3((len * i) / n, h, 0));
-    return new THREE.BufferGeometry().setFromPoints(pts);
-  }
-  function buildGate(g) {
-    const [ax, az] = g.a, [bx, bz] = g.b, w = Math.hypot(bx - ax, bz - az), ux = (bx - ax) / w, uz = (bz - az) / w;
-    // the lot side, as scripts/house3d_model.py gate_inward() takes it
-    let nx = -uz, nz = ux;
-    if ((lotCx - ax) * nx + (lotCz - az) * nz < 0) { nx = -nx; nz = -nz; }
-    [g.a, g.b].forEach(([x, z]) => {
-      const key = `${x.toFixed(2)},${z.toFixed(2)}`;
-      if (gatePosts.has(key)) return;
-      gatePosts.add(key);
-      box(siteG, postM, postE, [x - 0.05, z - 0.05, x + 0.05, z + 0.05], [0, g.height + 0.1]);
-    });
-    const side = g.opens === 'out' ? -1 : 1, leaves = [];
-    const leaf = (x, z, dx, dz, len) => {
-      const pivot = new THREE.Object3D();
-      pivot.position.set(x, 0, z);
-      pivot.rotation.y = yawOf(dx, dz);
-      pivot.add(new THREE.LineSegments(leafGeo(len, g.height), gateE));
-      siteG.add(pivot);
-      const turn = yawOf(side * nx, side * nz) - pivot.rotation.y;
-      leaves.push({ pivot, x, z, closed: pivot.rotation.y, turn: Math.atan2(Math.sin(turn), Math.cos(turn)) });
-    };
-    let sweepIn = 0;
-    if (g.kind === 'sliding') {
-      leaf(ax + nx * SLIDE_OFFSET, az + nz * SLIDE_OFFSET, ux, uz, w);
-      sweepIn = SLIDE_OFFSET;
-    } else if (g.kind === 'swing2') {
-      leaf(ax, az, ux, uz, w / 2);
-      leaf(bx, bz, -ux, -uz, w / 2);
-      sweepIn = side > 0 ? w / 2 : 0;
-    } else {
-      leaf(ax, az, ux, uz, w);
-      sweepIn = side > 0 ? w : 0;
-    }
-    const s = g.slide === 'a' ? -1 : 1;
-    return { g, w, nx, nz, leaves, sweepIn, slide: [s * ux, s * uz] };
-  }
-  const gates = (site.gates || []).map(buildGate);
-  // f from 0 (closed) to 1: a sliding leaf moves f times its width past its slide end, a swing leaf
-  // turns f times a quarter towards its opens side
-  function setGate(gate, f) {
-    gate.leaves.forEach(l => {
-      if (gate.g.kind === 'sliding') l.pivot.position.set(l.x + gate.slide[0] * f * gate.w, 0, l.z + gate.slide[1] * f * gate.w);
-      else l.pivot.rotation.y = l.closed + l.turn * f;
-    });
-  }
-
-  // the surroundings (private, HA only): the neighbours' buildings and the street, fainter than
-  // the lot and outside every tap test
-  const ctxG = new THREE.Group();
-  scene.add(ctxG);
-  if (options.surroundings) {
-    const bldM = basic({ color: C.wall, opacity: 0.05, side: THREE.DoubleSide });
-    const bldE = lineMat({ color: C.lineSoft, opacity: 0.3 });
-    (options.surroundings.buildings || []).forEach(b => {
-      const geo = prism(b.outline, 0, b.height);
-      const m = new THREE.Mesh(geo, bldM);
-      m.add(edges(geo, bldE));
-      ctxG.add(m);
-    });
-    const roadM = basic({ color: C.gridMajor, opacity: 0.25, side: THREE.DoubleSide });
-    const roadE = lineMat({ color: C.lineSoft, opacity: 0.3 });
-    (options.surroundings.roads || []).forEach(r => {
-      const shape = new THREE.Shape(r.outline.map(([x, z]) => new THREE.Vector2(x, z)));
-      (r.holes || []).forEach(h => shape.holes.push(new THREE.Path(h.map(([x, z]) => new THREE.Vector2(x, z)))));
-      const geo = new THREE.ShapeGeometry(shape);
-      geo.rotateX(Math.PI / 2);
-      const m = new THREE.Mesh(geo, roadM);
-      m.position.y = 0.005;
-      ctxG.add(m);
-      [r.outline, ...(r.holes || [])].forEach(ring => {
-        ctxG.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(ring.map(([x, z]) => new THREE.Vector3(x, 0.005, z))), roadE));
-      });
-    });
-  }
-
-  const frameM = basic({ color: C.wall, opacity: 0.35 });
-  const frameE = lineMat({ color: C.line, opacity: 0.75 });
-  (site.outdoor_units || []).forEach(u => box(siteG, frameM, frameE, u.rect, u.y));
-  if (site.garage_roof) box(roof, mR.wall, mR.edge, site.garage_roof.rect, site.garage_roof.y);
-
-  // pergola: wall beam on the rect's north edge, posts on the south edge. The louvres keep a
-  // fixed angle because the pergola reports no position.
-  const ledMat = lineMat({ color: C.amber, opacity: 0 });
-  const glowSprites = [];
-  if (site.pergola) {
-    const [x0, z0, x1, z1] = site.pergola.rect, Hp = site.pergola.height, n = site.pergola.modules || 1;
-    const W = (x1 - x0) / n, D = z1 - z0;
-    const slatM = basic({ color: C.wall, opacity: 0.3, side: THREE.DoubleSide });
-    const slatE = lineMat({ color: C.lineSoft, opacity: 0.6 });
-    const posts = Array.from({ length: n + 1 }, (_, i) => x0 + i * W);
-    posts.forEach(x => box(siteG, frameM, frameE, [x - 0.08, z1 - 0.16, x + 0.08, z1], [0, Hp]));
-    box(siteG, frameM, frameE, [x0 - 0.08, z1 - 0.16, x1 + 0.08, z1], [Hp - 0.22, Hp]);
-    box(siteG, frameM, frameE, [x0 - 0.08, z0, x1 + 0.08, z0 + 0.12], [Hp - 0.22, Hp]);
-    posts.forEach(x => box(siteG, frameM, frameE, [x - 0.08, z0, x + 0.08, z1], [Hp - 0.22, Hp]));
-    const slats = Math.floor((D - 0.35) / 0.2) + 1;
-    const glowTex = canvasTexture(128, [[0, 'rgba(255,214,150,1)'], [0.25, 'rgba(255,190,110,0.5)'], [1, 'rgba(255,170,80,0)']]);
-    for (let u = 0; u < n; u++) {
-      for (let i = 0; i < slats; i++) {
-        const geo = new THREE.BoxGeometry(W - 0.18, 0.025, 0.19);
-        const s = new THREE.Mesh(geo, slatM);
-        s.position.set(x0 + u * W + W / 2, Hp - 0.1, z0 + 0.25 + i * 0.2);
-        s.rotation.x = 0.6;
-        s.add(edges(geo, slatE));
-        siteG.add(s);
-      }
-      const lx0 = x0 + u * W + 0.12, lx1 = x0 + (u + 1) * W - 0.12, y = Hp - 0.23, a = z0 + 0.18, b = z1 - 0.2;
-      const pts = [[lx0, a], [lx1, a], [lx1, a], [lx1, b], [lx1, b], [lx0, b], [lx0, b], [lx0, a]].map(([x, z]) => new THREE.Vector3(x, y, z));
-      siteG.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), ledMat));
-      const sp = new THREE.Sprite(keep(new THREE.SpriteMaterial({ map: glowTex, color: C.amber, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending })));
-      sp.position.set(x0 + (u + 0.5) * W, Hp - 0.25, (z0 + z1) / 2);
-      sp.scale.set(3.6, 3.6, 1);
-      siteG.add(sp);
-      glowSprites.push(sp);
-    }
-  }
-
-  // walls that run up to a roof are cut at the ceiling: the part above lifts off with the roof
-  (model.walls || []).forEach(w => {
-    const base = { ...w, top: topFn(w.top) };
-    const cut = w.cut ?? (typeof w.top === 'string' ? ceiling : 0);
-    if (!cut) return buildWall(house, base, mH);
-    buildWall(house, { ...base, top: flat(cut) }, mH);
-    buildWall(roof, { ...base, openings: [], bot: flat(cut) }, mR);
-  });
-
-  // room floors, also the tap targets; a room can be several rectangles
-  const floorMeshes = [];
-  rooms.forEach(r => {
-    r.rects.forEach(([x0, z0, x1, z1]) => {
-      const mat = basic({ color: C.floor.clone(), opacity: 0.85, side: THREE.DoubleSide });
-      const inset = 0.05;
-      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0 - inset * 2, z1 - z0 - inset * 2), mat);
-      mesh.rotation.x = -Math.PI / 2;
-      mesh.position.set((x0 + x1) / 2, 0.02, (z0 + z1) / 2);
-      mesh.renderOrder = 1;
-      mesh.userData = { room: r.id, warm: 0, hover: 0, sel: 0 };
-      house.add(mesh);
-      floorMeshes.push(mesh);
-    });
-  });
-
-  (model.furniture || []).forEach(f => {
-    if (f.rect) return box(house, mH.furn, mH.furnEdge, f.rect, f.y);
-    const [x, z, r] = f.circle;
-    const cg = new THREE.CylinderGeometry(r, r, f.y[1] - f.y[0], 18);
-    const c = new THREE.Mesh(cg, mH.furn);
-    c.position.set(x, (f.y[0] + f.y[1]) / 2, z);
-    c.add(edges(cg, mH.furnEdge, 30));
-    house.add(c);
-  });
-
-  function shedRoof(points, h, thick) {
-    const shape = new THREE.Shape(points.map(([x, z]) => new THREE.Vector2(x, z)));
-    const geo = new THREE.ExtrudeGeometry(shape, { depth: thick, bevelEnabled: false });
-    const p = geo.attributes.position;
-    for (let i = 0; i < p.count; i++) {
-      const x = p.getX(i), z = p.getY(i), d = p.getZ(i);
-      p.setXYZ(i, x, h(x) - ROOF_GAP + d, z);
-    }
-    geo.computeVertexNormals();
-    const mesh = new THREE.Mesh(geo, mR.wall);
-    mesh.renderOrder = 4;
-    roof.add(mesh, edges(geo, mR.edge, 20));
-  }
-  for (const [id, r] of Object.entries(model.roofs || {})) shedRoof(r.outline, roofFns[id], r.thick);
-  (model.roof_steps || []).forEach(s => {
-    const low = model.roofs[s.bot];
-    buildWall(roof, { a: s.a, b: s.b, t: 0.2, top: under(s.top), bot: x => roofFns[s.bot](x) - ROOF_GAP + low.thick }, mR);
-  });
-
-  // the car sits outside the roof group, so it shows in both modes, and has its own materials, so
-  // fading it never fades the house
-  function buildCar(p, path) {
-    const g = new THREE.Group();
-    const m = mats();
-    m.wall.opacity = 0.22;
-    const belt = Math.min(...p.glass.map(q => q[1]));
-    // the greenhouse narrows above the beltline, which reads as a car rather than a box
-    const narrow = y => 1 - 0.16 * Math.min(1, Math.max(0, (y - belt) / Math.max(0.01, p.height - belt)));
-    const geo = keep(new THREE.ExtrudeGeometry(new THREE.Shape(p.side.map(([x, y]) => new THREE.Vector2(x, y))), { depth: p.width, bevelEnabled: false }));
-    geo.translate(0, 0, -p.width / 2);
-    const pa = geo.attributes.position;
-    for (let i = 0; i < pa.count; i++) pa.setZ(i, pa.getZ(i) * narrow(pa.getY(i)));
-    const body = new THREE.Mesh(geo, m.wall);
-    body.renderOrder = 2;
-    g.add(body, edges(geo, m.edge, 25));
-
-    const glassShape = new THREE.Shape(p.glass.map(([x, y]) => new THREE.Vector2(x, y)));
-    [-1, 1].forEach(s => {
-      const z = y => s * ((p.width / 2) * narrow(y) + 0.004);
-      g.add(new THREE.LineLoop(keep(new THREE.BufferGeometry().setFromPoints(p.glass.map(([x, y]) => new THREE.Vector3(x, y, z(y))))), m.glassEdge));
-      const fill = keep(new THREE.ShapeGeometry(glassShape));
-      const fa = fill.attributes.position;
-      for (let i = 0; i < fa.count; i++) fa.setZ(i, z(fa.getY(i)));
-      const pane = new THREE.Mesh(fill, m.glass);
-      pane.renderOrder = 3;
-      g.add(pane);
-    });
-
-    // wheels: a tyre with a rim and spokes on its outer face, so the turning shows
-    const { r, track } = p.wheels, tw = Math.min(0.25, track / 6);
-    const tyre = keep(new THREE.CylinderGeometry(r, r, tw, 20));
-    tyre.rotateX(Math.PI / 2);
-    const tyreEdges = keep(new THREE.EdgesGeometry(tyre, 30));
-    const hubs = [-1, 1].map(s => {
-      const pts = [], zf = s * (tw / 2 + 0.003);
-      for (let i = 0; i < 20; i++) {
-        const a = (i / 20) * Math.PI * 2, b = ((i + 1) / 20) * Math.PI * 2;
-        pts.push(new THREE.Vector3(Math.cos(a) * r * 0.68, Math.sin(a) * r * 0.68, zf), new THREE.Vector3(Math.cos(b) * r * 0.68, Math.sin(b) * r * 0.68, zf));
-      }
-      for (let i = 0; i < 5; i++) {
-        const a = (i / 5) * Math.PI * 2;
-        pts.push(new THREE.Vector3(Math.cos(a) * r * 0.12, Math.sin(a) * r * 0.12, zf), new THREE.Vector3(Math.cos(a) * r * 0.68, Math.sin(a) * r * 0.68, zf));
-      }
-      return keep(new THREE.BufferGeometry().setFromPoints(pts));
-    });
-    const wheels = [];
-    p.wheels.x.forEach(x => [-1, 1].forEach((s, i) => {
-      const w = new THREE.Group();
-      w.position.set(x, r, (s * track) / 2);
-      w.add(new THREE.Mesh(tyre, m.furn), new THREE.LineSegments(tyreEdges, m.edge), new THREE.LineSegments(hubs[i], m.furnEdge));
-      g.add(w);
-      wheels.push(w);
-    }));
-
-    // sprites are not faded by applyFade, so their materials are kept for the car's own fade
-    const glowTex = canvasTexture(64, [[0, 'rgba(255,255,255,1)'], [0.3, 'rgba(255,255,255,0.4)'], [1, 'rgba(255,255,255,0)']]);
-    const sprites = [];
-    [['front', C.ink], ['rear', C.alert]].forEach(([k, color]) => {
-      const segs = (p.lights && p.lights[k]) || [];
-      if (!segs.length) return;
-      const pts = segs.flat().map(([x, y, z]) => new THREE.Vector3(x, y, z));
-      g.add(new THREE.LineSegments(keep(new THREE.BufferGeometry().setFromPoints(pts)), lineMat({ color, opacity: 0.95 })));
-      const sm = keep(new THREE.SpriteMaterial({ map: glowTex, color, transparent: true, opacity: 0.6, depthWrite: false, blending: THREE.AdditiveBlending }));
-      sm.userData.base = sm.opacity;
-      sprites.push(sm);
-      segs.forEach(([a, b]) => {
-        const sp = new THREE.Sprite(sm);
-        sp.position.set((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2);
-        sp.scale.set(0.75, 0.75, 1);
-        g.add(sp);
-      });
-    });
-
-    const curve = new THREE.CatmullRomCurve3(path.map(([x, z]) => new THREE.Vector3(x, 0, z)), false, 'centripetal');
-    g.visible = false;
-    scene.add(g);
-    return { g, body, wheels, sprites, curve, length: curve.getLength(), r, centreY: p.height / 2 };
-  }
-  const carOpt = options.car;
-  const car = carOpt && carOpt.profile && Array.isArray(carOpt.path) && carOpt.path.length >= 2 ? buildCar(carOpt.profile, carOpt.path) : null;
-  let carState = 'away', drive = null, carFadeShown = -1;
-  const carFade = { cur: 0, to: 0 };
-  function placeCar(u) {
-    const at = car.curve.getPointAt(u), tan = car.curve.getTangentAt(u);
-    car.g.position.set(at.x, 0, at.z);
-    car.g.rotation.y = Math.atan2(-tan.z, tan.x);
-    const turn = -(u * car.length) / car.r;
-    car.wheels.forEach(w => { w.rotation.z = turn; });
-  }
-
-  // the drive gate is the one the car's path crosses, its waypoints taken as straight legs (as
-  // the validator takes them); it opens before the drive-in and closes once the car is through
-  const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
-  const between = (p, q, a, b) => Math.min(p[0], q[0]) <= Math.max(a[0], b[0]) && Math.min(a[0], b[0]) <= Math.max(p[0], q[0])
-    && Math.min(p[1], q[1]) <= Math.max(a[1], b[1]) && Math.min(a[1], b[1]) <= Math.max(p[1], q[1]);
-  const meets = (p, q, a, b) => {
-    const d1 = cross(a, b, p), d2 = cross(a, b, q), d3 = cross(p, q, a), d4 = cross(p, q, b);
-    return (d1 * d2 <= 0) && (d3 * d4 <= 0) && between(p, q, a, b);
+  /* ---------- layers ---------- */
+  let mode = 'roof', sel = null, hovered = null;
+  const fade = { cur: 1, to: 1 };
+  const state = {
+    get mode() { return mode; },
+    get roofFade() { return fade.cur; },
+    get hovered() { return hovered; },
+    get selection() { return sel; }
   };
-  const driveGate = car ? gates.find(gt => carOpt.path.some((p, i) => i > 0 && meets(carOpt.path[i - 1], p, gt.g.a, gt.g.b))) || null : null;
-  let gateF = 0, gateRun = null;
-  function gateTo(to) {
-    if (driveGate) gateRun = { from: gateF, to, elapsed: 0 };
+  const screenV = new THREE.Vector3();
+  function screen(x, y, z) {
+    screenV.set(x, y, z).project(camera);
+    if (screenV.z >= 1) return null;
+    return { x: ((screenV.x + 1) / 2) * width, y: ((1 - screenV.y) / 2) * height };
   }
-  function gateNow(f) {
-    gateRun = null;
-    gateF = f;
-    if (driveGate) setGate(driveGate, f);
+  const byId = {};
+  const ctx = {
+    THREE, kit, C, model, options, reduceMotion, state, screen,
+    frame: { lotBox, wallBox, ext, E, lotCx, lotCz },
+    roof: { fns: roofFns, flat, under, topFn, gap: ROOF_GAP },
+    ceiling: model.ceiling,
+    layer: id => byId[id] || null,
+    invalidate: () => invalidate()
+  };
+  const layers = [];
+  BUILDERS.forEach(mod => {
+    const L = mod.default(ctx);
+    if (!L) return;
+    const wrap = new THREE.Group();
+    wrap.add(L.group);
+    if (L.lift) wrap.add(L.lift);
+    scene.add(wrap);
+    byId[L.id] = L;
+    layers.push({ L, wrap, on: true });
+  });
+  function switchLayer(e, on) {
+    e.on = on;
+    e.wrap.visible = on;
+    if (e.L.setOn) e.L.setOn(on);
   }
-  // the car's tail is past the gate line by the leaves' inward sweep and a margin
-  function carThrough() {
-    const hl = carOpt.profile.length / 2, yaw = car.g.rotation.y;
-    const tx = car.g.position.x - Math.cos(yaw) * hl, tz = car.g.position.z + Math.sin(yaw) * hl;
-    return (tx - driveGate.g.a[0]) * driveGate.nx + (tz - driveGate.g.a[1]) * driveGate.nz >= driveGate.sweepIn + CAR_CLEARANCE;
+  function setLayer(id, on) {
+    const e = layers.find(x => x.L.toggle && x.L.id === id);
+    if (!e || e.on === !!on) return;
+    switchLayer(e, !!on);
+    invalidate();
   }
+  // a stored choice applies before the first frame, also to a layer not listed yet
+  const start = options.layers || {};
+  layers.forEach(e => { if (e.L.toggle && start[e.L.id] === false) switchLayer(e, false); });
 
   /* ---------- post-processing, created on first use ---------- */
   let composer = null;
@@ -744,8 +302,6 @@ export function mount(element, model, options = {}) {
   });
 
   const markers = new Map(); // id -> { data, el }
-  let sel = null;
-  let fanKey = '';
   const isIndoor = m => !!(m.room && roomById[m.room]);
 
   function markerClass(m) {
@@ -766,33 +322,6 @@ export function mount(element, model, options = {}) {
     rec.el.title = label;
   }
 
-  function rebuildFans(list) {
-    const withLook = list.filter(m => m.look);
-    const key = JSON.stringify(withLook.map(m => [m.pos, m.look]));
-    if (key === fanKey) return;
-    fanKey = key;
-    fans.children.slice().forEach(o => { fans.remove(o); o.geometry.dispose(); });
-    const fill = fans.userData.fill || (fans.userData.fill = basic({ color: C.line, opacity: 0.04, side: THREE.DoubleSide }));
-    const line = fans.userData.line || (fans.userData.line = lineMat({ color: C.line, opacity: 0.25 }));
-    withLook.forEach(m => {
-      const ang = Math.atan2(m.look[1], m.look[0]), half = 30 * D2R, R = 7;
-      const pts = [new THREE.Vector2(0, 0)];
-      for (let i = 0; i <= 12; i++) {
-        const t = ang - half + (2 * half * i) / 12;
-        pts.push(new THREE.Vector2(Math.cos(t) * R, Math.sin(t) * R));
-      }
-      const geo = new THREE.ShapeGeometry(new THREE.Shape(pts));
-      geo.rotateX(Math.PI / 2);
-      const fan = new THREE.Mesh(geo, fill);
-      fan.position.set(m.pos[0], 0.04, m.pos[2]);
-      const e = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts.map(p => new THREE.Vector3(p.x, 0, p.y))), line);
-      e.position.copy(fan.position);
-      fans.add(fan, e);
-    });
-  }
-
-  let warmRooms = new Set();
-  let pergolaLight = 0;
   function setMarkers(list) {
     const seen = new Set();
     list.forEach(m => {
@@ -810,16 +339,11 @@ export function mount(element, model, options = {}) {
       renderMarker(rec);
     });
     for (const [id, rec] of markers) if (!seen.has(id)) { rec.el.remove(); markers.delete(id); }
-    warmRooms = new Set(list.filter(m => m.state === 'on' && m.warm !== false && isIndoor(m)).map(m => m.room));
-    const led = list.find(m => m.role === 'pergola-light');
-    pergolaLight = led && led.state === 'on' ? (led.level ?? 1) : 0;
-    rebuildFans(list);
+    layers.forEach(({ L }) => { if (L.markers) L.markers(list); });
     invalidate();
   }
 
   /* ---------- modes and selection ---------- */
-  let mode = 'roof';
-  const fade = { cur: 1, to: 1 };
   function setMode(m, instant) {
     mode = m === 'open' ? 'open' : 'roof';
     fade.to = mode === 'roof' ? 1 : 0;
@@ -832,52 +356,40 @@ export function mount(element, model, options = {}) {
     markers.forEach(renderMarker);
     invalidate();
   }
-  function applyFade(group, f) {
-    group.traverse(o => {
-      if (!o.material || o.isSprite) return;
-      (Array.isArray(o.material) ? o.material : [o.material]).forEach(mt => {
-        if (mt.userData.base === undefined) mt.userData.base = mt.opacity;
-        mt.opacity = mt.userData.base * f;
-      });
-    });
-    group.visible = f > 0.01;
-  }
 
   /* ---------- picking ---------- */
   const ray = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
-  let hovered = null, downAt = null;
+  let downAt = null;
   function aim(ev) {
     const rect = renderer.domElement.getBoundingClientRect();
     ndc.set(((ev.clientX - rect.left) / rect.width) * 2 - 1, -((ev.clientY - rect.top) / rect.height) * 2 + 1);
     ray.setFromCamera(ndc, camera);
   }
-  // both tests read the ray that aim() set
-  function pick() {
-    if (mode !== 'open') return null;
-    const hits = ray.intersectObjects(floorMeshes, false);
-    return hits.length ? hits[0].object : null;
-  }
-  // the body mesh, not a bounding box, which would cover the carport floor
-  function carHit() {
-    if (!car || carState === 'away' || !car.g.visible) return false;
-    return ray.intersectObject(car.body, false).length > 0;
+  // reads the ray that aim() set; later layers lie on top, so they are tried first
+  function hitTest() {
+    for (let i = layers.length - 1; i >= 0; i--) {
+      const { L, on } = layers[i];
+      const h = on && L.hit ? L.hit(ray) : null;
+      if (h) return h;
+    }
+    return null;
   }
   const onMove = ev => {
     if (ev.pointerType !== 'mouse') return;
     aim(ev);
-    const overCar = carHit();
-    const h = overCar ? null : pick();
-    if (h !== hovered) { hovered = h; invalidate(); }
-    renderer.domElement.style.cursor = overCar || h ? 'pointer' : '';
+    const h = hitTest();
+    const over = h && h.target ? h.target : null;
+    if (over !== hovered) { hovered = over; invalidate(); }
+    renderer.domElement.style.cursor = h ? 'pointer' : '';
   };
   const onDown = ev => { downAt = [ev.clientX, ev.clientY]; };
   const onUp = ev => {
     if (!downAt || Math.hypot(ev.clientX - downAt[0], ev.clientY - downAt[1]) > 6) return;
     aim(ev);
-    if (carHit()) { if (options.onCar) options.onCar(); return; }
-    const h = pick();
-    if (options.onRoom) options.onRoom(h ? h.userData.room : null);
+    const h = hitTest();
+    if (h && h.car) { if (options.onCar) options.onCar(); return; }
+    if (options.onRoom) options.onRoom(h && h.room ? h.room : null);
   };
   renderer.domElement.addEventListener('pointermove', onMove);
   renderer.domElement.addEventListener('pointerdown', onDown);
@@ -921,7 +433,6 @@ export function mount(element, model, options = {}) {
   /* ---------- loop: runs only while something moves, a change restarts it ---------- */
   let dirty = true, raf = 0, last = 0, disposed = false;
   const v = new THREE.Vector3();
-  const near = (a, b) => Math.abs(a - b) < 0.002;
   function invalidate() {
     dirty = true;
     if (!raf && !disposed && visible) { last = performance.now(); raf = requestAnimationFrame(frame); }
@@ -934,77 +445,32 @@ export function mount(element, model, options = {}) {
     if (!visible) { raf = 0; return; }
     const k = reduceMotion ? 1 : 1 - Math.exp(-dt * 4.2);
     let moving = controls.update();
-    if (!near(fade.cur, fade.to)) { fade.cur += (fade.to - fade.cur) * k; moving = true; } else fade.cur = fade.to;
-    roof.position.y = (1 - fade.cur) * 4.5;
-    applyFade(roof, Math.max(0, fade.cur * 1.25 - 0.25));
-
-    floorMeshes.forEach(m => {
-      const u = m.userData;
-      const goals = [warmRooms.has(u.room) ? 0.75 : 0, hovered === m ? 1 : 0, sel === u.room ? 1 : 0];
-      ['warm', 'hover', 'sel'].forEach((key, i) => {
-        if (near(u[key], goals[i])) u[key] = goals[i];
-        else { u[key] += (goals[i] - u[key]) * k; moving = true; }
-      });
-      m.material.color.copy(C.floor).lerp(C.warm, u.warm * 0.85).lerp(C.hover, u.hover * 0.6).lerp(C.sel, u.sel * 0.7);
+    if (!kit.near(fade.cur, fade.to)) { fade.cur += (fade.to - fade.cur) * k; moving = true; } else fade.cur = fade.to;
+    layers.forEach(({ L }) => {
+      if (!L.lift) return;
+      L.lift.position.y = (1 - fade.cur) * 4.5;
+      kit.applyFade(L.lift, Math.max(0, fade.cur * 1.25 - 0.25));
     });
-    const led = pergolaLight ? 0.35 + 0.65 * pergolaLight : 0;
-    if (!near(ledMat.opacity, led)) { ledMat.opacity += (led - ledMat.opacity) * k; moving = true; }
-    const glow = pergolaLight ? 0.25 + 0.4 * pergolaLight : 0;
-    glowSprites.forEach(sp => {
-      if (!near(sp.material.opacity, glow)) { sp.material.opacity += (glow - sp.material.opacity) * k; moving = true; }
-    });
-    if (car) {
-      if (drive) {
-        // frame time, not the clock: a drive started while the page is hidden waits to be seen.
-        // The car stands at the start while the gate opens, then drives.
-        let step = Math.max(0, dt);
-        if (drive.wait > 0) {
-          const w = Math.min(drive.wait, step);
-          drive.wait -= w;
-          step -= w;
-        }
-        drive.elapsed += step;
-        const t = Math.min(1, drive.elapsed / drive.dur);
-        placeCar(1 - (1 - t) * (1 - t));
-        moving = true;
-        // the close runs on its own clock from here, so the end of the drive does not cut it short
-        if (driveGate && !drive.closing && (t >= 1 || carThrough())) { drive.closing = true; gateTo(0); }
-        if (t >= 1) { drive = null; carState = 'parked'; carSettled(); }
-      }
-      if (gateRun) {
-        gateRun.elapsed += Math.max(0, dt);
-        const s = Math.min(1, gateRun.elapsed / GATE_S);
-        gateF = gateRun.from + (gateRun.to - gateRun.from) * s * s * (3 - 2 * s);
-        setGate(driveGate, gateF);
-        moving = true;
-        if (s >= 1) gateRun = null;
-      }
-      if (!near(carFade.cur, carFade.to)) { carFade.cur += (carFade.to - carFade.cur) * k; moving = true; } else carFade.cur = carFade.to;
-      if (carFade.cur !== carFadeShown) {
-        carFadeShown = carFade.cur;
-        applyFade(car.g, carFade.cur);
-        car.sprites.forEach(sm => { sm.opacity = sm.userData.base * carFade.cur; });
-      }
-    }
+    layers.forEach(({ L }) => { if (L.update && L.update(dt, k)) moving = true; });
     if (!moving && !dirty) { raf = 0; return; }
     dirty = false;
     raf = requestAnimationFrame(frame);
 
-    const reveal = Math.max(0, 1 - fade.cur * 1.6);
+    const roofOpen = Math.max(0, 1 - fade.cur * 1.6);
     for (const rec of markers.values()) {
       // an alert indoors shows through the roof, so a closed view never hides it
       const m = rec.data, el = rec.el, covered = isIndoor(m) && m.state !== 'alert';
       v.set(m.pos[0], m.pos[1], m.pos[2]).project(camera);
-      if ((covered && reveal <= 0.02) || v.z >= 1) { if (el.style.display !== 'none') el.style.display = 'none'; continue; }
+      if ((covered && roofOpen <= 0.02) || v.z >= 1) { if (el.style.display !== 'none') el.style.display = 'none'; continue; }
       el.style.display = '';
-      el.style.opacity = (covered ? reveal : 1).toFixed(2);
+      el.style.opacity = (covered ? roofOpen : 1).toFixed(2);
       el.style.transform = `translate(${((v.x + 1) / 2) * width}px, ${((1 - v.y) / 2) * height}px) translate(-50%, -50%)`;
     }
     labels.forEach(l => {
-      if (reveal < 0.02) { l.el.style.display = 'none'; return; }
+      if (roofOpen < 0.02) { l.el.style.display = 'none'; return; }
       v.copy(l.pos).project(camera);
       l.el.style.display = v.z < 1 ? '' : 'none';
-      l.el.style.opacity = (reveal * 0.8).toFixed(2);
+      l.el.style.opacity = (roofOpen * 0.8).toFixed(2);
       l.el.style.transform = `translate(${((v.x + 1) / 2) * width}px, ${((1 - v.y) / 2) * height}px) translate(-50%, -50%)`;
     });
     if (bloomOn()) getComposer().render();
@@ -1012,59 +478,11 @@ export function mount(element, model, options = {}) {
   }
 
   resize();
-  // with a car, the reveal waits for its first state (2.5 s at most) and for a drive-in to park,
-  // so the roof lifts once rather than during the drive
-  const mountedAt = performance.now();
-  let revealTimer = 0, revealWait = false, revealAfterPark = false;
-  function revealIn(ms) {
-    clearTimeout(revealTimer);
-    revealTimer = setTimeout(() => { revealTimer = 0; revealWait = revealAfterPark = false; setMode('open'); }, reduceMotion ? 0 : Math.max(0, ms));
-  }
-  if (options.reveal) {
-    setMode('roof', true);
-    revealWait = !!car;
-    revealIn(car ? 2500 : 1100);
-  } else setMode(options.mode === 'open' ? 'open' : 'roof', true);
-  // a mode chosen by the user before the reveal fires wins over it
-  const userMode = (m, instant) => { clearTimeout(revealTimer); revealTimer = 0; revealWait = revealAfterPark = false; setMode(m, instant); };
-  function carSettled() {
-    if (revealAfterPark) { revealAfterPark = false; revealIn(0); }
-  }
-
-  function setCar(state) {
-    if (!car) return;
-    if (state === 'arrive' && reduceMotion) state = 'parked';
-    if (state === 'arrive') {
-      drive = { elapsed: 0, dur: Math.min(6, Math.max(3, car.length / 3.2)), wait: driveGate ? GATE_S : 0, closing: false };
-      gateTo(1);
-      placeCar(0);
-      carState = 'driving';
-      carFade.to = 1;
-    } else if (state === 'parked') {
-      drive = null;
-      gateNow(0);
-      placeCar(1);
-      carState = 'parked';
-      carFade.to = 1;
-    } else {
-      drive = null;
-      gateNow(0);
-      carState = 'away';
-      carFade.to = 0;
-    }
-    if (revealWait) {
-      revealWait = false;
-      if (carState === 'driving') { clearTimeout(revealTimer); revealTimer = 0; revealAfterPark = true; }
-      else revealIn(1100 - (performance.now() - mountedAt));
-    } else if (carState !== 'driving') carSettled();
-    invalidate();
-  }
-  const carScreenV = new THREE.Vector3();
+  setMode(options.mode === 'open' ? 'open' : 'roof', true);
   invalidate();
 
   function dispose() {
     disposed = true;
-    clearTimeout(revealTimer);
     cancelAnimationFrame(raf);
     raf = 0;
     if (ro) ro.disconnect();
@@ -1073,23 +491,22 @@ export function mount(element, model, options = {}) {
     renderer.domElement.removeEventListener('pointerdown', onDown);
     renderer.domElement.removeEventListener('pointerup', onUp);
     controls.dispose();
+    layers.forEach(({ L }) => { if (L.dispose) L.dispose(); });
     scene.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material && !Array.isArray(o.material)) o.material.dispose(); });
-    disposables.forEach(d => d.dispose());
+    kit.disposables.forEach(d => d.dispose());
     if (composer) composer.dispose();
     renderer.dispose();
     renderer.forceContextLoss();
     root.remove();
   }
 
+  // carState and carScreen stay getters, so a copy of this object would freeze them
   return {
-    setMarkers, setMode: userMode, setSelection, setCar, reset, resize, dispose,
+    setMarkers, setMode, setSelection, setLayer, reset, resize, dispose,
+    setCar: s => { if (byId.car) byId.car.api.setCar(s); },
     get mode() { return mode; },
-    get carState() { return carState; },
-    get carScreen() {
-      if (!car || carState === 'away') return null;
-      carScreenV.set(car.g.position.x, car.centreY, car.g.position.z).project(camera);
-      if (carScreenV.z >= 1) return null;
-      return { x: ((carScreenV.x + 1) / 2) * width, y: ((1 - carScreenV.y) / 2) * height };
-    }
+    get carState() { return byId.car ? byId.car.api.carState : 'away'; },
+    get carScreen() { return byId.car ? byId.car.api.carScreen : null; },
+    get layers() { return layers.filter(e => e.L.toggle && (!e.L.listed || e.L.listed())).map(e => ({ id: e.L.id, on: e.on })); }
   };
 }
