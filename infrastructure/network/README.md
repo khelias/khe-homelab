@@ -1,15 +1,21 @@
 # Network Architecture
 
 ## Local Network
-- Router: Asus RT-AX55 (192.168.0.1)
+- Gateway: UniFi Cloud Gateway Ultra (192.168.0.1), managed in UniFi Network;
+  Wi-Fi from a U6-LR access point
+- Chain: ONT -> Cloud Gateway Ultra -> unmanaged gigabit switches -> the
+  server (Proxmox .10, Docker VM .11), a PoE switch for the cameras, and the
+  U6-LR on a PoE injector. Room layout and device addresses are in the private
+  house docs
 - Subnet: 192.168.0.0/24
 - DHCP range: 192.168.0.100–254; the static block below .100 holds the
   infrastructure and the cameras
 - Several house devices answer from inside the DHCP range rather than the
-  static block, and Home Assistant addresses them by IP. They need router DHCP
-  reservations; whether those exist is unverified
+  static block, and Home Assistant addresses them by IP. Each has a fixed IP
+  (DHCP reservation by MAC) in UniFi Network
 - Proxmox host: 192.168.0.10
-- Docker VM: 192.168.0.11
+- Docker VM: 192.168.0.11. The VM and Proxmox resolve through the gateway
+  (192.168.0.1), so the gateway must answer DNS or the tunnel drops
 - Connection: CAT5e/CAT6 gigabit LAN
 
 ## DNS Strategy (Split-Horizon)

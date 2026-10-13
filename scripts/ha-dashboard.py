@@ -45,9 +45,14 @@ PEOPLE = [tuple(p) for p in _local("ha-people.json", [])]
 # default reads "HACS Update" seven times over. House-file entries are [entity_id, name].
 _UPDATES = [("update.hacs_update", "HACS"), ("update.komfovent_update", "Komfovent"),
             ("update.daikin_altherma_update", "Daikin Altherma"), ("update.estfeed_update", "Estfeed"),
-            ("update.apexcharts_card_update", "ApexCharts Card"), ("update.advanced_camera_card_update", "Advanced Camera Card")
+            ("update.apexcharts_card_update", "ApexCharts Card"), ("update.advanced_camera_card_update", "Advanced Camera Card"),
+            ("update.unifi_gateway_pusivara", "UniFi Gateway"), ("update.u6_lr_pusivara", "UniFi AP")
             ] + [tuple(u) if isinstance(u, list) else (u, None) for u in _house.get("updates", [])]
 UPDATES = [u for u, _ in _UPDATES]
+NET = [("sensor.unifi_gateway_olek", "Ruuter"), ("sensor.u6_lr_olek", "Pääsupunkt")]
+# A firmware update passes through these on its own; only the rest is a fault worth a red tile.
+NET_OK = ["connected", "upgrading", "provisioning"]
+WAN = "sensor.unifi_gateway_cloudflare_wan_latentsus"
 # Estfeed has no brand image, so its row showed "icon not available"; an explicit icon wins over the picture.
 UPDATE_ROWS = [{"entity": u, **({"name": n} if n else {}), **({"icon": "mdi:meter-electric"} if u == "update.estfeed_update" else {})}
                for u, n in _UPDATES]
@@ -385,10 +390,14 @@ home = {"title": "Kodu", "path": "kodu", "icon": "mdi:home", "type": "sections",
         {"type": "entities", "title": "Uuendused", "entities": UPDATE_ROWS,
          "visibility": [{"condition": "or", "conditions": [{"condition": "state", "entity": u, "state": "on"} for u in UPDATES]}]},
         tile("sensor.nvr_ketas", "NVR ketas", color="red", visibility=[{"condition": "state", "entity": "sensor.nvr_ketas", "state_not": "OK"}]),
+        *[tile(e, n, color="red", visibility=[{"condition": "state", "entity": e, "state_not": NET_OK}]) for e, n in NET],
+        tile(WAN, "Internet", color="red", visibility=[{"condition": "state", "entity": WAN, "state": ["unavailable", "unknown"]}]),
         *([tile(PHONE + "_battery_level", "Telefoni aku", color="red",
                 visibility=[{"condition": "numeric_state", "entity": PHONE + "_battery_level", "below": 30}])] if PHONE else []),
         {"type": "markdown", "content": "Kõik korras.",
          "visibility": [{"condition": "and", "conditions": [{"condition": "state", "entity": "sensor.nvr_ketas", "state": "OK"}] +
+                         [{"condition": "state", "entity": e, "state": NET_OK} for e, _ in NET] +
+                         [{"condition": "state", "entity": WAN, "state_not": ["unavailable", "unknown"]}] +
                          [{"condition": "state", "entity": u, "state_not": "on"} for u in UPDATES]}]},
     ], **nav("/lovelace/susteem")),
     tv_section(),
@@ -752,6 +761,12 @@ susteem = {"title": "Süsteem", "path": "susteem", "icon": "mdi:home-assistant",
     # retention) live in khe-meta's house/home-assistant-plan.md. The NVR disk is on Valve and Kodu, not repeated here.
     section("Uuendused", [
         {"type": "entities", "entities": UPDATE_ROWS},
+    ]),
+    section("Võrk", [
+        # WAN health is the gateway's Cloudflare latency probe; the integration has no plain WAN up/down entity.
+        *row([*[nowrite(e, n, vertical=True) for e, n in NET],
+              nowrite(WAN, "Internet", vertical=True),
+              nowrite("sensor.u6_lr_kliendid", "WiFi kliendid", vertical=True)]),
     ]),
     section("Telefon", [
         # SSID is left out: iOS only reports it with precise-location permission, so the tile sat on "unavailable".

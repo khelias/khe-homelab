@@ -50,7 +50,7 @@ Proxmox VE (192.168.0.10) is the hypervisor; the Docker VM (192.168.0.11) runs e
 | Boot | 2TB Kingston KC3000 NVMe |
 | Storage | 2x 12TB WD Ultrastar (ZFS Mirror) |
 | PSU | Seasonic 850W Gold |
-| Network | Intel 2.5G LAN → Asus RT-AX55 |
+| Network | Intel 2.5G LAN → UniFi Cloud Gateway Ultra, U6-LR access point |
 
 Intel iGPU is passed through to the Docker VM via `vfio-pci` for hardware transcoding —
 immich-server and Immich machine-learning both use `/dev/dri` for Quick Sync acceleration.
@@ -154,12 +154,14 @@ Operational work is kept to a minimum by pushing everything into code and cron.
 ## Network
 
 ```
-192.168.0.1       Asus RT-AX55 (gateway, DHCP .100-.254)
+192.168.0.1       UniFi Cloud Gateway Ultra (gateway, DHCP .100-.254)
 192.168.0.10      Proxmox host (pve.khe.ee)
 192.168.0.11      Docker VM (+ Tailscale subnet router)
 192.168.0.2-99    Static block: infrastructure and the cameras
 192.168.0.100+    DHCP, including the house devices HA addresses by IP
 ```
+
+The house devices HA addresses by IP have fixed IPs (DHCP reservations) in UniFi Network.
 
 Router DHCP hands out `192.168.0.11` (AdGuard) as the **only** DNS — no secondary.
 A fallback server gets raced in parallel and Cloudflare usually wins, so filtering

@@ -571,6 +571,24 @@ afterwards. The fork has no releases, so HACS sees a new commit only after
 `hacs/repository/refresh` (WebSocket); download the update in the HACS UI
 after that.
 
+**UniFi Network (since 2026-10-13).** The core integration talks to the
+Cloud Gateway Ultra at the gateway address, port 443, with a local UniFi
+user made for HA, and SSL verification off (the gateway's certificate is
+self-signed). Options: track clients and UniFi devices on, wired clients
+off, "ignore private MAC" off. Client trackers arrive disabled by the
+integration and the config entry's "Enable newly added entities" is off, so
+guests and new IoT clients add nothing; enable only household phones, which
+need "Private Wi-Fi Address: Fixed" (not "Rotating") for this network or
+their tracker changes identity. Used for network health (gateway and AP
+state, firmware update entities) and phone presence beside the Companion
+app. The integration has no plain WAN up/down entity, so the dashboard shows
+the gateway's Cloudflare latency probe, and Kodu turns red when it goes
+unavailable. The WLAN's own entities embed the SSID, so the generator here
+uses the AP's client count instead. Both `sensor.unifi_gateway_cloudflare_wan_latentsus`
+and `sensor.u6_lr_kliendid` are disabled by default and were enabled by hand
+in the entity registry; re-adding the integration needs that again, or the
+"Võrk" tiles show "Entity not found".
+
 **Pergola via Tuya Local (since 2026-09-20).** The two motorised pergolas are
 Tuya WiFi devices (protocol 3.5). Tuya's cloud only declares three datapoints
 for them, so the built-in Tuya integration can offer nothing but a door
