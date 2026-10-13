@@ -23,6 +23,13 @@ net.ipv6.conf.all.forwarding = 1
 Subnet routes (192.168.0.0/24) must be approved in the Tailscale admin console:
 https://login.tailscale.com/admin/machines → docker-vm → Edit route settings.
 
+Key expiry is disabled for docker-vm (same page → Disable key expiry). With the
+default 180-day expiry the node drops off the tailnet and waits for an
+interactive login, cutting all remote access; on 2026-10-12 the auto-update
+restart surfaced an expired key and the VM sat logged out for 13 hours until
+`sudo tailscale up` was run from the LAN. After any re-login, check that the
+expiry is still disabled and the route still approved.
+
 ## Why host install, not Docker?
 
 - SSH access to the VM itself requires host-level networking
