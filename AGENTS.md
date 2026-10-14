@@ -40,7 +40,9 @@ scripts/           setup, deploy, backup, hardening, validate-compose,
                    ha-ws.py (HA WebSocket commands from the CLI),
                    house3d-* and house3d_model.py (3D view build, vendoring,
                    device and tree placement, ETAK surroundings, model),
-                   house3d-test.sh (the 3D view's tests)
+                   house3d-test.sh (the 3D view's tests),
+                   pv-sim.py (rooftop PV, battery and EV simulation against
+                   the Estfeed hourly load; its input stays in khe-meta)
 tests/house3d/     3D view tests on a made-up fixture house: model and build
                    (Python unittest), engine and simple-style snapshot (node:test)
 ```
