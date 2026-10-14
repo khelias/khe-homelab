@@ -8,14 +8,15 @@ const COLORS = {
   ink: '#e4ecff', alert: '#ff8b7b'
 };
 
-// The real style's surfaces: the facade specification of drawings A-101/A-102 and AR-5, still to
-// be confirmed from photos. Cladding is the light grey glaze, roofs, flashing and the garage sheet
-// RR23, the house's window and door frames RR25 yellow, the outbuilding's RAL 7016, the plinth
-// RAL 7045. The garden, car and surroundings are plain stand-ins; outside is the neutral ground
-// beyond the lot.
+// The real style's surfaces, from photos of the house (2026-10-14) where they differ from the
+// drawings' specification (A-101/A-102, AR-5): the cladding is the light grey glaze, roofs and
+// flashing RR23, and every frame, door, trim, the wall's base strip, the carport's panels and
+// the pergola one anthracite, about RAL 7016 (the drawings' RR25 yellow frames were not built).
+// The deck is dark composite, the paving warm concrete pavers, the outdoor units white. The car
+// and surroundings are plain stand-ins; outside is the neutral ground beyond the lot.
 const REAL = {
-  cladding: '#c9ccc8', roof: '#3e4245', frameHouse: '#d8a93a', frameDark: '#383e42', plinth: '#91969a',
-  glass: '#9fb8c4', interior: '#eceae4', floor: '#cdb48e', deck: '#8a6a4a', paving: '#a7a39b',
+  cladding: '#c9ccc8', roof: '#3e4245', frame: '#383e42', unit: '#e4e4e0',
+  glass: '#9fb8c4', interior: '#eceae4', floor: '#cdb48e', deck: '#4d4540', paving: '#b3a38c',
   lawn: '#5f7f45', outside: '#8e9088', hedge: '#355a32', crown: '#4f7a3a', trunk: '#5b4636',
   fence: '#4a4d50', car: '#2f3336', neighbour: '#b9b6ae', road: '#6b6b68'
 };

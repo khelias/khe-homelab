@@ -724,7 +724,7 @@ adding the mount recreates HA; later file changes arrive live through it.
   The kit and `sun.js` are required: if either fails to load, the card shows
   its load error.
 - **Styles:** "Lihtne" (the neon wireframe, the default) and "Päris" (lit
-  surfaces in the facade specification's colours, the real sun and shadows),
+  surfaces in the house's colours from photos, the real sun and shadows),
   chosen per browser in the Kihid sheet and kept in `localStorage` under
   `house3d-style`. Switching remounts the engine with the roof mode, camera
   and fog kept. The real style has no bloom; its shadow map is 2048 px, 1024

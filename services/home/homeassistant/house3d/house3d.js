@@ -11,7 +11,7 @@
 // line in LAYERS.
 //
 // Styles: 'simple' (default) is the unlit neon wireframe; 'real' draws lit surfaces in the
-// facade specification's colours (kit.surface) under a sun with shadows. A layer branches on
+// house's own colours (kit.surface, from photos) under a sun with shadows. A layer branches on
 // ctx.style === 'real' and leaves its simple path as it is; tests/house3d/simple-snapshot.json
 // pins the simple style's objects and materials.
 //
@@ -210,7 +210,8 @@ export function guardLayer(L, off) {
  * mount(element, model, options) -> { setMarkers, setMode, setSelection, setCar, setLayer, setSun, setTime,
  *                                     reset, resize, dispose, mode, carState, carScreen, layers, time, view }
  *
- * model: geometry + rooms layers (private and showcase are ignored). site.decks and site.paving:
+ * model: geometry + rooms layers (private and showcase are ignored). A wall with finish 'panel' is
+ *   drawn in the real style as anthracite panel (the carport's walls and posts). site.decks and site.paving:
  *   items that are rects [x0, z0, x1, z1] or outlines [[x, z], ...]. site.gates: [{ a, b, kind,
  *   height, opens?, slide?, name? }], drawn closed in the fence line; kind 'sliding' (one leaf, set
  *   to the lot side, sliding past the end named by slide, 'a' or 'b'), 'swing1' (one leaf hinged

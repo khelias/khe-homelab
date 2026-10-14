@@ -183,13 +183,6 @@ def validate(layers):
                 bad(f"roof {rid}: {k} is not a number")
         if roof.get("falls") not in ("east", "west"):
             bad(f"roof {rid}: falls must be east or west (heights run along x)")
-    dark = model.get("frames_dark", [])
-    if not isinstance(dark, list):
-        bad("geometry: frames_dark is not a list of roof ids")
-    else:
-        for r in dark:
-            if not isinstance(r, str) or r not in roofs:
-                bad(f"geometry: frames_dark {r!r} is not a roof")
     for i, s in enumerate(model.get("roof_steps", [])):
         if not (_point(s.get("a")) and _point(s.get("b"))):
             bad(f"roof_steps[{i}]: a and b must be [x, z]")
@@ -211,6 +204,8 @@ def validate(layers):
             bad(f"{where}: top {top!r} is neither a height nor a roof id")
         if "cut" in w and not _num(w["cut"]):
             bad(f"{where}: cut is not a number")
+        if "finish" in w and w["finish"] != "panel":
+            bad(f"{where}: finish {w['finish']!r} is not panel")
         length = math.dist(w["a"], w["b"])
         for j, o in enumerate(w.get("openings", [])):
             if not all(_num(o.get(k)) for k in ("c", "w", "h")):

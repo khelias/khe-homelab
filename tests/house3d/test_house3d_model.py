@@ -106,12 +106,8 @@ def _twice(L):
     L["rooms"]["ceiling"] = 2.6
 
 
-def _dark_unknown(L):
-    L["geometry"]["frames_dark"] = ["roofX"]
-
-
-def _dark_not_a_string(L):
-    L["geometry"]["frames_dark"] = [["roofN"]]
+def _bad_finish(L):
+    _walls(L)[6]["finish"] = "brick"
 
 
 def _short_path(L):
@@ -130,8 +126,7 @@ MUTATIONS = [
     ("private layer missing", _no_private, "layer private is missing"),
     ("key in two layers", _twice, "key ceiling is in more than one layer"),
     ("car path does not clear the drive gate", _short_path, "car: path starts"),
-    ("frames_dark names an unknown roof", _dark_unknown, "geometry: frames_dark 'roofX' is not a roof"),
-    ("frames_dark holds a list", _dark_not_a_string, "geometry: frames_dark ['roofN'] is not a roof"),
+    ("unknown wall finish", _bad_finish, "walls[6]: finish 'brick' is not panel"),
 ]
 
 

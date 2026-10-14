@@ -15,7 +15,6 @@ model, never this file.
  "axes": "x east along the street, z away from the street, y up",
  "georef": { "crs": "EPSG:3301", "origin_E": 135797.137, "origin_N": 197531.371, "x_axis_bearing_deg": 30, "fit_rms_m": 0.05 },
  "ceiling": 2.6,
- "frames_dark": ["roofN"],
  "roofs": {
   "roofN": { "pitch_deg": 6, "high_x": 2, "high_y": 4.6, "falls": "east", "outline": [[1.7, 6], [12.3, 6], [12.3, 10.3], [1.7, 10.3]], "thick": 0.3 },
   "roofS": { "slope": 0.1, "high_x": 2, "high_y": 4.0, "falls": "east", "outline": [[1.7, 1.7], [12.3, 1.7], [12.3, 6], [1.7, 6]], "thick": 0.3 }

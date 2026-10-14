@@ -5,6 +5,7 @@
 // clad, interior walls plain, framed openings, floors that tint from their own colour, and the
 // lift on materials of its own, so its fade never reaches the lower walls.
 const FRAME = 0.06, FRAME_D = 0.1; // real style: an opening's frame width and depth
+const BASE_H = 0.12; // real style: the dark strip along an exterior wall's foot
 
 export default function build({ THREE, kit, C, model, roof, ceiling, state, style }) {
   const { basic, mats, edges, box, near } = kit;
@@ -17,17 +18,17 @@ export default function build({ THREE, kit, C, model, roof, ceiling, state, styl
   if (real) {
     // walls and roofs are DoubleSide: a roof's remapped extrusion faces inwards
     const two = { side: THREE.DoubleSide }, fades = { ...two, transparent: true };
-    const dark = new Set(model.frames_dark || []);
     const clad = kit.surface('cladding', two), inner = kit.surface('interior', two), glass = kit.surface('glass');
-    const frame = kit.surface('frameHouse'), frameDark = kit.surface('frameDark');
+    const frame = kit.surface('frame'), panel = kit.surface('frame', two);
     mH = { furn: kit.surface('interior') };
-    mR = { wall: kit.surface('cladding', fades), roof: kit.surface('roof', fades) };
-    // exterior: thick or running up to a roof; frames dark on a wall under a roof in frames_dark
-    wallMats = w => ({
-      wall: w.t >= 0.3 || typeof w.top === 'string' ? clad : inner,
-      glass,
-      frame: typeof w.top === 'string' && dark.has(w.top) ? frameDark : frame
-    });
+    mR = { wall: kit.surface('cladding', fades), roof: kit.surface('roof', fades), panel: kit.surface('frame', fades) };
+    // a panel (the carport's walls and posts) is anthracite; else exterior is thick or running up
+    // to a roof, and only it gets the base strip
+    wallMats = w => {
+      if (w.finish === 'panel') return { wall: panel, glass, frame, base: false };
+      const outside = w.t >= 0.3 || typeof w.top === 'string';
+      return { wall: outside ? clad : inner, glass, frame, base: outside };
+    };
   } else {
     mH = mats();
     mR = mats(C.roof);
@@ -38,7 +39,7 @@ export default function build({ THREE, kit, C, model, roof, ceiling, state, styl
 
   // real style: the wall solid, glass in windows and glass doors, a leaf in doors, and a frame
   // round each opening
-  function dressWall(g, geo, ops, m) {
+  function dressWall(g, geo, ops, m, w, L) {
     const mesh = new THREE.Mesh(geo, m.wall);
     mesh.castShadow = mesh.receiveShadow = true;
     g.add(mesh);
@@ -47,6 +48,7 @@ export default function build({ THREE, kit, C, model, roof, ceiling, state, styl
       b.position.set((x0 + x1) / 2, (y0 + y1) / 2, 0);
       b.castShadow = b.receiveShadow = true;
       g.add(b);
+      return b;
     };
     ops.forEach(o => {
       const x0 = o.c - o.w / 2, x1 = o.c + o.w / 2, y0 = o.sill || 0, y1 = y0 + o.h;
@@ -62,6 +64,26 @@ export default function build({ THREE, kit, C, model, roof, ceiling, state, styl
       bar(x0 + FRAME, x1 - FRAME, y1 - FRAME, y1);
       if (o.kind === 'glassdoor') bar(o.c - FRAME / 2, o.c + FRAME / 2, y0 + FRAME, y1 - FRAME);
     });
+    if (!m.base || w.bot) return;
+    // the base strip sits on the outer face, the side with no room just beyond it; when that
+    // cannot be told, on both
+    const side = outerSide(w, L), d = side ? 0.02 : w.t + 0.02, zc = side * (w.t / 2 + 0.01);
+    // it runs the wall's length, broken by every opening that reaches the ground
+    const gaps = ops.filter(o => (o.sill || 0) < BASE_H).map(o => [o.c - o.w / 2, o.c + o.w / 2]).sort((p, q) => p[0] - q[0]);
+    let from = 0;
+    [...gaps, [L, L]].forEach(([a, b]) => {
+      if (a - from > 0.01) bar(from, a, 0, BASE_H, d).position.z = zc;
+      from = Math.max(from, b);
+    });
+  }
+
+  // +1 or -1 for the wall group's local z that faces out, 0 when both or neither side has a room
+  const inRoom = (x, z) => rooms.some(r => r.rects.some(([x0, z0, x1, z1]) => x >= x0 && x <= x1 && z >= z0 && z <= z1));
+  function outerSide(w, L) {
+    const ux = (w.b[0] - w.a[0]) / L, uz = (w.b[1] - w.a[1]) / L, mx = (w.a[0] + w.b[0]) / 2, mz = (w.a[1] + w.b[1]) / 2;
+    // the group's rotation turns local +z to (-uz, ux) on the plan
+    const k = w.t / 2 + 0.3, plus = inRoom(mx - uz * k, mz + ux * k), minus = inRoom(mx + uz * k, mz - ux * k);
+    return plus === minus ? 0 : plus ? -1 : 1;
   }
 
   function buildWall(parent, w, m) {
@@ -101,7 +123,7 @@ export default function build({ THREE, kit, C, model, roof, ceiling, state, styl
     g.position.set(w.a[0], 0, w.a[1]);
     g.rotation.y = Math.atan2(-uz, ux);
     if (real) {
-      dressWall(g, geo, ops, m);
+      dressWall(g, geo, ops, m, w, L);
       parent.add(g);
       return;
     }
@@ -138,7 +160,7 @@ export default function build({ THREE, kit, C, model, roof, ceiling, state, styl
     const mW = wallMats(w);
     if (!cut) return buildWall(group, base, mW);
     buildWall(group, { ...base, top: roof.flat(cut) }, mW);
-    buildWall(lift, { ...base, openings: [], bot: roof.flat(cut) }, mR);
+    buildWall(lift, { ...base, openings: [], bot: roof.flat(cut) }, w.finish === 'panel' && mR.panel ? { wall: mR.panel } : mR);
   });
 
   // a room can be several rectangles

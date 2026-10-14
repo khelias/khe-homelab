@@ -192,10 +192,10 @@ test('sunDirection and gridBearing', () => {
 
 // the real style: each surface colour has one shadow role per layer, [castShadow, receiveShadow]
 const REAL_FLAGS = {
-  building: { cladding: [true, true], interior: [true, true], frameHouse: [true, true], frameDark: [true, true], glass: [false, false], floor: [false, true], roof: [true, false] },
-  site: { deck: [false, true], paving: [false, true], hedge: [true, false], plinth: [true, false], fence: [true, false] },
+  building: { cladding: [true, true], interior: [true, true], frame: [true, true], glass: [false, false], floor: [false, true], roof: [true, false] },
+  site: { deck: [false, true], paving: [false, true], hedge: [true, false], unit: [true, false], fence: [true, false] },
   trees: { trunk: [true, false], crown: [true, false] },
-  pergola: { frameDark: [true, false] },
+  pergola: { frame: [true, false] },
   car: { car: [true, false], glass: [false, false] }
 };
 
@@ -218,8 +218,37 @@ test('real style: lit materials and shadow flags', () => {
       assert.deepEqual([o.castShadow, o.receiveShadow], want[name], `${id}: ${name} shadow flags`);
     }));
   }
-  // the fixture's frames_dark names one of its two roofs, so both frame colours occur
-  assert.ok(seen.building.has('frameHouse') && seen.building.has('frameDark'));
+  assert.ok(seen.building.has('frame'));
+});
+
+test('real style: exterior walls get a base strip broken at doors', () => {
+  const { byId } = buildAll({ ...options, style: 'real' });
+  const strips = [];
+  byId.building.group.traverse(o => { if (o.isMesh && o.geometry.type === 'BoxGeometry' && Math.abs(o.position.y - 0.06) < 1e-6) strips.push(o); });
+  // the fixture's street wall: a glass door and a door at the ground, three strips; the back
+  // wall's floor window, two; the four other exterior walls one each; the interior wall none
+  assert.equal(strips.length, 9);
+  strips.forEach(s => assert.ok(s.geometry.parameters.width > 0.01));
+  // on the outer face only: in the plan, just past the strip there is no room
+  const inRoom = ([x, , z]) => model.rooms.some(r => r.rects.some(([x0, z0, x1, z1]) => x >= x0 && x <= x1 && z >= z0 && z <= z1));
+  byId.building.group.updateMatrixWorld(true);
+  strips.forEach(s => {
+    assert.ok(Math.abs(s.position.z) > 0.1, 'one face only');
+    const out = new THREE.Vector3(0, 0, Math.sign(s.position.z) * 0.3).add(s.position).applyMatrix4(s.parent.matrixWorld);
+    assert.ok(!inRoom(out.toArray()), 'the outer face');
+  });
+});
+
+test('real style: a panel wall is anthracite, without a base strip', () => {
+  const panelled = structuredClone(model);
+  panelled.walls.push({ a: [13, 7.5], b: [13, 9], t: 0.04, top: 2.6, finish: 'panel' });
+  const { ctx } = makeCtx({ ...options, style: 'real' }, panelled);
+  const L = buildLayer(BUILDERS[LAYERS.indexOf('building')], 'building', ctx);
+  const frame = new THREE.Color(ctx.kit.REAL.frame).getHexString();
+  const panel = L.group.children.find(g => g.isGroup && g.position.x === 13 && g.position.z === 7.5);
+  assert.equal(panel.children.length, 1, 'the panel has no strip, frames or glass');
+  assert.equal(panel.children[0].material.color.getHexString(), frame);
+  assert.deepEqual([panel.children[0].castShadow, panel.children[0].receiveShadow], [true, true]);
 });
 
 test('real style: every floor has its own material', () => {

@@ -6,16 +6,16 @@ export default function build({ THREE, kit, C, model, style }) {
   if (!p) return null;
   const { basic, lineMat, edges, near } = kit;
   const real = style === 'real';
-  // the real style: anthracite like the outbuilding's frames, casting shadows, no outlines
+  // the real style: anthracite like the house's frames, casting shadows, no outlines
   const box = real ? (g, m, _e, r, y) => { const s = kit.solid(g, m, r, y); s.castShadow = true; return s; } : kit.box;
   const group = new THREE.Group();
-  const frameM = real ? kit.surface('frameDark') : basic({ color: C.wall, opacity: 0.35 });
+  const frameM = real ? kit.surface('frame') : basic({ color: C.wall, opacity: 0.35 });
   const frameE = lineMat({ color: C.line, opacity: 0.75 });
   const ledMat = lineMat({ color: C.amber, opacity: 0 });
   const glowSprites = [];
   const [x0, z0, x1, z1] = p.rect, Hp = p.height, n = p.modules || 1;
   const W = (x1 - x0) / n, D = z1 - z0;
-  const slatM = real ? kit.surface('frameDark') : basic({ color: C.wall, opacity: 0.3, side: THREE.DoubleSide });
+  const slatM = real ? kit.surface('frame') : basic({ color: C.wall, opacity: 0.3, side: THREE.DoubleSide });
   const slatE = lineMat({ color: C.lineSoft, opacity: 0.6 });
   const posts = Array.from({ length: n + 1 }, (_, i) => x0 + i * W);
   posts.forEach(x => box(group, frameM, frameE, [x - 0.08, z1 - 0.16, x + 0.08, z1], [0, Hp]));

@@ -86,7 +86,7 @@ export default function build({ THREE, kit, C, model, style }) {
     }
     group.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), fenceE));
   });
-  const frameM = real ? kit.surface('plinth') : basic({ color: C.wall, opacity: 0.35 });
+  const frameM = real ? kit.surface('unit') : basic({ color: C.wall, opacity: 0.35 });
   const frameE = lineMat({ color: C.line, opacity: 0.75 });
   (site.outdoor_units || []).forEach(u => shade(slab(u.rect, frameM, frameE, u.y), true));
   return { id: 'site', group };
