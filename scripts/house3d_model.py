@@ -30,6 +30,8 @@ PUBLIC = ("geometry", "rooms", "showcase")
 OUTDOOR = "oues"
 GATE_KINDS = ("sliding", "swing1", "swing2")
 ROOM_FLOORS = ("tile", "paving")  # the real style's floor finishes besides the default oak
+PLANTS = ("thuja", "low")
+PLANTER_FINISHES = ("frame", "cladding")
 SLIDE_OFFSET = 0.12  # a sliding leaf runs this far to the lot side of the fence line, past its rails
 CAR_CLEARANCE = 0.3  # between the car and a gate leaf's sweep
 BLOCK = re.compile(r"^```json house3d:(\w+)[ \t]*\n(.*?)^```[ \t]*$", re.M | re.S)
@@ -232,7 +234,7 @@ def validate(layers):
     site = model.get("site", {})
     if not (isinstance(site.get("lot"), list) and len(site["lot"]) >= 3 and all(_point(p) for p in site["lot"])):
         bad("site: lot needs three or more [x, z] points")
-    for key in ("hedges", "fences"):
+    for key in ("hedges", "fences", "bar_fences"):
         for i, seg in enumerate(site.get(key, [])):
             if not (isinstance(seg, list) and len(seg) == 2 and all(_point(p) for p in seg)):
                 bad(f"site.{key}[{i}]: must be [[x, z], [x, z]]")
@@ -253,9 +255,34 @@ def validate(layers):
     for key in ("porch",):
         if key in site:
             rect(f"site.{key}", site[key])
-    for key in ("sandpit", "swing", "pergola"):
-        if key in site:
+    for key in ("sandpit", "swing", "pergola", "trampoline"):
+        if key in site and not isinstance(site[key], dict):
+            bad(f"site.{key}: not a JSON object")
+        elif key in site:
             rect(f"site.{key}", site[key].get("rect"))
+    if isinstance(site.get("trampoline"), dict) and not (_num(site["trampoline"].get("height")) and site["trampoline"]["height"] > 0):
+        bad("site.trampoline: height is not a positive number")
+    if isinstance(site.get("swing"), dict) and "slide" in site["swing"] and not _point(site["swing"]["slide"]):
+        bad("site.swing: slide must be [x, z]")
+    for i, p in enumerate(site.get("planters", [])):
+        where = f"site.planters[{i}]"
+        if not isinstance(p, dict):
+            bad(f"{where}: not a JSON object")
+            continue
+        rect(where, p.get("rect"))
+        if not (_point(p.get("y")) and p["y"][0] < p["y"][1]):
+            bad(f"{where}: y must be [y0, y1] with y0 < y1")
+        if "plant" in p and p["plant"] not in PLANTS:
+            bad(f"{where}: plant {p['plant']!r} is not one of {', '.join(PLANTS)}")
+        if "finish" in p and p["finish"] not in PLANTER_FINISHES:
+            bad(f"{where}: finish {p['finish']!r} is not one of {', '.join(PLANTER_FINISHES)}")
+    for i, st in enumerate(site.get("steps", [])):
+        if not isinstance(st, dict):
+            bad(f"site.steps[{i}]: not a JSON object")
+            continue
+        rect(f"site.steps[{i}]", st.get("rect"))
+        if not (_num(st.get("height")) and st["height"] > 0):
+            bad(f"site.steps[{i}]: height is not a positive number")
     if "garage_roof" in site:
         gr = site["garage_roof"]
         if ("rect" in gr) == ("rects" in gr):

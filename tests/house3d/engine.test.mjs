@@ -25,7 +25,7 @@ const THREE = await import(new URL('vendor/three-0.186.1/build/three.module.js',
 const { createKit } = await import(new URL('scene/kit.js', E));
 const BUILDERS = await Promise.all(LAYERS.map(id => import(new URL(`scene/layers/${id}.js`, E))));
 const { modelFrame, buildLayer, guardLayer } = await import(new URL('house3d.js', E));
-const { sunPosition, gridBearing, sunDirection } = await import(new URL('scene/sun.js', E));
+const { sunPosition, gridBearing, sunDirection, sunGlow } = await import(new URL('scene/sun.js', E));
 const { cornerBoards } = await import(new URL('scene/layers/building.js', E));
 
 const model = JSON.parse(execFileSync('python3', ['-I', fileURLToPath(new URL('../../scripts/house3d_model.py', import.meta.url)), '--layers', 'all',
@@ -193,8 +193,13 @@ test('sunDirection and gridBearing', () => {
 
 // the real style: each surface colour has one shadow role per layer, [castShadow, receiveShadow]
 const REAL_FLAGS = {
-  building: { cladding: [true, true], interior: [true, true], frame: [true, true], glass: [false, false], floor: [false, true], tile: [false, true], roof: [true, true] },
-  site: { deck: [false, true], paving: [false, true], hedge: [true, false], unit: [true, false], fence: [true, false] },
+  building: { cladding: [true, true], interior: [true, true], frame: [true, true], glass: [false, false], floor: [false, true], tile: [false, true], roof: [true, true], paving: [false, true] },
+  site: {
+    deck: [false, true], paving: [false, true], hedge: [true, false], unit: [true, false], fence: [true, false],
+    stone: [false, true], frame: [true, false], cladding: [true, false], mesh: [false, false],
+    timber: [true, false], sand: [false, true], slide: [true, false], nest: [true, false], pad: [true, false], mat: [true, false], net: [false, false]
+  },
+  gates: { fence: [true, false] },
   trees: { trunk: [true, false], crown: [true, false] },
   pergola: { frame: [true, false] },
   car: { car: [true, false], glass: [false, false] }
@@ -471,4 +476,176 @@ test('real style: a corner board stops at an opening next to the corner', () => 
   // the door ends at local x 10.15, the corner's face line is at 10.2
   assert.ok(Math.abs(b.position.x - w / 2 - 10.15) < 1e-9, 'starts at the door');
   assert.ok(w < 0.12);
+});
+
+test('kit: every real-style colour is distinct', () => {
+  const { REAL } = createKit(THREE, 'real');
+  const hexes = Object.values(REAL).map(v => new THREE.Color(v).getHexString());
+  assert.equal(new Set(hexes).size, hexes.length);
+});
+
+test('kit: pavers() is one texture per mount on a metre tile', () => {
+  const kit = createKit(THREE, 'real'), t = kit.pavers();
+  assert.equal(kit.pavers(), t);
+  assert.notEqual(createKit(THREE, 'real').pavers(), t, 'a mount of its own');
+  assert.equal(t.wrapS, THREE.RepeatWrapping);
+  assert.equal(t.wrapT, THREE.RepeatWrapping);
+  assert.ok(Math.abs(t.repeat.x - 1 / 0.9) < 1e-9 && Math.abs(t.repeat.y - 1 / 0.9) < 1e-9);
+  // joints at 1, stones darker, shades vary
+  const vals = new Set();
+  for (let i = 0; i < t.image.data.length; i += 4) vals.add(t.image.data[i]);
+  assert.ok(vals.has(255) && Math.min(...vals) >= Math.round(0.88 * 0.96 * 255) - 1 && vals.size > 3);
+});
+
+test('kit: bars() has two rails and a bar every 0.12 m, ends included, casting only', () => {
+  const kit = createKit(THREE, 'real'), m = kit.surface('fence'), g = kit.bars(1.2, 1.2, m);
+  const rails = g.children.filter(o => !o.isInstancedMesh), im = g.children.find(o => o.isInstancedMesh);
+  assert.equal(rails.length, 2);
+  assert.deepEqual(rails.map(r => r.position.y), [0.05, 1.2]);
+  assert.equal(im.count, 11);
+  const at = new THREE.Matrix4(), p = new THREE.Vector3(), xs = [];
+  for (let i = 0; i < im.count; i++) { im.getMatrixAt(i, at); xs.push(p.setFromMatrixPosition(at).x); }
+  xs.forEach((x, i) => assert.ok(Math.abs(x - i * 0.12) < 1e-6 && x >= -1e-6 && x <= 1.2 + 1e-6));
+  g.children.forEach(o => assert.deepEqual([o.castShadow, o.receiveShadow], [true, false]));
+});
+
+test('kit: wireMesh() alpha is a wire or the veil, nothing between', () => {
+  const t = createKit(THREE, 'real').wireMesh(), alphas = new Set();
+  for (let i = 3; i < t.image.data.length; i += 4) alphas.add(t.image.data[i]);
+  assert.deepEqual([...alphas].sort((a, b) => a - b), [26, 255]);
+  assert.ok(Math.abs(t.repeat.x - 5) < 1e-9);
+});
+
+const hexOf = (kit, n) => new THREE.Color(kit.REAL[n]).getHexString();
+const siteParts = (L, part) => { const out = []; L.group.traverse(o => { if (o.userData.part === part) out.push(o); }); return out; };
+
+test('real style: paving and the carport floor carry the stones on world (x, z)', () => {
+  const { ctx, byId } = buildAll({ ...options, style: 'real' });
+  const paving = byId.site.group.children.filter(o => o.isMesh && o.material.color.getHexString() === hexOf(ctx.kit, 'paving'));
+  assert.equal(paving.length, 2, 'the paving and the porch');
+  paving.forEach(m => {
+    assert.equal(m.material.map, ctx.kit.pavers());
+    const pos = m.geometry.attributes.position, uv = m.geometry.attributes.uv, nor = m.geometry.attributes.normal;
+    const top = Math.max(...Array.from({ length: pos.count }, (_, k) => pos.getY(k)));
+    let n = 0;
+    // the top face's vertices: at the top, facing up or down (the extrusion's caps), not the sides
+    for (let k = 0; k < pos.count; k++) {
+      if (Math.abs(pos.getY(k) - top) > 1e-6 || Math.abs(nor.getY(k)) < 0.99) continue;
+      n++;
+      assert.ok(Math.abs(uv.getX(k) - pos.getX(k)) < 1e-6 && Math.abs(uv.getY(k) - pos.getZ(k)) < 1e-6, 'top-face uv is world (x, z)');
+    }
+    assert.ok(n >= 4);
+  });
+  const floor = byId.building.group.children.find(o => o.userData.room === 'carport');
+  assert.equal(floor.material.map, ctx.kit.pavers());
+  floor.updateMatrixWorld(true);
+  const pos = floor.geometry.attributes.position, uv = floor.geometry.attributes.uv, v = new THREE.Vector3();
+  for (let k = 0; k < pos.count; k++) {
+    v.fromBufferAttribute(pos, k).applyMatrix4(floor.matrixWorld);
+    assert.ok(Math.abs(uv.getX(k) - v.x) < 1e-6 && Math.abs(uv.getY(k) - v.z) < 1e-6, 'carport floor uv is world (x, z)');
+  }
+});
+
+test('real style: bar fences on the street, mesh fences on the sides, no post at a gate post', () => {
+  const { ctx, byId } = buildAll({ ...options, style: 'real' });
+  const spans = siteParts(byId.site, 'bars');
+  assert.ok(spans.length >= 2);
+  let total = 0;
+  spans.forEach(g => {
+    const im = g.children.find(o => o.isInstancedMesh), len = g.children.find(o => !o.isInstancedMesh).geometry.parameters.width;
+    assert.ok(Math.abs(g.position.z + 6) < 1e-9, 'along z -6');
+    assert.ok(Math.abs(Math.sin(g.rotation.y)) < 1e-9, 'running along x');
+    // n gaps of 0.12 m, n + 1 bars
+    assert.ok(Math.abs(im.count - 1 - len / 0.12) <= 1, `${im.count} bars on ${len} m`);
+    total += len;
+  });
+  const want = model.site.bar_fences.reduce((a, [p, q]) => a + Math.hypot(q[0] - p[0], q[1] - p[1]), 0);
+  assert.ok(Math.abs(total - want) < 1e-6, 'the spans cover the bar fences');
+  const gatePosts = model.site.gates.flatMap(g => [g.a, g.b]);
+  const posts = siteParts(byId.site, 'post');
+  assert.ok(posts.length > 6);
+  posts.forEach(p => gatePosts.forEach(([x, z]) => assert.ok(Math.hypot(p.position.x - x, p.position.z - z) >= 0.05, `a post at ${x}, ${z}`)));
+  const planes = siteParts(byId.site, 'mesh');
+  assert.equal(planes.length, model.site.fences.length);
+  planes.forEach(m => {
+    assert.equal(m.material.map, ctx.kit.wireMesh());
+    assert.ok(model.site.fences.some(([a, b]) => Math.hypot(m.position.x - (a[0] + b[0]) / 2, m.position.z - (a[1] + b[1]) / 2) < 1e-6), 'on a side segment');
+  });
+});
+
+test('real style: the step, the planters and their plants', () => {
+  const { ctx, byId } = buildAll({ ...options, style: 'real' });
+  const steps = byId.site.group.children.filter(o => o.isMesh && o.material.color.getHexString() === hexOf(ctx.kit, 'stone'));
+  assert.equal(steps.length, 1);
+  assert.ok(Math.abs(steps[0].position.y + steps[0].geometry.parameters.height / 2 - 0.115) < 1e-9);
+  const planters = siteParts(byId.site, 'planter');
+  assert.equal(planters.length, 2);
+  planters.forEach(p => assert.equal(p.castShadow, true));
+  assert.deepEqual(planters.map(p => p.material.color.getHexString()), [hexOf(ctx.kit, 'frame'), hexOf(ctx.kit, 'cladding')]);
+});
+
+test('real style: the swing, its tower and slide, the sandpit and the trampoline', () => {
+  const { byId } = buildAll({ ...options, style: 'real' });
+  const sw = model.site.swing, L = byId.site;
+  L.group.updateMatrixWorld(true);
+  const legs = siteParts(L, 'leg');
+  assert.equal(legs.length, 4 + 4 + 6, 'two A-frames, the tower and the trampoline');
+  legs.forEach(l => assert.equal(Math.min(l.userData.ends[0][1], l.userData.ends[1][1]), 0));
+  const [beam] = siteParts(L, 'beam');
+  assert.ok(Math.abs(new THREE.Box3().setFromObject(beam).max.y - sw.height) < 1e-6, 'the beam top at height');
+  const [chute] = siteParts(L, 'chute'), foot = chute.userData.ends[1];
+  assert.ok(Math.hypot(foot[0] - sw.slide[0], foot[2] - sw.slide[1]) <= 0.15);
+  // the chute lies flat across its slope
+  const across = new THREE.Vector3(1, 0, 0).applyQuaternion(chute.quaternion);
+  assert.ok(Math.abs(across.y) < 1e-6);
+  // the tower is at the beam end nearer to the slide
+  const [platform] = siteParts(L, 'platform');
+  assert.ok(platform.position.z > sw.rect[3], 'past the end at z1');
+  const [sand] = siteParts(L, 'sand'), ledges = siteParts(L, 'ledge');
+  const topOf = o => new THREE.Box3().setFromObject(o).max.y;
+  assert.ok(topOf(sand) < Math.min(...ledges.map(topOf)) - 0.05);
+  const [net] = siteParts(L, 'net');
+  assert.ok(net.material.transparent && net.material.opacity < 1 && !net.material.depthWrite);
+  const b = new THREE.Box3().setFromObject(net), [x0, z0, x1, z1] = model.site.trampoline.rect;
+  assert.ok(b.min.x >= x0 - 1e-6 && b.max.x <= x1 + 1e-6 && b.min.z >= z0 - 1e-6 && b.max.z <= z1 + 1e-6, 'the net inside the rect');
+});
+
+test('real style: a swing without slide along x, and a site without the new keys', () => {
+  const m = structuredClone(model);
+  m.site.swing = { rect: [6, -4, 9, -3.8], height: 2.2 };
+  ['bar_fences', 'trampoline', 'planters', 'steps', 'sandpit'].forEach(k => delete m.site[k]);
+  const { ctx } = makeCtx({ ...options, style: 'real' }, m);
+  const L = buildLayer(BUILDERS[LAYERS.indexOf('site')], 'site', ctx);
+  assert.ok(L);
+  assert.equal(siteParts(L, 'chute').length, 0);
+  assert.equal(siteParts(L, 'leg').length, 4);
+  assert.equal(siteParts(L, 'bars').length, 0);
+  assert.equal(siteParts(L, 'mesh').length, m.site.fences.length);
+  const [beam] = siteParts(L, 'beam');
+  assert.ok(Math.abs(beam.userData.ends[0][2] - beam.userData.ends[1][2]) < 1e-9, 'the beam runs along x');
+  // with a slide on an x-axis swing, the climbing wall's width lies across the beam
+  m.site.swing.slide = [10.5, -3];
+  const L2 = buildLayer(BUILDERS[LAYERS.indexOf('site')], 'site', makeCtx({ ...options, style: 'real' }, m).ctx);
+  const [wall] = siteParts(L2, 'wall');
+  assert.ok(Math.abs(new THREE.Vector3(1, 0, 0).applyQuaternion(wall.quaternion).z) > 0.99);
+});
+
+test('real style: the drive gate is bars and slides its width', () => {
+  const { byId } = buildAll({ ...options, style: 'real' });
+  const gate = byId.gates.api.driveGate(model.car.path);
+  const leaf = gate.leaves[0].pivot.children[0];
+  assert.ok(leaf.isGroup && leaf.children.some(o => o.isInstancedMesh));
+  byId.gates.group.updateMatrixWorld(true);
+  const before = leaf.getWorldPosition(new THREE.Vector3());
+  byId.gates.api.setGate(gate, 1);
+  byId.gates.group.updateMatrixWorld(true);
+  assert.ok(Math.abs(leaf.getWorldPosition(new THREE.Vector3()).distanceTo(before) - gate.w) < 1e-9);
+});
+
+test('sunGlow: hidden below the horizon, fading in, warm when low', () => {
+  assert.equal(sunGlow(-5).visible, false);
+  const low = sunGlow(1);
+  assert.ok(low.visible && low.opacity > 0 && low.opacity < 1);
+  assert.equal(low.warm, 1);
+  assert.deepEqual(sunGlow(30), { visible: true, opacity: 1, warm: 0 });
 });

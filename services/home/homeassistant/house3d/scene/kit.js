@@ -14,18 +14,31 @@ const COLORS = {
 // door, trim, corner board, roof edge, the wall's base strip, the carport's panels and the
 // pergola one anthracite, about RAL 7016 (the drawings' RR25 yellow frames were not built).
 // Inside, the walls are light grey, the living floors oak and the wet rooms a dark wood-look
-// tile. The deck is dark composite, the paving warm concrete pavers, the outdoor units white.
+// tile. The deck is dark composite, the paving light grey-beige concrete pavers with sandy
+// joints (their stones come from pavers()), the entrance step dark grey, the outdoor units white.
+// The bar fence and the gates are black bars (bars()), the other fences a dark wire mesh
+// (wireMesh()). The play area is stained timber with a sand box, a mint slide and a dark nest
+// seat; the trampoline a green edge pad on a black mat with a black net.
 // The car and surroundings are plain stand-ins; outside is the neutral ground beyond the lot.
 const REAL = {
   cladding: '#bebeb8', roof: '#7b8083', frame: '#383e42', unit: '#e4e4e0',
-  glass: '#9fb8c4', interior: '#dddcd8', floor: '#c39566', tile: '#5e4a3c', deck: '#4d4540', paving: '#b3a38c',
+  glass: '#9fb8c4', interior: '#dddcd8', floor: '#c39566', tile: '#5e4a3c', deck: '#4d4540', paving: '#b8b1a3',
   lawn: '#5f7f45', outside: '#8e9088', hedge: '#355a32', crown: '#4f7a3a', trunk: '#5b4636',
-  fence: '#4a4d50', car: '#2f3336', neighbour: '#b9b6ae', road: '#6b6b68'
+  fence: '#4a4d50', car: '#2f3336', neighbour: '#b9b6ae', road: '#6b6b68',
+  timber: '#8a6a4c', sand: '#d6c6a0', slide: '#9ed8c2', nest: '#3d4a5c', pad: '#3f8a4b', mat: '#202325',
+  net: '#151719', mesh: '#2c2f31', stone: '#56595b'
 };
 // the cladding's boards: about 12 cm wide, rising to the right at 45 degrees, only their grooves
 // drawn, on a 2 m tile of the walls' metre UVs
 const BOARD_TILE = 2, BOARDS = 12, BOARD_PX = 512, GROOVE = 0.045;
 const GLASS_OPACITY = 0.35;
+// the paving's stones: running-bond rows ROW deep of stones STONE long, the long joints waving
+// WAVE either way, on a PAVER_TILE m tile that holds whole rows and stones
+const PAVER_TILE = 0.9, STONE = 0.225, ROW = 0.1125, WAVE = 0.012, JOINT = 0.005, PAVER_PX = 512;
+// the mesh fence: vertical wires every 5 cm, horizontal ones every 20 cm, 4 mm thick, on a 0.2 m
+// tile; a faint veil between them so the mipmapped fence still reads from far off
+const MESH_TILE = 0.2, MESH_X = 0.05, WIRE = 0.004, MESH_PX = 256, MESH_VEIL = 26;
+const BAR_STEP = 0.12, BAR = 0.02, RAIL = 0.04;
 
 export function createKit(THREE, style = 'simple') {
   const C = Object.fromEntries(Object.entries(COLORS).map(([k, v]) => [k, new THREE.Color(v)]));
@@ -91,25 +104,82 @@ export function createKit(THREE, style = 'simple') {
   let boardPair;
   function boards() {
     if (boardPair) return boardPair;
-    const S = BOARD_PX, data = new Uint8Array(S * S * 4);
-    for (let j = 0; j < S; j++) for (let i = 0; i < S; i++) {
-      // i - j counts across the boards and wraps with the tile; one shade, a thin groove between
+    const S = BOARD_PX;
+    // i - j counts across the boards and wraps with the tile; one shade, a thin groove between
+    const front = tileTexture(S, BOARD_TILE, (i, j) => {
       const t = ((i - j + S) * BOARDS) / S, v = (t - Math.floor(t) < GROOVE ? 0.72 : 1) * 255;
-      data.set([v, v, v, 255], (j * S + i) * 4);
-    }
-    const front = keep(new THREE.DataTexture(data, S, S));
-    front.wrapS = front.wrapT = THREE.RepeatWrapping;
-    front.colorSpace = THREE.SRGBColorSpace;
-    front.magFilter = THREE.LinearFilter;
-    front.minFilter = THREE.LinearMipmapLinearFilter;
-    front.generateMipmaps = true;
-    front.anisotropy = 8;
-    front.repeat.set(1 / BOARD_TILE, 1 / BOARD_TILE);
-    front.needsUpdate = true;
+      return [v, v, v, 255];
+    });
     const back = keep(front.clone());
     back.repeat.x = -1 / BOARD_TILE;
     back.needsUpdate = true;
     return (boardPair = [front, back]);
+  }
+
+  // a repeating DataTexture of S x S pixels filled by px(i, j) -> [r, g, b, a], on a tile metres
+  // wide of metre UVs
+  function tileTexture(S, tile, px) {
+    const data = new Uint8Array(S * S * 4);
+    for (let j = 0; j < S; j++) for (let i = 0; i < S; i++) data.set(px(i, j), (j * S + i) * 4);
+    const tex = keep(new THREE.DataTexture(data, S, S));
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.magFilter = THREE.LinearFilter;
+    tex.minFilter = THREE.LinearMipmapLinearFilter;
+    tex.generateMipmaps = true;
+    tex.anisotropy = 8;
+    tex.repeat.set(1 / tile, 1 / tile);
+    tex.needsUpdate = true;
+    return tex;
+  }
+
+  // real style: the paving's stones, one texture per mount
+  let paverTex;
+  function pavers() {
+    if (paverTex) return paverTex;
+    const S = PAVER_PX, m = PAVER_TILE / S, rows = Math.round(PAVER_TILE / ROW), cols = Math.round(PAVER_TILE / STONE);
+    const inJoint = (t, step) => Math.min(t % step, step - (t % step)) < JOINT / 2;
+    paverTex = tileTexture(S, PAVER_TILE, (i, j) => {
+      const u = i * m, v = j * m;
+      // the wave runs ROW long along u, so the tile's edges meet
+      const rv = (v + WAVE * Math.sin((2 * Math.PI * u) / ROW) + PAVER_TILE) % PAVER_TILE, r = Math.floor(rv / ROW);
+      const ou = (u + (r % 2) * (STONE / 2)) % PAVER_TILE, c = Math.floor(ou / STONE) % cols;
+      if (inJoint(rv, ROW) || inJoint(ou, STONE)) return [255, 255, 255, 255];
+      // a stone's shade from its row and column, the same on every tile
+      const h = Math.sin((r % rows) * 12.9898 + c * 78.233) * 43758.5453, k = 0.88 * (1 + 0.08 * (h - Math.floor(h) - 0.5));
+      const g = Math.round(k * 255);
+      return [g, g, g, 255];
+    });
+    return paverTex;
+  }
+
+  // real style: the mesh fence's wires, white where a wire is, alpha MESH_VEIL between
+  let meshTex;
+  function wireMesh() {
+    if (meshTex) return meshTex;
+    const S = MESH_PX, m = MESH_TILE / S;
+    const on = (t, step) => Math.min(t % step, step - (t % step)) < WIRE / 2;
+    meshTex = tileTexture(S, MESH_TILE, (i, j) => [255, 255, 255, on((i + 0.5) * m, MESH_X) || on((j + 0.5) * m, MESH_TILE) ? 255 : MESH_VEIL]);
+    return meshTex;
+  }
+
+  // real style: a bar fence span or gate leaf len long and h high along local +x, from the
+  // ground up: two rails and a bar every BAR_STEP, ends included; casts, takes no shadow
+  function bars(len, h, mat) {
+    const g = new THREE.Group();
+    [0.05, h].forEach(y => {
+      const r = new THREE.Mesh(new THREE.BoxGeometry(len, RAIL, RAIL), mat);
+      r.position.set(len / 2, y, 0);
+      g.add(r);
+    });
+    const n = Math.max(1, Math.round(len / BAR_STEP)), im = new THREE.InstancedMesh(new THREE.BoxGeometry(BAR, h - 0.05, BAR), mat, n + 1);
+    const at = new THREE.Matrix4();
+    for (let i = 0; i <= n; i++) im.setMatrixAt(i, at.makeTranslation((len * i) / n, (0.05 + h) / 2, 0));
+    im.instanceMatrix.needsUpdate = true;
+    im.computeBoundingSphere();
+    g.add(im);
+    g.children.forEach(o => { o.castShadow = true; o.receiveShadow = false; });
+    return g;
   }
 
   // real style: box() without the outline
@@ -144,5 +214,5 @@ export function createKit(THREE, style = 'simple') {
 
   const near = (a, b) => Math.abs(a - b) < 0.002;
 
-  return { C, style, REAL, disposables, keep, basic, lineMat, mats, edges, box, prism, canvasTexture, applyFade, near, surface, solid, flatShape, boards };
+  return { C, style, REAL, disposables, keep, basic, lineMat, mats, edges, box, prism, canvasTexture, applyFade, near, surface, solid, flatShape, boards, pavers, wireMesh, bars };
 }

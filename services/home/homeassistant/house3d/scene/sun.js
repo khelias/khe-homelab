@@ -1,5 +1,6 @@
-// The sun for the real style: where it stands at a time and place, and that direction in the
-// model's axes. Pure functions; the core loads this module like the kit, not as a layer.
+// The sun for the real style: where it stands at a time and place, that direction in the
+// model's axes, and how its disc in the sky shows at an altitude. Pure functions; the core loads
+// this module like the kit, not as a layer.
 const D2R = Math.PI / 180;
 // L-EST97 is a Lambert conformal projection with its central meridian at 24 E; true north turns
 // from grid north by the cone constant, this many degrees per degree of longitude from there
@@ -55,4 +56,14 @@ export function gridBearing(trueAzimuth, lon) {
 export function sunDirection(altitude, gridAzimuth, bearing) {
   const a = gridAzimuth - bearing, h = cos(altitude);
   return [cos(a) * h, sin(altitude), sin(a) * h];
+}
+
+/**
+ * sunGlow(altitude) -> { visible, opacity, warm }: the sun's disc in the sky shows from 1 degree
+ * under the horizon, fades in up to 2 degrees above it, and is fully warm below 3 degrees, white
+ * above 12.
+ */
+export function sunGlow(altitude) {
+  const clamp = v => Math.min(1, Math.max(0, v));
+  return { visible: altitude > -1, opacity: clamp((altitude + 1) / 3), warm: clamp((12 - altitude) / 9) };
 }

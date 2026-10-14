@@ -1,5 +1,6 @@
-// Gates in the fence line, drawn like the fence. Each leaf hangs on a pivot so the drive gate
-// can open for the car; a post two gates share is drawn once.
+// Gates in the fence line, drawn like the fence: lines in the simple style, bars like the bar
+// fence in the real one. Each leaf hangs on a pivot so the drive gate can open for the car; a post
+// two gates share is drawn once.
 const SLIDE_OFFSET = 0.12; // a sliding leaf runs this far to the lot side of the fence line, past its rails
 const yawOf = (dx, dz) => Math.atan2(-dz, dx); // rotation.y that turns local +x along (dx, dz)
 
@@ -19,7 +20,7 @@ export default function build({ THREE, kit, C, model, frame, style }) {
   const { lotCx, lotCz } = frame;
   const real = style === 'real';
   const group = new THREE.Group();
-  const gateE = real ? kit.lineMat({ color: kit.REAL.fence, opacity: 0.9 }) : kit.lineMat({ color: C.lineSoft, opacity: 0.5 });
+  const gateE = real ? null : kit.lineMat({ color: C.lineSoft, opacity: 0.5 });
   const postM = real ? kit.surface('fence') : kit.basic({ color: C.wall, opacity: 0.35 });
   const postE = real ? null : kit.lineMat({ color: C.lineSoft, opacity: 0.6 });
   const gatePosts = new Set();
@@ -47,7 +48,7 @@ export default function build({ THREE, kit, C, model, frame, style }) {
       const pivot = new THREE.Object3D();
       pivot.position.set(x, 0, z);
       pivot.rotation.y = yawOf(dx, dz);
-      pivot.add(new THREE.LineSegments(leafGeo(len, g.height), gateE));
+      pivot.add(real ? kit.bars(len, g.height, postM) : new THREE.LineSegments(leafGeo(len, g.height), gateE));
       group.add(pivot);
       const turn = yawOf(side * nx, side * nz) - pivot.rotation.y;
       leaves.push({ pivot, x, z, closed: pivot.rotation.y, turn: Math.atan2(Math.sin(turn), Math.cos(turn)) });

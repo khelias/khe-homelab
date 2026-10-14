@@ -62,7 +62,7 @@ const QUERY = new URL(import.meta.url).search;
 const [KIT, SUN, ...LOADED] = await Promise.allSettled(['kit', 'sun', ...LAYERS.map(id => `layers/${id}`)].map(p => import(`./scene/${p}.js${QUERY}`)));
 [KIT, SUN].forEach(r => { if (r.status === 'rejected') throw r.reason; });
 const { createKit } = KIT.value;
-const { sunPosition, gridBearing, sunDirection } = SUN.value;
+const { sunPosition, gridBearing, sunDirection, sunGlow } = SUN.value;
 const BUILDERS = LOADED.map((r, i) => {
   if (r.status === 'fulfilled') return r.value;
   console.error(`house3d: layer ${LAYERS[i]} failed to load`, r.reason);
@@ -218,6 +218,12 @@ export function guardLayer(L, off) {
  *   to the lot side, sliding past the end named by slide, 'a' or 'b'), 'swing1' (one leaf hinged
  *   at a) or 'swing2' (two leaves hinged at a and b), a swing gate opening 'in' (to the lot) or
  *   'out'. With a car, the gate its path crosses is the drive gate, and only it moves.
+ *   site.fences are the mesh fence and site.bar_fences the bar fence, [[x, z], [x, z]] segments.
+ *   site.sandpit { rect, height }; site.swing { rect, height, slide? }, the beam along the rect's
+ *   long axis, slide the chute's foot [x, z] with the tower at the beam end nearer to it;
+ *   site.trampoline { rect, height } (the mat's); site.planters [{ rect, y, plant?, finish? }],
+ *   plant 'thuja' or 'low', finish 'frame' (default) or 'cladding'; site.steps [{ rect, height }].
+ *   The simple style draws the trampoline, planters and steps as plain boxes.
  * options:
  *   onMarker(id)     a marker was tapped
  *   onRoom(id|null)  a room floor was tapped with the roof off; null for empty space
@@ -397,7 +403,9 @@ export function mount(element, model, options = {}) {
   const bloomOn = () => !real && options.bloom !== false && width >= BLOOM_MIN_WIDTH;
 
   /* ---------- the real style's sun, sky and shadows ---------- */
-  let sun = null, hemi = null, sunPlace = null, sunTime = null, sunTimer = 0, liftCasts = true;
+  let sun = null, hemi = null, glow = null, sunPlace = null, sunTime = null, sunTimer = 0, liftCasts = true;
+  // towards the sun, unit length, at every altitude (sunV is set only while it is up)
+  const sunDir = new THREE.Vector3();
   const sky = Object.fromEntries(Object.entries(SKY).map(([k, v]) => [k, new THREE.Color(v)]));
   const lowSun = new THREE.Color(LOW_SUN);
   if (real) {
@@ -416,6 +424,13 @@ export function mount(element, model, options = {}) {
     sun.shadow.bias = -0.0005;
     sun.shadow.normalBias = 0.02; // the walls are DoubleSide, both faces go into the map
     scene.add(hemi, sun, sun.target);
+    // the sun's disc and glow, far out along its direction; buildings and trees hide it through
+    // the depth test
+    glow = new THREE.Sprite(kit.keep(new THREE.SpriteMaterial({
+      map: kit.canvasTexture(128, [[0, 'rgba(255,255,255,1)'], [0.05, 'rgba(255,255,255,1)'], [0.12, 'rgba(255,236,210,0.6)'], [1, 'rgba(255,222,180,0)']]),
+      fog: false, depthWrite: false, toneMapped: false, transparent: true
+    })));
+    scene.add(glow);
   }
   // the shadow camera holds the lot from the ground to the highest roof or tree
   const msite = model.site || {};
@@ -470,6 +485,11 @@ export function mount(element, model, options = {}) {
     sun.intensity = 1 + 2 * high;
     sun.color.set('#ffffff').lerp(lowSun, Math.max(0, 1 - alt / DUSK_ALT));
     hemi.intensity = alt < 0 ? 0.15 : 0.5 + 1.9 * high;
+    sunDir.set(dir[0], dir[1], dir[2]).normalize();
+    const g = sunGlow(alt);
+    glow.visible = g.visible;
+    glow.material.opacity = g.opacity;
+    glow.material.color.set('#ffffff').lerp(lowSun, g.warm);
     if (alt > 0) placeSun(dir);
     invalidate();
   }
@@ -681,6 +701,11 @@ export function mount(element, model, options = {}) {
     if (!moving && !dirty) { raf = 0; return; }
     dirty = false;
     raf = requestAnimationFrame(frame);
+    // past the farthest neighbour at full zoom-out, about 12 degrees across
+    if (glow && glow.visible) {
+      glow.position.copy(camera.position).addScaledVector(sunDir, camera.far * 0.9);
+      glow.scale.setScalar(0.2 * camera.far * 0.9);
+    }
 
     const roofOpen = Math.max(0, 1 - fade.cur * 1.6);
     for (const rec of markers.values()) {

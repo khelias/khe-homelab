@@ -48,7 +48,8 @@ model, never this file.
  "site": {
   "lot": [[0, -6], [20, -6], [20, 14], [0, 14]],
   "hedges": [[[0, 14], [20, 14]]],
-  "fences": [[[0, -6], [13.5, -6]], [[17.5, -6], [20, -6]], [[20, -6], [20, 14]], [[0, -6], [0, 14]]],
+  "fences": [[[20, -6], [20, 14]], [[0, -6], [0, 14]]],
+  "bar_fences": [[[0, -6], [13.5, -6]], [[17.5, -6], [20, -6]]],
   "gates": [
    { "name": "drive", "a": [13.5, -6], "b": [17.5, -6], "kind": "sliding", "slide": "a", "height": 1.5 }
   ],
@@ -58,6 +59,14 @@ model, never this file.
   "garage_roof": { "rects": [[12.8, 0.8, 17.2, 7.2], [12.8, 7.2, 14, 9]], "y": [2.6, 2.8] },
   "pergola": { "rect": [8.5, 10.3, 11.5, 13], "height": 2.6, "modules": 2 },
   "outdoor_units": [{ "what": "heat pump", "rect": [12.4, 8, 12.9, 9], "y": [0, 0.8] }],
+  "sandpit": { "rect": [9, -5, 10.5, -3.5], "height": 0.25 },
+  "swing": { "rect": [6, -5, 6.2, -2], "height": 2.2, "slide": [8, -1.6] },
+  "trampoline": { "rect": [17.6, 2, 19.4, 5.6], "height": 0.9 },
+  "planters": [
+   { "rect": [11, -1, 11.6, -0.4], "y": [0, 0.45], "plant": "thuja" },
+   { "rect": [17.5, 7, 19, 7.6], "y": [0, 0.6], "plant": "low", "finish": "cladding" }
+  ],
+  "steps": [{ "rect": [10, 1.3, 11, 1.8], "height": 0.115 }],
   "trees": [
    { "id": "t1", "kind": "apple", "pos": [3.5, -3], "height": 4, "crown": 3 },
    { "id": "t2", "kind": "birch", "pos": [18, 12], "height": 12, "crown": 5 }
@@ -71,7 +80,7 @@ model, never this file.
  "rooms": [
   { "id": "r1", "no": "01", "name": "Elutuba", "rects": [[2.2, 2.2, 7, 9.8]] },
   { "id": "r2", "no": "02", "name": "Magamistuba", "rects": [[7, 2.2, 11.8, 9.8]], "floor": "tile" },
-  { "id": "carport", "no": "03", "name": "Varjualune", "rects": [[13, 1, 17, 7]] }
+  { "id": "carport", "no": "03", "name": "Varjualune", "rects": [[13, 1, 17, 7]], "floor": "paving" }
  ]
 }
 ```

@@ -6,7 +6,8 @@
 // finish that tint from their own colour, and the lift on materials of its own, so its fade never
 // reaches the lower walls. Its exterior walls also carry anthracite opening trims with lined
 // reveals and sill flashings, and corner boards on every outer and inner corner; the roofs have an
-// anthracite edge, the carport roof an anthracite fascia and soffit.
+// anthracite edge, the carport roof an anthracite fascia and soffit. A paved room's floor (the
+// carport) carries the paving's stones.
 const FRAME = 0.06, FRAME_D = 0.1; // real style: an opening's frame width and depth
 const BASE_H = 0.12; // real style: the dark strip along an exterior wall's foot
 // real style, read off photos: an opening's trim and a corner board, both standing PROUD off the
@@ -346,11 +347,20 @@ export default function build({ THREE, kit, C, model, roof, ceiling, state, styl
   const floorMeshes = [];
   rooms.forEach(r => {
     r.rects.forEach(([x0, z0, x1, z1]) => {
-      const mat = real ? kit.surface(r.floor || 'floor') : basic({ color: C.floor.clone(), opacity: 0.85, side: THREE.DoubleSide });
-      const inset = 0.05;
-      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0 - inset * 2, z1 - z0 - inset * 2), mat);
+      const stones = real && r.floor === 'paving';
+      const mat = real ? kit.surface(r.floor || 'floor', stones ? { map: kit.pavers() } : {}) : basic({ color: C.floor.clone(), opacity: 0.85, side: THREE.DoubleSide });
+      const inset = 0.05, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+      const geo = new THREE.PlaneGeometry(x1 - x0 - inset * 2, z1 - z0 - inset * 2);
+      // paving stones on world (x, z), so they run on from the paving round the room; the plane's
+      // y turns to -z
+      if (stones) {
+        const pos = geo.attributes.position, uv = geo.attributes.uv;
+        for (let k = 0; k < pos.count; k++) uv.setXY(k, cx + pos.getX(k), cz - pos.getY(k));
+      }
+      const mesh = new THREE.Mesh(geo, mat);
       mesh.rotation.x = -Math.PI / 2;
-      mesh.position.set((x0 + x1) / 2, 0.02, (z0 + z1) / 2);
+      // a paved floor lies 5 mm over the paving under it, so a tint never z-fights with it
+      mesh.position.set(cx, stones ? 0.025 : 0.02, cz);
       mesh.renderOrder = 1;
       mesh.userData = { room: r.id, warm: 0, hover: 0, sel: 0, base: real ? mat.color.clone() : C.floor };
       mesh.receiveShadow = real;

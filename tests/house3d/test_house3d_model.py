@@ -118,6 +118,50 @@ def _short_path(L):
     L["private"]["car"]["path"][0] = [15.137, -7.137]
 
 
+def _site(L):
+    return L["geometry"]["site"]
+
+
+def _bar_fence_point(L):
+    _site(L)["bar_fences"][0] = [[0, -6]]
+
+
+def _trampoline_flat(L):
+    _site(L)["trampoline"]["height"] = 0
+
+
+def _trampoline_rect(L):
+    _site(L)["trampoline"]["rect"] = [10, 12, 8, 13]
+
+
+def _slide_three(L):
+    _site(L)["swing"]["slide"] = [1, 2, 3]
+
+
+def _planter_y(L):
+    _site(L)["planters"][0]["y"] = [0.5, 0]
+
+
+def _planter_plant(L):
+    _site(L)["planters"][0]["plant"] = "palm"
+
+
+def _planter_finish(L):
+    _site(L)["planters"][1]["finish"] = "brick"
+
+
+def _step_height(L):
+    _site(L)["steps"][0]["height"] = -0.1
+
+
+def _planter_list(L):
+    _site(L)["planters"][0] = [11, -1, 11.6, -0.4]
+
+
+def _step_rect(L):
+    _site(L)["steps"][0]["rect"] = [11, 1.3, 10, 1.8]
+
+
 MUTATIONS = [
     ("window without sill", _no_sill, "a window needs a sill"),
     ("unknown opening kind", _bad_kind, "is not window, door or glassdoor"),
@@ -132,6 +176,16 @@ MUTATIONS = [
     ("car path does not clear the drive gate", _short_path, "car: path starts"),
     ("unknown wall finish", _bad_finish, "walls[6]: finish 'brick' is not panel"),
     ("unknown floor finish", _bad_floor, "room r1: floor 'carpet' is not one of tile, paving"),
+    ("bar fence of one point", _bar_fence_point, "site.bar_fences[0]: must be [[x, z], [x, z]]"),
+    ("trampoline without height", _trampoline_flat, "site.trampoline: height is not a positive number"),
+    ("trampoline rect reversed", _trampoline_rect, "site.trampoline: rect"),
+    ("slide of three numbers", _slide_three, "site.swing: slide must be [x, z]"),
+    ("planter y reversed", _planter_y, "site.planters[0]: y must be [y0, y1]"),
+    ("unknown plant", _planter_plant, "site.planters[0]: plant 'palm' is not one of thuja, low"),
+    ("unknown planter finish", _planter_finish, "site.planters[1]: finish 'brick' is not one of frame, cladding"),
+    ("step without height", _step_height, "site.steps[0]: height is not a positive number"),
+    ("planter not an object", _planter_list, "site.planters[0]: not a JSON object"),
+    ("step rect reversed", _step_rect, "site.steps[0]: rect"),
 ]
 
 
