@@ -26,6 +26,7 @@ const { createKit } = await import(new URL('scene/kit.js', E));
 const BUILDERS = await Promise.all(LAYERS.map(id => import(new URL(`scene/layers/${id}.js`, E))));
 const { modelFrame, buildLayer, guardLayer } = await import(new URL('house3d.js', E));
 const { sunPosition, gridBearing, sunDirection } = await import(new URL('scene/sun.js', E));
+const { cornerBoards } = await import(new URL('scene/layers/building.js', E));
 
 const model = JSON.parse(execFileSync('python3', ['-I', fileURLToPath(new URL('../../scripts/house3d_model.py', import.meta.url)), '--layers', 'all',
   fileURLToPath(new URL('./fixture-model.md', import.meta.url))], { encoding: 'utf-8' }));
@@ -192,7 +193,7 @@ test('sunDirection and gridBearing', () => {
 
 // the real style: each surface colour has one shadow role per layer, [castShadow, receiveShadow]
 const REAL_FLAGS = {
-  building: { cladding: [true, true], interior: [true, true], frame: [true, true], glass: [false, false], floor: [false, true], tile: [false, true], roof: [true, false] },
+  building: { cladding: [true, true], interior: [true, true], frame: [true, true], glass: [false, false], floor: [false, true], tile: [false, true], roof: [true, true] },
   site: { deck: [false, true], paving: [false, true], hedge: [true, false], unit: [true, false], fence: [true, false] },
   trees: { trunk: [true, false], crown: [true, false] },
   pergola: { frame: [true, false] },
@@ -205,7 +206,7 @@ test('real style: lit materials and shadow flags', () => {
   // the car casts only once fully shown
   byId.car.api.setCar('parked');
   byId.car.update(1, 1);
-  const seen = {};
+  const seen = {}, lifted = new Set();
   for (const [id, want] of Object.entries(REAL_FLAGS)) {
     const L = byId[id];
     seen[id] = new Set();
@@ -216,11 +217,19 @@ test('real style: lit materials and shadow flags', () => {
         const name = names.get(mt.color.getHexString());
         assert.ok(name in want, `${id}: unexpected surface ${name}`);
         seen[id].add(name);
+        if (root === L.lift) lifted.add(`${id} ${name}`);
         assert.deepEqual([o.castShadow, o.receiveShadow], want[name], `${id}: ${name} shadow flags`);
       });
     }));
   }
   assert.ok(seen.building.has('frame'));
+  assert.ok(lifted.has('building frame'), 'the roof edges and the upper corner boards');
+  // the roofs' edge band and the carport roof's fascia: frame round a roof grey face
+  const hex = n => new THREE.Color(ctx.kit.REAL[n]).getHexString();
+  const edged = byId.building.lift.children.filter(o => o.isMesh && Array.isArray(o.material) && o.material.some(m => m.color.getHexString() === hex('roof')));
+  assert.equal(edged.filter(o => o.geometry.type === 'ExtrudeGeometry').length, Object.keys(model.roofs).length);
+  assert.equal(edged.filter(o => o.geometry.type === 'BoxGeometry').length, model.site.garage_roof.rects.length);
+  edged.forEach(o => assert.ok(o.material.some(m => m.color.getHexString() === hex('frame')), o.geometry.type));
   assert.ok(seen.building.has('tile'), 'a room with floor tile');
 });
 
@@ -262,6 +271,67 @@ test('real style: exterior walls get a base strip broken at doors', () => {
     assert.ok(Math.abs(s.position.z) > 0.1, 'one face only');
     const out = new THREE.Vector3(0, 0, Math.sign(s.position.z) * 0.3).add(s.position).applyMatrix4(s.parent.matrixWorld);
     assert.ok(!inRoom(out.toArray()), 'the outer face');
+  });
+});
+
+// the wall group for model wall w: the group at w.a holding the extruded wall
+function wallGroup(root, w) {
+  return root.children.find(g => g.isGroup && g.position.x === w.a[0] && g.position.z === w.a[1] && g.children.some(o => o.geometry && o.geometry.type === 'ExtrudeGeometry'));
+}
+
+test('real style: openings in an exterior wall get trims, reveals and a sill on the outer face', () => {
+  const { byId } = buildAll({ ...options, style: 'real' });
+  const root = byId.building.group;
+  root.updateMatrixWorld(true);
+  const inRoom = ([x, , z]) => model.rooms.some(r => r.rects.some(([x0, z0, x1, z1]) => x >= x0 && x <= x1 && z >= z0 && z <= z1));
+  const front = model.walls[0], g = wallGroup(root, front);
+  const parts = g.children.filter(o => o.userData.part);
+  // each opening's pieces, by where they sit along the wall
+  const of = o => parts.filter(p => p.position.x > o.c - o.w / 2 - 0.2 && p.position.x < o.c + o.w / 2 + 0.2);
+  const count = (list, part) => list.filter(p => p.userData.part === part).length;
+  const [win, glassdoor, door] = front.openings;
+  const w = of(win);
+  assert.deepEqual([count(w, 'trim'), count(w, 'sill'), count(w, 'reveal')], [4, 1, 4], 'window');
+  [glassdoor, door].forEach(o => {
+    const d = of(o);
+    assert.deepEqual([count(d, 'trim'), count(d, 'sill'), count(d, 'reveal')], [3, 0, 3], o.kind);
+    const jambs = d.filter(p => p.userData.part === 'trim' && p.geometry.parameters.width < 0.2);
+    assert.equal(jambs.length, 2);
+    jambs.forEach(j => assert.ok(Math.abs(j.position.y - j.geometry.parameters.height / 2) < 1e-9, `${o.kind}: a jamb reaches the ground`));
+  });
+  parts.forEach(p => {
+    const out = new THREE.Vector3(0, 0, Math.sign(p.position.z) * 0.3).add(p.position).applyMatrix4(g.matrixWorld);
+    assert.ok(!inRoom(out.toArray()), `${p.userData.part} on the outer face`);
+  });
+  assert.equal(parts.length, 10 + 1 + 10);
+  const inner = wallGroup(root, model.walls[6]);
+  assert.ok(inner);
+  assert.equal(inner.children.filter(o => o.userData.part).length, 0, 'the interior wall has no trim');
+});
+
+test('real style: corner boards and fillers at the outer corners only, split at the cut', () => {
+  const { byId } = buildAll({ ...options, style: 'real' });
+  const corners = [[1.8, 1.8], [12.2, 1.8], [12.2, 10.2], [1.8, 10.2]], joins = [[2, 6], [12, 6]];
+  const dist = (v, [x, z]) => Math.hypot(v.x - x, v.z - z);
+  [byId.building.group, byId.building.lift].forEach((root, j) => {
+    root.updateMatrixWorld(true);
+    const found = [];
+    root.traverse(o => { if (o.userData.part === 'corner') found.push(o); });
+    const boards = found.filter(o => o.geometry.type === 'BoxGeometry'), fillers = found.filter(o => o.geometry.type === 'PlaneGeometry');
+    const where = j ? 'lift' : 'group';
+    assert.equal(boards.length, 8, `${where}: boards`);
+    assert.equal(fillers.length, 8, `${where}: fillers`);
+    found.forEach(o => {
+      const v = o.getWorldPosition(new THREE.Vector3());
+      assert.ok(corners.some(c => dist(v, c) < 0.15), `${where}: ${v.x}, ${v.z} at an outer corner`);
+      assert.ok(joins.every(c => dist(v, c) > 1), `${where}: nothing at a collinear join`);
+    });
+    // cut at the ceiling: below it in group, above it in lift
+    boards.forEach(o => {
+      const h = o.geometry.parameters.height, y = o.position.y;
+      assert.ok(j ? Math.abs(y - h / 2 - model.ceiling) < 1e-9 : Math.abs(y - h / 2) < 1e-9 && Math.abs(h - model.ceiling) < 1e-9);
+    });
+    fillers.forEach(o => assert.ok(o.material.map, `${where}: a filler carries the boards`));
   });
 });
 
@@ -313,4 +383,92 @@ test('real style: the car casts only while fully shown', () => {
   byId.car.api.setCar('away');
   byId.car.update(0.016, 0.5);
   assert.equal(body.castShadow, false);
+});
+
+// an L outline's walls, t thick, each on its edge of the outer outline O with outward normal n;
+// shift 0 runs centreline crossing to crossing (the fixture), shift t/2 moves every wall back
+// along itself, so it runs to the outer corner at its start and stops at the next wall's inner
+// face (the real model)
+function lWalls(t, shift) {
+  const O = [[0, 0], [10, 0], [10, 4], [4, 4], [4, 10], [0, 10]];
+  const N = [[0, -1], [1, 0], [0, 1], [1, 0], [0, 1], [-1, 0]];
+  const C = O.map((_, i) => {
+    const [n0, n1] = [N[(i + 5) % 6], N[i]];
+    // the centreline crossing at vertex i: t/2 in from both edges' outer faces
+    return [O[i][0] - ((n0[0] + n1[0]) * t) / 2, O[i][1] - ((n0[1] + n1[1]) * t) / 2];
+  });
+  return C.map((c, i) => {
+    const d = C[(i + 1) % 6], L = Math.hypot(d[0] - c[0], d[1] - c[1]), u = [(d[0] - c[0]) / L, (d[1] - c[1]) / L];
+    return { i, a: [c[0] - u[0] * shift, c[1] - u[1] * shift], u, n: N[i], L, t };
+  });
+}
+
+const cornerKey = p => p.map(v => v.toFixed(3)).join(',');
+
+test('cornerBoards: an L outline has five convex corners and one concave', () => {
+  const W = 0.12, D = 0.025, outer = ['0.000,0.000', '10.000,0.000', '10.000,4.000', '4.000,10.000', '0.000,10.000'];
+  [0, 0.2].forEach(shift => {
+    const res = cornerBoards(lWalls(0.4, shift), W, D);
+    const boards = res.filter(c => !c.filler), at = {};
+    boards.forEach(c => (at[cornerKey(c.p)] ||= []).push(c));
+    assert.deepEqual(Object.keys(at).sort(), [...outer, '4.000,4.000'].sort(), `shift ${shift}`);
+    outer.forEach(k => {
+      assert.equal(at[k].length, 2, `convex ${k}`);
+      assert.notEqual(at[k][0].wall, at[k][1].wall);
+      at[k].forEach(c => assert.deepEqual([c.from, c.to], [-D, W]));
+    });
+    // found from both walls' ends, kept once
+    assert.equal(at['4.000,4.000'].length, 2, 'concave');
+    assert.deepEqual(at['4.000,4.000'].map(c => c.wall).sort(), [2, 3]);
+    at['4.000,4.000'].forEach(c => assert.deepEqual([c.from, c.to], [0, W]));
+    res.filter(c => c.filler).forEach(c => assert.ok(outer.includes(cornerKey(c.p)), 'fillers only at convex corners'));
+  });
+  // crossing to crossing, every convex corner has a notch on both walls
+  assert.equal(cornerBoards(lWalls(0.4, 0), W, D).filter(c => c.filler).length, 10);
+});
+
+test('cornerBoards: a collinear join gives nothing', () => {
+  const f = (i, x) => ({ i, a: [x, 0.2], u: [1, 0], n: [0, -1], L: 5, t: 0.4 });
+  assert.deepEqual(cornerBoards([f(0, 0), f(1, 5)], 0.12, 0.025), []);
+});
+
+test('cornerBoards: a wall that stops at the other one\'s inner face gets a filler', () => {
+  // B (0.5 thick) runs to the outer corner (0, 0); A (0.2 thick) stops at B's inner face
+  const B = { i: 0, a: [0, 0.25], u: [1, 0], n: [0, -1], L: 5, t: 0.5 };
+  const A = { i: 1, a: [0.1, 0.5], u: [0, 1], n: [-1, 0], L: 4.5, t: 0.2 };
+  const res = cornerBoards([B, A], 0.12, 0.025);
+  const boards = res.filter(c => !c.filler), fillers = res.filter(c => c.filler);
+  assert.equal(boards.length, 2);
+  boards.forEach(c => assert.equal(cornerKey(c.p), '0.000,0.000'));
+  assert.equal(fillers.length, 1);
+  assert.equal(fillers[0].wall, 1);
+  assert.deepEqual(fillers[0].dir, [0, 1]);
+  assert.ok(Math.abs(fillers[0].to - 0.5) < 1e-9 && fillers[0].from === 0);
+});
+
+test('cornerBoards: a wall butting into another one mid-length is no convex corner', () => {
+  // B's outer face at z 0 runs on both sides of A, which ends at B's inner face
+  const B = { i: 0, a: [0, 0.1], u: [1, 0], n: [0, -1], L: 10, t: 0.2 };
+  const A = { i: 1, a: [5, 0.2], u: [0, 1], n: [-1, 0], L: 3, t: 0.2 };
+  assert.deepEqual(cornerBoards([B, A], 0.12, 0.025), []);
+});
+
+test('real style: a corner board stops at an opening next to the corner', () => {
+  // the street wall's door moved to end 0.05 m short of the east corner's face line
+  const near = structuredClone(model);
+  near.walls[0].openings[2] = { kind: 'door', c: 9.65, w: 1, h: 2.1 };
+  const { ctx } = makeCtx({ ...options, style: 'real' }, near);
+  const L = buildLayer(BUILDERS[LAYERS.indexOf('building')], 'building', ctx);
+  L.group.updateMatrixWorld(true);
+  const boards = [];
+  L.group.traverse(o => {
+    if (o.userData.part !== 'corner' || o.geometry.type !== 'BoxGeometry') return;
+    const v = o.getWorldPosition(new THREE.Vector3());
+    if (Math.hypot(v.x - 12.2, v.z - 1.8) < 0.15 && Math.abs(v.z - 1.8) < 0.02) boards.push(o);
+  });
+  assert.equal(boards.length, 1, 'the street wall\'s board at the east corner');
+  const b = boards[0], w = b.geometry.parameters.width;
+  // the door ends at local x 10.15, the corner's face line is at 10.2
+  assert.ok(Math.abs(b.position.x - w / 2 - 10.15) < 1e-9, 'starts at the door');
+  assert.ok(w < 0.12);
 });

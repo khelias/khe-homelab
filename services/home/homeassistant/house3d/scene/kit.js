@@ -11,11 +11,11 @@ const COLORS = {
 // The real style's surfaces, from photos of the house (2026-10-14) where they differ from the
 // drawings' specification (A-101/A-102, AR-5): the cladding is grey-glazed diagonal boarding
 // (its boards come from boards()), roofs and flashing a mid grey standing seam, and every frame,
-// door, trim, the wall's base strip, the carport's panels and the pergola one anthracite, about
-// RAL 7016 (the drawings' RR25 yellow frames were not built). Inside, the walls are light grey,
-// the living floors oak and the wet rooms a dark wood-look tile. The deck is dark composite, the
-// paving warm concrete pavers, the outdoor units white. The car and surroundings are plain
-// stand-ins; outside is the neutral ground beyond the lot.
+// door, trim, corner board, roof edge, the wall's base strip, the carport's panels and the
+// pergola one anthracite, about RAL 7016 (the drawings' RR25 yellow frames were not built).
+// Inside, the walls are light grey, the living floors oak and the wet rooms a dark wood-look
+// tile. The deck is dark composite, the paving warm concrete pavers, the outdoor units white.
+// The car and surroundings are plain stand-ins; outside is the neutral ground beyond the lot.
 const REAL = {
   cladding: '#bebeb8', roof: '#7b8083', frame: '#383e42', unit: '#e4e4e0',
   glass: '#9fb8c4', interior: '#dddcd8', floor: '#c39566', tile: '#5e4a3c', deck: '#4d4540', paving: '#b3a38c',
