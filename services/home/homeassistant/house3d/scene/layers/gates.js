@@ -13,14 +13,15 @@ const meets = (p, q, a, b) => {
   return (d1 * d2 <= 0) && (d3 * d4 <= 0) && between(p, q, a, b);
 };
 
-export default function build({ THREE, kit, C, model, frame }) {
+export default function build({ THREE, kit, C, model, frame, style }) {
   const list = (model.site || {}).gates || [];
   if (!list.length) return null;
   const { lotCx, lotCz } = frame;
+  const real = style === 'real';
   const group = new THREE.Group();
-  const gateE = kit.lineMat({ color: C.lineSoft, opacity: 0.5 });
-  const postM = kit.basic({ color: C.wall, opacity: 0.35 });
-  const postE = kit.lineMat({ color: C.lineSoft, opacity: 0.6 });
+  const gateE = real ? kit.lineMat({ color: kit.REAL.fence, opacity: 0.9 }) : kit.lineMat({ color: C.lineSoft, opacity: 0.5 });
+  const postM = real ? kit.surface('fence') : kit.basic({ color: C.wall, opacity: 0.35 });
+  const postE = real ? null : kit.lineMat({ color: C.lineSoft, opacity: 0.6 });
   const gatePosts = new Set();
   function leafGeo(len, h) {
     const n = Math.max(1, Math.round(len / 0.12)), pts = [];
@@ -37,7 +38,9 @@ export default function build({ THREE, kit, C, model, frame }) {
       const key = `${x.toFixed(2)},${z.toFixed(2)}`;
       if (gatePosts.has(key)) return;
       gatePosts.add(key);
-      kit.box(group, postM, postE, [x - 0.05, z - 0.05, x + 0.05, z + 0.05], [0, g.height + 0.1]);
+      const rect = [x - 0.05, z - 0.05, x + 0.05, z + 0.05], y = [0, g.height + 0.1];
+      if (real) kit.solid(group, postM, rect, y).castShadow = true;
+      else kit.box(group, postM, postE, rect, y);
     });
     const side = g.opens === 'out' ? -1 : 1, leaves = [];
     const leaf = (x, z, dx, dz, len) => {

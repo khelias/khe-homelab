@@ -706,21 +706,48 @@ adding the mount recreates HA; later file changes arrive live through it.
   builds no geometry. `scene/kit.js` makes each mount's colours, materials and
   geometry helpers, and `scene/layers/` holds one module per scene layer
   (ground, site, trees, gates, surroundings, pergola, building, car, camera
-  view fans). A new scene layer is a module there plus its line in the
-  engine's `LAYERS` list; the contract (`build(ctx)` and its hooks) is in the
-  engine's header. Modules under `scene/` load nothing themselves, no `import`
-  of any kind and no `export ... from`: they get three.js and the rest
-  through `ctx`, because a module loaded by a static import would come
-  without `?v=` and could stay stale in the cache. Their module scope holds
-  constants only, since a module runs once per URL and a second card or a
-  remount would share its state. No check enforces this yet: this repo's
-  `check:` and CI run `bash -n` only, and the per-file module check and the
-  import grep arrive with the move to its own Home Assistant repo.
-- **Kihid:** the card's layers button opens a sheet that switches the
-  devices' markers (an alert always shows), the camera view fans, the trees,
-  the car (off, an arrival parks it and the gate stays shut) and the
-  neighbours and street; the choice is kept per browser in `localStorage`
-  under `house3d-layers`.
+  view fans); `scene/sun.js` holds the sun's position and direction, pure
+  functions loaded like the kit. A new scene layer is a module there plus its
+  line in the engine's `LAYERS` list; the contract (`build(ctx)` and its
+  hooks) is in the engine's header. Modules under `scene/` load nothing
+  themselves, no `import` of any kind and no `export ... from`: they get
+  three.js and the rest through `ctx`, because a module loaded by a static
+  import would come without `?v=` and could stay stale in the cache. Their
+  module scope holds constants only, since a module runs once per URL and a
+  second card or a remount would share its state. The engine tests check the
+  import rule (below).
+- **One broken layer does not blank the view.** A layer module that fails to
+  load, or whose build throws (say a model shape the deployed engine does not
+  know yet), is left out and logged as `house3d: layer <id> failed`; the rest
+  draws. A layer whose per-frame update, marker hook, tap test or API throws
+  is logged once and switched off for good, so the frame loop keeps running.
+  The kit and `sun.js` are required: if either fails to load, the card shows
+  its load error.
+- **Styles:** "Lihtne" (the neon wireframe, the default) and "Päris" (lit
+  surfaces in the facade specification's colours, the real sun and shadows),
+  chosen per browser in the Kihid sheet and kept in `localStorage` under
+  `house3d-style`. Switching remounts the engine with the roof mode, camera
+  and fog kept. The real style has no bloom; its shadow map is 2048 px, 1024
+  below 720 px width, and the roof and the car cast only while fully shown,
+  since the shadow pass ignores opacity.
+- **The sun** in the real style comes from HA's own location
+  (`hass.config.latitude`/`longitude`, read at runtime, never stored in the
+  card config) and the model's `georef.x_axis_bearing_deg`, the plan's
+  L-EST97 grid bearing. Sun azimuths are from true north; `sun.js` turns them
+  to grid azimuths with the projection's convergence, 0.854 x (lon - 24)
+  degrees. Without a location the real style uses a fixed afternoon sun. The
+  sky follows the sun's altitude: day, dusk below 8 degrees, night below 0
+  with the sun off. The standalone viewer gets the bearing in whole degrees
+  only (`orientation` in `model.json`) and puts the sun over the middle of
+  Estonia, never over the house.
+- **Kihid:** the card's layers button opens a sheet. Its first row, Stiil,
+  picks the style; in the real style the Kellaaeg (quarter hours) and
+  Kuupäev (days of this year) sliders scrub the sun, and Praegu returns to
+  live, which moves on once a minute; the time is not stored. Below them the
+  switches for the devices' markers (an alert always shows), the camera view
+  fans, the trees, the car (off, an arrival parks it and the gate stays shut)
+  and the neighbours and street; that choice is kept per browser in
+  `localStorage` under `house3d-layers`.
 - **three.js updates** are manual, Renovate does not see the vendored copy:
   `scripts/house3d-vendor.sh <version>`, point the engine's imports at the new
   directory, bump the version, remove the old directory.
@@ -741,12 +768,24 @@ adding the mount recreates HA; later file changes arrive live through it.
   Commit the model in khe-meta and rerun `ha-dashboard.py`. HA serves
   `place.html` too, but without a model it shows nothing.
 - **Privacy scan:** `scripts/house3d-build.py --scan <model>
-  services/home/homeassistant/house3d/` before every commit that touches the
-  directory. It fails on any device name, entity id, family room name or
-  device coordinate, on the car's name, entity, path and outline points, on
-  the surroundings' building and road vertices and on the georeference's
-  origin. The same script builds the standalone viewer from the shareable
+  services/home/homeassistant/house3d/` with the real model before every
+  commit that touches the directory. It fails on any device name, entity id,
+  family room name or device coordinate, on the car's name, entity, path and
+  outline points, on the surroundings' building and road vertices and on the
+  georeference's origin. Never scan with `tests/house3d/fixture-model.md`
+  as the files to check: it has a `devices` key, which the scan always
+  flags. The same script builds the standalone viewer from the shareable
   layers only.
+- **Tests:** `scripts/house3d-test.sh` runs the model and build tests
+  (`tests/house3d/test_house3d_model.py`), the engine tests in Node
+  (`tests/house3d/engine.test.mjs`: every layer builds, the simple style
+  matches `simple-snapshot.json`, failure isolation, the sun, the real
+  style's materials and shadow flags, the scene import rule) and a syntax
+  check of every engine module, all on a made-up house,
+  `tests/house3d/fixture-model.md`. The workspace commit gate runs it as part
+  of this repo's `check:`; CI does not yet. A deliberate change to the simple
+  style rewrites the snapshot with `UPDATE_SNAPSHOT=1 node --test
+  tests/house3d/engine.test.mjs`.
 - **The car** stands in the carport when it is home and drives in from the
   street the first time the view opens after it arrived; a tap on it replays
   the drive. The engine only draws a generic vehicle from data: the car's

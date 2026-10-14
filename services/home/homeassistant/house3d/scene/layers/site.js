@@ -1,21 +1,28 @@
 // The lot: decks, paving, the porch, the sandpit and the swing, the lot line, hedges, fences
-// and the outdoor units.
-export default function build({ THREE, kit, C, model }) {
+// and the outdoor units. The real style draws the solids as lit surfaces without outlines and the
+// lines in the fence colour; decks and paving take shadows, hedges, the swing and the outdoor
+// units cast them.
+export default function build({ THREE, kit, C, model, style }) {
   const site = model.site || {};
   const { basic, lineMat, box, prism, edges, keep } = kit;
+  const real = style === 'real';
   const group = new THREE.Group();
-  const deckM = basic({ color: C.teal, opacity: 0.04 });
+  const deckM = real ? kit.surface('deck') : basic({ color: C.teal, opacity: 0.04 });
   const deckE = lineMat({ color: C.teal, opacity: 0.45 });
-  const plankM = lineMat({ color: C.teal, opacity: 0.09 });
-  const pathM = basic({ color: C.lineSoft, opacity: 0.05 });
+  const plankM = real ? lineMat({ color: kit.REAL.fence, opacity: 0.5 }) : lineMat({ color: C.teal, opacity: 0.09 });
+  const pathM = real ? kit.surface('paving') : basic({ color: C.lineSoft, opacity: 0.05 });
   const pathE = lineMat({ color: C.lineSoft, opacity: 0.45 });
+  const shade = (m, cast) => {
+    if (real) { m.castShadow = cast; m.receiveShadow = !cast; }
+    return m;
+  };
   // a deck or paving item is a rect [x0, z0, x1, z1] or an outline [[x, z], ...]
   const isOutline = v => Array.isArray(v[0]);
   function slab(v, mat, emat, y) {
-    if (!isOutline(v)) return box(group, mat, emat, v, y);
+    if (!isOutline(v)) return real ? kit.solid(group, mat, v, y) : box(group, mat, emat, v, y);
     const geo = prism(v, y[0], y[1]);
     const m = new THREE.Mesh(geo, mat);
-    m.add(edges(geo, emat));
+    if (!real) m.add(edges(geo, emat));
     group.add(m);
     return m;
   }
@@ -35,7 +42,7 @@ export default function build({ THREE, kit, C, model }) {
     }
   }
   (site.decks || []).forEach(v => {
-    slab(v, deckM, deckE, [0, 0.12]);
+    shade(slab(v, deckM, deckE, [0, 0.12]), false);
     const pts = [];
     if (isOutline(v)) outlinePlanks(v, pts);
     else {
@@ -44,31 +51,32 @@ export default function build({ THREE, kit, C, model }) {
     }
     group.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), plankM));
   });
-  (site.paving || []).forEach(v => slab(v, pathM, pathE, [0, 0.02]));
-  if (site.porch) box(group, pathM, pathE, site.porch, [0, 0.03]);
-  if (site.sandpit) box(group, pathM, pathE, site.sandpit.rect, [0, site.sandpit.height]);
+  (site.paving || []).forEach(v => shade(slab(v, pathM, pathE, [0, 0.02]), false));
+  if (site.porch) shade(slab(site.porch, pathM, pathE, [0, 0.03]), false);
+  if (site.sandpit) shade(slab(site.sandpit.rect, pathM, pathE, [0, site.sandpit.height]), false);
   if (site.swing) {
     const [x0, z0, x1, z1] = site.swing.rect, h = site.swing.height;
-    [z0, z1].forEach(z => box(group, pathM, pathE, [x0, z - 0.05, x1, z + 0.05], [0, h]));
-    box(group, pathM, pathE, [x0, z0, x1, z1], [h - 0.1, h]);
+    const swingM = real ? kit.surface('fence') : pathM;
+    [z0, z1].forEach(z => shade(slab([x0, z - 0.05, x1, z + 0.05], swingM, pathE, [0, h]), true));
+    shade(slab([x0, z0, x1, z1], swingM, pathE, [h - 0.1, h]), true);
   }
   if (site.lot) {
     const lotLine = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(site.lot.map(([x, z]) => new THREE.Vector3(x, 0.03, z))),
-      keep(new THREE.LineDashedMaterial({ color: C.roof, transparent: true, opacity: 0.6, dashSize: 0.6, gapSize: 0.4 })));
+      keep(new THREE.LineDashedMaterial({ color: real ? kit.REAL.fence : C.roof, transparent: true, opacity: 0.6, dashSize: 0.6, gapSize: 0.4 })));
     lotLine.computeLineDistances();
     group.add(lotLine);
   }
-  const hedgeM = basic({ color: C.hedge, opacity: 0.2 });
+  const hedgeM = real ? kit.surface('hedge') : basic({ color: C.hedge, opacity: 0.2 });
   const hedgeE = lineMat({ color: C.teal, opacity: 0.28 });
   (site.hedges || []).forEach(([[xa, za], [xb, zb]]) => {
     const geo = new THREE.BoxGeometry(Math.hypot(xb - xa, zb - za), 1.6, 0.8);
     const m = new THREE.Mesh(geo, hedgeM);
     m.position.set((xa + xb) / 2, 0.8, (za + zb) / 2);
     m.rotation.y = -Math.atan2(zb - za, xb - xa);
-    m.add(edges(geo, hedgeE));
-    group.add(m);
+    if (!real) m.add(edges(geo, hedgeE));
+    group.add(shade(m, true));
   });
-  const fenceE = lineMat({ color: C.lineSoft, opacity: 0.38 });
+  const fenceE = real ? lineMat({ color: kit.REAL.fence, opacity: 0.9 }) : lineMat({ color: C.lineSoft, opacity: 0.38 });
   (site.fences || []).forEach(([[xa, za], [xb, zb]]) => {
     const n = Math.max(1, Math.round(Math.hypot(xb - xa, zb - za) / 2.5)), pts = [];
     [0.05, 1.2].forEach(y => pts.push(new THREE.Vector3(xa, y, za), new THREE.Vector3(xb, y, zb)));
@@ -78,8 +86,8 @@ export default function build({ THREE, kit, C, model }) {
     }
     group.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), fenceE));
   });
-  const frameM = basic({ color: C.wall, opacity: 0.35 });
+  const frameM = real ? kit.surface('plinth') : basic({ color: C.wall, opacity: 0.35 });
   const frameE = lineMat({ color: C.line, opacity: 0.75 });
-  (site.outdoor_units || []).forEach(u => box(group, frameM, frameE, u.rect, u.y));
+  (site.outdoor_units || []).forEach(u => shade(slab(u.rect, frameM, frameE, u.y), true));
   return { id: 'site', group };
 }

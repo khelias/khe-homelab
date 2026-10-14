@@ -1,16 +1,68 @@
 // The buildings: walls, room floors, furniture, roofs and roof steps, and the garage roof.
 // Walls that run up to a roof are cut at the ceiling, and the part above goes in lift with the
 // roofs, which rises and fades with the roof mode. The floors are the room tap targets and warm
-// with a room's markers in state 'on'.
-export default function build({ THREE, kit, C, model, roof, ceiling, state }) {
+// with a room's markers in state 'on'. The real style draws them as lit surfaces: exterior walls
+// clad, interior walls plain, framed openings, floors that tint from their own colour, and the
+// lift on materials of its own, so its fade never reaches the lower walls.
+const FRAME = 0.06, FRAME_D = 0.1; // real style: an opening's frame width and depth
+
+export default function build({ THREE, kit, C, model, roof, ceiling, state, style }) {
   const { basic, mats, edges, box, near } = kit;
+  const real = style === 'real';
   const site = model.site || {};
   const rooms = model.rooms || [];
   const roomIds = new Set(rooms.map(r => r.id));
   const group = new THREE.Group(), lift = new THREE.Group();
-  const mH = mats(), mR = mats(C.roof);
-  mR.wall.opacity = 0.28;
-  mR.wall.color = C.roofFill;
+  let mH, mR, wallMats;
+  if (real) {
+    // walls and roofs are DoubleSide: a roof's remapped extrusion faces inwards
+    const two = { side: THREE.DoubleSide }, fades = { ...two, transparent: true };
+    const dark = new Set(model.frames_dark || []);
+    const clad = kit.surface('cladding', two), inner = kit.surface('interior', two), glass = kit.surface('glass');
+    const frame = kit.surface('frameHouse'), frameDark = kit.surface('frameDark');
+    mH = { furn: kit.surface('interior') };
+    mR = { wall: kit.surface('cladding', fades), roof: kit.surface('roof', fades) };
+    // exterior: thick or running up to a roof; frames dark on a wall under a roof in frames_dark
+    wallMats = w => ({
+      wall: w.t >= 0.3 || typeof w.top === 'string' ? clad : inner,
+      glass,
+      frame: typeof w.top === 'string' && dark.has(w.top) ? frameDark : frame
+    });
+  } else {
+    mH = mats();
+    mR = mats(C.roof);
+    mR.wall.opacity = 0.28;
+    mR.wall.color = C.roofFill;
+    wallMats = () => mH;
+  }
+
+  // real style: the wall solid, glass in windows and glass doors, a leaf in doors, and a frame
+  // round each opening
+  function dressWall(g, geo, ops, m) {
+    const mesh = new THREE.Mesh(geo, m.wall);
+    mesh.castShadow = mesh.receiveShadow = true;
+    g.add(mesh);
+    const bar = (x0, x1, y0, y1, d = FRAME_D) => {
+      const b = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, y1 - y0, d), m.frame);
+      b.position.set((x0 + x1) / 2, (y0 + y1) / 2, 0);
+      b.castShadow = b.receiveShadow = true;
+      g.add(b);
+    };
+    ops.forEach(o => {
+      const x0 = o.c - o.w / 2, x1 = o.c + o.w / 2, y0 = o.sill || 0, y1 = y0 + o.h;
+      if (o.kind === 'door') bar(x0 + FRAME, x1 - FRAME, 0, y1 - FRAME, 0.05);
+      else {
+        const p = new THREE.Mesh(new THREE.PlaneGeometry(o.w, o.h), m.glass);
+        p.position.set(o.c, y0 + o.h / 2, 0);
+        g.add(p);
+        bar(x0 + FRAME, x1 - FRAME, y0, y0 + FRAME);
+      }
+      bar(x0, x0 + FRAME, y0, y1);
+      bar(x1 - FRAME, x1, y0, y1);
+      bar(x0 + FRAME, x1 - FRAME, y1 - FRAME, y1);
+      if (o.kind === 'glassdoor') bar(o.c - FRAME / 2, o.c + FRAME / 2, y0 + FRAME, y1 - FRAME);
+    });
+  }
 
   function buildWall(parent, w, m) {
     const dx = w.b[0] - w.a[0], dz = w.b[1] - w.a[1];
@@ -48,6 +100,11 @@ export default function build({ THREE, kit, C, model, roof, ceiling, state }) {
     const g = new THREE.Group();
     g.position.set(w.a[0], 0, w.a[1]);
     g.rotation.y = Math.atan2(-uz, ux);
+    if (real) {
+      dressWall(g, geo, ops, m);
+      parent.add(g);
+      return;
+    }
     const mesh = new THREE.Mesh(geo, m.wall);
     mesh.renderOrder = 2;
     g.add(mesh, edges(geo, m.edge, 20));
@@ -68,13 +125,19 @@ export default function build({ THREE, kit, C, model, roof, ceiling, state }) {
     parent.add(g);
   }
 
-  if (site.garage_roof) (site.garage_roof.rects || [site.garage_roof.rect]).forEach(r => box(lift, mR.wall, mR.edge, r, site.garage_roof.y));
+  if (site.garage_roof) {
+    (site.garage_roof.rects || [site.garage_roof.rect]).forEach(r => {
+      if (!real) return box(lift, mR.wall, mR.edge, r, site.garage_roof.y);
+      kit.solid(lift, mR.roof, r, site.garage_roof.y).castShadow = true;
+    });
+  }
 
   (model.walls || []).forEach(w => {
     const base = { ...w, top: roof.topFn(w.top) };
     const cut = w.cut ?? (typeof w.top === 'string' ? ceiling : 0);
-    if (!cut) return buildWall(group, base, mH);
-    buildWall(group, { ...base, top: roof.flat(cut) }, mH);
+    const mW = wallMats(w);
+    if (!cut) return buildWall(group, base, mW);
+    buildWall(group, { ...base, top: roof.flat(cut) }, mW);
     buildWall(lift, { ...base, openings: [], bot: roof.flat(cut) }, mR);
   });
 
@@ -82,25 +145,33 @@ export default function build({ THREE, kit, C, model, roof, ceiling, state }) {
   const floorMeshes = [];
   rooms.forEach(r => {
     r.rects.forEach(([x0, z0, x1, z1]) => {
-      const mat = basic({ color: C.floor.clone(), opacity: 0.85, side: THREE.DoubleSide });
+      const mat = real ? kit.surface('floor') : basic({ color: C.floor.clone(), opacity: 0.85, side: THREE.DoubleSide });
       const inset = 0.05;
       const mesh = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0 - inset * 2, z1 - z0 - inset * 2), mat);
       mesh.rotation.x = -Math.PI / 2;
       mesh.position.set((x0 + x1) / 2, 0.02, (z0 + z1) / 2);
       mesh.renderOrder = 1;
-      mesh.userData = { room: r.id, warm: 0, hover: 0, sel: 0 };
+      mesh.userData = { room: r.id, warm: 0, hover: 0, sel: 0, base: real ? mat.color.clone() : C.floor };
+      mesh.receiveShadow = real;
       group.add(mesh);
       floorMeshes.push(mesh);
     });
   });
 
+  // the real style's furniture casts and takes shadows like the walls, seen with the roof off
   (model.furniture || []).forEach(f => {
-    if (f.rect) return box(group, mH.furn, mH.furnEdge, f.rect, f.y);
+    if (f.rect) {
+      if (!real) return box(group, mH.furn, mH.furnEdge, f.rect, f.y);
+      const s = kit.solid(group, mH.furn, f.rect, f.y);
+      s.castShadow = s.receiveShadow = true;
+      return;
+    }
     const [x, z, r] = f.circle;
     const cg = new THREE.CylinderGeometry(r, r, f.y[1] - f.y[0], 18);
     const c = new THREE.Mesh(cg, mH.furn);
     c.position.set(x, (f.y[0] + f.y[1]) / 2, z);
-    c.add(edges(cg, mH.furnEdge, 30));
+    if (!real) c.add(edges(cg, mH.furnEdge, 30));
+    else c.castShadow = c.receiveShadow = true;
     group.add(c);
   });
 
@@ -113,6 +184,11 @@ export default function build({ THREE, kit, C, model, roof, ceiling, state }) {
       p.setXYZ(i, x, h(x) - roof.gap + d, z);
     }
     geo.computeVertexNormals();
+    if (real) {
+      const mesh = new THREE.Mesh(geo, mR.roof);
+      mesh.castShadow = true;
+      return lift.add(mesh);
+    }
     const mesh = new THREE.Mesh(geo, mR.wall);
     mesh.renderOrder = 4;
     lift.add(mesh, edges(geo, mR.edge, 20));
@@ -123,6 +199,8 @@ export default function build({ THREE, kit, C, model, roof, ceiling, state }) {
     buildWall(lift, { a: s.a, b: s.b, t: 0.2, top: roof.under(s.top), bot: x => roof.fns[s.bot](x) - roof.gap + low.thick }, mR);
   });
 
+  // the real style's light floors tint lighter, towards amber
+  const TINT = real ? [[C.amber, 0.5], [C.line, 0.3], [C.sel, 0.45]] : [[C.warm, 0.85], [C.hover, 0.6], [C.sel, 0.7]];
   let warm = new Set();
   return {
     id: 'building',
@@ -146,7 +224,7 @@ export default function build({ THREE, kit, C, model, roof, ceiling, state }) {
           if (near(u[key], goals[i])) u[key] = goals[i];
           else { u[key] += (goals[i] - u[key]) * k; moving = true; }
         });
-        m.material.color.copy(C.floor).lerp(C.warm, u.warm * 0.85).lerp(C.hover, u.hover * 0.6).lerp(C.sel, u.sel * 0.7);
+        m.material.color.copy(u.base).lerp(TINT[0][0], u.warm * TINT[0][1]).lerp(TINT[1][0], u.hover * TINT[1][1]).lerp(TINT[2][0], u.sel * TINT[2][1]);
       });
       return moving;
     }

@@ -36,7 +36,8 @@ BLOCK = re.compile(r"^```json house3d:(\w+)[ \t]*\n(.*?)^```[ \t]*$", re.M | re.
 
 def read_layers(path):
     """Return {layer: dict} for every house3d block in the Markdown file."""
-    return parse_layers(open(path, encoding="utf-8").read())
+    with open(path, encoding="utf-8") as f:
+        return parse_layers(f.read())
 
 
 def parse_layers(text):
@@ -182,6 +183,13 @@ def validate(layers):
                 bad(f"roof {rid}: {k} is not a number")
         if roof.get("falls") not in ("east", "west"):
             bad(f"roof {rid}: falls must be east or west (heights run along x)")
+    dark = model.get("frames_dark", [])
+    if not isinstance(dark, list):
+        bad("geometry: frames_dark is not a list of roof ids")
+    else:
+        for r in dark:
+            if not isinstance(r, str) or r not in roofs:
+                bad(f"geometry: frames_dark {r!r} is not a roof")
     for i, s in enumerate(model.get("roof_steps", [])):
         if not (_point(s.get("a")) and _point(s.get("b"))):
             bad(f"roof_steps[{i}]: a and b must be [x, z]")

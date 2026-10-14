@@ -1,18 +1,21 @@
 // The pergola: wall beam on the rect's north edge, posts on the south edge. The louvres keep a
 // fixed angle because the pergola reports no position. Its LED glows with the marker whose role
 // is 'pergola-light'.
-export default function build({ THREE, kit, C, model }) {
+export default function build({ THREE, kit, C, model, style }) {
   const p = (model.site || {}).pergola;
   if (!p) return null;
-  const { basic, lineMat, box, edges, near } = kit;
+  const { basic, lineMat, edges, near } = kit;
+  const real = style === 'real';
+  // the real style: anthracite like the outbuilding's frames, casting shadows, no outlines
+  const box = real ? (g, m, _e, r, y) => { const s = kit.solid(g, m, r, y); s.castShadow = true; return s; } : kit.box;
   const group = new THREE.Group();
-  const frameM = basic({ color: C.wall, opacity: 0.35 });
+  const frameM = real ? kit.surface('frameDark') : basic({ color: C.wall, opacity: 0.35 });
   const frameE = lineMat({ color: C.line, opacity: 0.75 });
   const ledMat = lineMat({ color: C.amber, opacity: 0 });
   const glowSprites = [];
   const [x0, z0, x1, z1] = p.rect, Hp = p.height, n = p.modules || 1;
   const W = (x1 - x0) / n, D = z1 - z0;
-  const slatM = basic({ color: C.wall, opacity: 0.3, side: THREE.DoubleSide });
+  const slatM = real ? kit.surface('frameDark') : basic({ color: C.wall, opacity: 0.3, side: THREE.DoubleSide });
   const slatE = lineMat({ color: C.lineSoft, opacity: 0.6 });
   const posts = Array.from({ length: n + 1 }, (_, i) => x0 + i * W);
   posts.forEach(x => box(group, frameM, frameE, [x - 0.08, z1 - 0.16, x + 0.08, z1], [0, Hp]));
@@ -27,7 +30,8 @@ export default function build({ THREE, kit, C, model }) {
       const s = new THREE.Mesh(geo, slatM);
       s.position.set(x0 + u * W + W / 2, Hp - 0.1, z0 + 0.25 + i * 0.2);
       s.rotation.x = 0.6;
-      s.add(edges(geo, slatE));
+      if (real) s.castShadow = true;
+      else s.add(edges(geo, slatE));
       group.add(s);
     }
     const lx0 = x0 + u * W + 0.12, lx1 = x0 + (u + 1) * W - 0.12, y = Hp - 0.23, a = z0 + 0.18, b = z1 - 0.2;

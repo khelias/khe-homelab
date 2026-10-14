@@ -8,10 +8,32 @@ const COLORS = {
   ink: '#e4ecff', alert: '#ff8b7b'
 };
 
-export function createKit(THREE) {
+// The real style's surfaces: the facade specification of drawings A-101/A-102 and AR-5, still to
+// be confirmed from photos. Cladding is the light grey glaze, roofs, flashing and the garage sheet
+// RR23, the house's window and door frames RR25 yellow, the outbuilding's RAL 7016, the plinth
+// RAL 7045. The garden, car and surroundings are plain stand-ins; outside is the neutral ground
+// beyond the lot.
+const REAL = {
+  cladding: '#c9ccc8', roof: '#3e4245', frameHouse: '#d8a93a', frameDark: '#383e42', plinth: '#91969a',
+  glass: '#9fb8c4', interior: '#eceae4', floor: '#cdb48e', deck: '#8a6a4a', paving: '#a7a39b',
+  lawn: '#5f7f45', outside: '#8e9088', hedge: '#355a32', crown: '#4f7a3a', trunk: '#5b4636',
+  fence: '#4a4d50', car: '#2f3336', neighbour: '#b9b6ae', road: '#6b6b68'
+};
+const GLASS_OPACITY = 0.35;
+
+export function createKit(THREE, style = 'simple') {
   const C = Object.fromEntries(Object.entries(COLORS).map(([k, v]) => [k, new THREE.Color(v)]));
   const disposables = [];
   const keep = x => (disposables.push(x), x);
+  // real style only: a new lit material on every call, so a floor tints alone and a fade on
+  // one group never reaches another's surfaces; o overrides, e.g. { transparent: true } for
+  // what fades (the lift, the car)
+  const surface = style === 'real'
+    ? (name, o = {}) => keep(new THREE.MeshStandardMaterial({
+      color: new THREE.Color(REAL[name]), roughness: 0.85, metalness: 0,
+      ...(name === 'glass' ? { transparent: true, opacity: GLASS_OPACITY, roughness: 0.15, side: THREE.DoubleSide } : {}), ...o
+    }))
+    : undefined;
   const basic = o => keep(new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, ...o }));
   const lineMat = o => keep(new THREE.LineBasicMaterial({ transparent: true, ...o }));
   function mats(tint) {
@@ -57,6 +79,24 @@ export function createKit(THREE) {
     return tex;
   }
 
+  // real style: box() without the outline
+  function solid(group, mat, [x0, z0, x1, z1], [y0, y1]) {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, y1 - y0, z1 - z0), mat);
+    mesh.position.set((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
+    group.add(mesh);
+    return mesh;
+  }
+
+  // real style: a level outline [[x, z], ...] with holes at height 0, facing up (shape y is -z,
+  // so the turn onto the ground keeps the face up)
+  function flatShape(pts, holes = []) {
+    const shape = new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x, -z)));
+    holes.forEach(h => shape.holes.push(new THREE.Path(h.map(([x, z]) => new THREE.Vector2(x, -z)))));
+    const geo = new THREE.ShapeGeometry(shape);
+    geo.rotateX(-Math.PI / 2);
+    return geo;
+  }
+
   // scales every material's opacity under group from its first-seen value; sprites are left out
   function applyFade(group, f) {
     group.traverse(o => {
@@ -71,5 +111,5 @@ export function createKit(THREE) {
 
   const near = (a, b) => Math.abs(a - b) < 0.002;
 
-  return { C, disposables, keep, basic, lineMat, mats, edges, box, prism, canvasTexture, applyFade, near };
+  return { C, style, REAL, disposables, keep, basic, lineMat, mats, edges, box, prism, canvasTexture, applyFade, near, surface, solid, flatShape };
 }

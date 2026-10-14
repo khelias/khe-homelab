@@ -1,18 +1,28 @@
 // The car: drawn from options.car's profile and built hidden. It stands at the path's end or
 // drives the path in after the drive gate, if any, has opened. It sits outside the building's
 // lift, so it shows in both modes, and has its own materials, so fading it never fades the house.
+// The real style draws it as lit surfaces; it casts a shadow only while fully shown, since the
+// shadow pass ignores opacity.
 const GATE_S = 1.2; // the drive gate's opening and closing time
 const CAR_CLEARANCE = 0.3; // the car's tail clears the gate leaves' sweep by this before the gate closes
 
-export default function build({ THREE, kit, C, options, reduceMotion, layer, screen, invalidate }) {
+export default function build({ THREE, kit, C, options, reduceMotion, layer, screen, invalidate, style }) {
   const carOpt = options.car;
   if (!(carOpt && carOpt.profile && Array.isArray(carOpt.path) && carOpt.path.length >= 2)) return null;
   const { keep, lineMat, mats, edges, canvasTexture, applyFade, near } = kit;
+  const real = style === 'real';
+
+  // the real style's set, in the keys mats() gives; null edges are left out
+  function realMats() {
+    const fades = { transparent: true };
+    const line = lineMat({ color: kit.REAL.fence, opacity: 0.9 });
+    return { wall: kit.surface('car', fades), edge: null, glass: kit.surface('glass', fades), glassEdge: line, furn: kit.surface('car', fades), furnEdge: line };
+  }
 
   function buildCar(p, path) {
     const g = new THREE.Group();
-    const m = mats();
-    m.wall.opacity = 0.22;
+    const m = real ? realMats() : mats();
+    if (!real) m.wall.opacity = 0.22;
     const belt = Math.min(...p.glass.map(q => q[1]));
     // the greenhouse narrows above the beltline, which reads as a car rather than a box
     const narrow = y => 1 - 0.16 * Math.min(1, Math.max(0, (y - belt) / Math.max(0.01, p.height - belt)));
@@ -22,7 +32,8 @@ export default function build({ THREE, kit, C, options, reduceMotion, layer, scr
     for (let i = 0; i < pa.count; i++) pa.setZ(i, pa.getZ(i) * narrow(pa.getY(i)));
     const body = new THREE.Mesh(geo, m.wall);
     body.renderOrder = 2;
-    g.add(body, edges(geo, m.edge, 25));
+    if (real) g.add(body);
+    else g.add(body, edges(geo, m.edge, 25));
 
     const glassShape = new THREE.Shape(p.glass.map(([x, y]) => new THREE.Vector2(x, y)));
     [-1, 1].forEach(s => {
@@ -40,7 +51,7 @@ export default function build({ THREE, kit, C, options, reduceMotion, layer, scr
     const { r, track } = p.wheels, tw = Math.min(0.25, track / 6);
     const tyre = keep(new THREE.CylinderGeometry(r, r, tw, 20));
     tyre.rotateX(Math.PI / 2);
-    const tyreEdges = keep(new THREE.EdgesGeometry(tyre, 30));
+    const tyreEdges = real ? null : keep(new THREE.EdgesGeometry(tyre, 30));
     const hubs = [-1, 1].map(s => {
       const pts = [], zf = s * (tw / 2 + 0.003);
       for (let i = 0; i < 20; i++) {
@@ -57,7 +68,8 @@ export default function build({ THREE, kit, C, options, reduceMotion, layer, scr
     p.wheels.x.forEach(x => [-1, 1].forEach((s, i) => {
       const w = new THREE.Group();
       w.position.set(x, r, (s * track) / 2);
-      w.add(new THREE.Mesh(tyre, m.furn), new THREE.LineSegments(tyreEdges, m.edge), new THREE.LineSegments(hubs[i], m.furnEdge));
+      if (real) w.add(new THREE.Mesh(tyre, m.furn), new THREE.LineSegments(hubs[i], m.furnEdge));
+      else w.add(new THREE.Mesh(tyre, m.furn), new THREE.LineSegments(tyreEdges, m.edge), new THREE.LineSegments(hubs[i], m.furnEdge));
       g.add(w);
       wheels.push(w);
     }));
@@ -83,10 +95,13 @@ export default function build({ THREE, kit, C, options, reduceMotion, layer, scr
 
     const curve = new THREE.CatmullRomCurve3(path.map(([x, z]) => new THREE.Vector3(x, 0, z)), false, 'centripetal');
     g.visible = false;
-    return { g, body, wheels, sprites, curve, length: curve.getLength(), r, centreY: p.height / 2 };
+    return { g, body, glass: m.glass, wheels, sprites, curve, length: curve.getLength(), r, centreY: p.height / 2 };
   }
   const car = buildCar(carOpt.profile, carOpt.path);
-  let carState = 'away', drive = null, carFadeShown = -1, on = true;
+  let carState = 'away', drive = null, carFadeShown = -1, on = true, casting = false;
+  // body and tyres cast; the flag goes on only while the car is fully shown
+  const casters = [];
+  if (real) car.g.traverse(o => { if (o.isMesh && o.material !== car.glass) casters.push(o); });
   const carFade = { cur: 0, to: 0 };
   function placeCar(u) {
     const at = car.curve.getPointAt(u), tan = car.curve.getTangentAt(u);
@@ -148,6 +163,10 @@ export default function build({ THREE, kit, C, options, reduceMotion, layer, scr
       carFadeShown = carFade.cur;
       applyFade(car.g, carFade.cur);
       car.sprites.forEach(sm => { sm.opacity = sm.userData.base * carFade.cur; });
+      if (real && casting !== carFade.cur > 0.99) {
+        casting = carFade.cur > 0.99;
+        casters.forEach(o => { o.castShadow = casting; });
+      }
     }
     return moving;
   }

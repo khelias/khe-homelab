@@ -2,11 +2,23 @@
 // and draws generic markers over it. The HA card and the standalone viewer are thin shells
 // around mount(); neither the engine nor this directory carries any house data.
 //
-// This file is the core: renderer and bloom, camera, controls and framing, the marker and label
-// overlay, roof mode, taps and hover, the frame loop, resize and dispose, and the layer
-// registry. It builds no scene geometry. scene/kit.js makes each mount's colours, materials and
-// geometry helpers; scene/layers/ holds one module per scene layer, listed in LAYERS below in
-// build order. A new scene layer is a module there and its line in LAYERS.
+// This file is the core: renderer and bloom, the real style's sun, sky and shadows, camera,
+// controls and framing, the marker and label overlay, roof mode, taps and hover, the frame loop,
+// resize and dispose, and the layer registry. It builds no scene geometry. scene/kit.js makes
+// each mount's colours, materials and geometry helpers for its style; scene/sun.js holds the
+// sun's position and direction as pure functions; scene/layers/ holds one module per scene
+// layer, listed in LAYERS below in build order. A new scene layer is a module there and its
+// line in LAYERS.
+//
+// Styles: 'simple' (default) is the unlit neon wireframe; 'real' draws lit surfaces in the
+// facade specification's colours (kit.surface) under a sun with shadows. A layer branches on
+// ctx.style === 'real' and leaves its simple path as it is; tests/house3d/simple-snapshot.json
+// pins the simple style's objects and materials.
+//
+// One layer cannot take the view down: a layer module that fails to load is left out,
+// buildLayer() leaves out a layer whose build throws, and guardLayer() switches off for good a
+// layer whose update, markers, hit, setOn, listed or api throws. Each logs "house3d: layer <id> failed".
+// modelFrame(), buildLayer() and guardLayer() are exported for the tests.
 //
 // Modules under scene/ load nothing themselves: no import of any kind and no re-export. They get
 // THREE, the kit and everything else through ctx. The core loads them with its own URL's query,
@@ -29,7 +41,8 @@
 //   api?            what the core re-exports (setCar, carState, carScreen) or another layer
 //                   calls through ctx.layer(id)
 //   dispose()?      frees what the kit's list and the scene traversal do not
-// ctx: THREE, kit, C (kit.C), model, options, frame { lotBox, wallBox, ext, E, lotCx, lotCz },
+// ctx: THREE, kit, C (kit.C), model, options, style ('simple' | 'real'),
+//   frame { lotBox, wallBox, ext, E, lotCx, lotCz } (modelFrame),
 //   roof { fns, flat, under, topFn, gap }, ceiling, reduceMotion, state (read-only: mode,
 //   roofFade, hovered, selection), layer(id), screen(x, y, z) -> { x, y } | null, invalidate().
 //   build() and the first setOn() run before the loop exists: they must not call invalidate()
@@ -45,11 +58,26 @@ import { OutputPass } from './vendor/three-0.186.1/examples/jsm/postprocessing/O
 
 const LAYERS = ['ground', 'site', 'trees', 'gates', 'surroundings', 'pergola', 'building', 'car', 'fans'];
 const QUERY = new URL(import.meta.url).search;
-const [{ createKit }, ...BUILDERS] = await Promise.all(['kit', ...LAYERS.map(id => `layers/${id}`)].map(p => import(`./scene/${p}.js${QUERY}`)));
+// a layer module that fails to load drops its layer, not the engine; the kit and the sun are required
+const [KIT, SUN, ...LOADED] = await Promise.allSettled(['kit', 'sun', ...LAYERS.map(id => `layers/${id}`)].map(p => import(`./scene/${p}.js${QUERY}`)));
+[KIT, SUN].forEach(r => { if (r.status === 'rejected') throw r.reason; });
+const { createKit } = KIT.value;
+const { sunPosition, gridBearing, sunDirection } = SUN.value;
+const BUILDERS = LOADED.map((r, i) => {
+  if (r.status === 'fulfilled') return r.value;
+  console.error(`house3d: layer ${LAYERS[i]} failed to load`, r.reason);
+  return null;
+});
 
 const D2R = Math.PI / 180;
 const ROOF_GAP = 0.06; // walls stop just under the roof so the two outlines do not z-fight
 const BLOOM_MIN_WIDTH = 720;
+// the real style's sky: day, blended to dusk below DUSK_ALT degrees of sun, night below 0
+const SKY = { day: '#a9c4dc', dusk: '#e8b98a', night: '#0b1430' };
+const DUSK_ALT = 8;
+const LOW_SUN = '#ffcf9e';
+// without a place the real style lights the street side from the left, like an afternoon sun
+const FIXED_SUN = [-0.62, 0.62, -0.48];
 
 export const ICONS = {
   light: '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.3 1.1 2.2h5c0-.9.4-1.6 1.1-2.2A6 6 0 0 0 12 3z"/>',
@@ -105,13 +133,82 @@ const STYLE = `
 .h3d-label { position: absolute; left: 0; top: 0; font: 500 10px/1 var(--h3d-mono); letter-spacing: 0.16em;
   text-transform: uppercase; color: var(--h3d-muted); white-space: nowrap; pointer-events: none; will-change: transform; }
 .h3d.h3d-narrow .h3d-label { display: none !important; }
+.h3d.h3d-real .h3d-label { color: #1d2636; }
 .h3d-fallback { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px;
   color: var(--h3d-muted); text-align: center; font: 14px/1.45 system-ui, sans-serif; }
 `;
 
 /**
- * mount(element, model, options) -> { setMarkers, setMode, setSelection, setCar, setLayer, reset, resize,
- *                                     dispose, mode, carState, carScreen, layers }
+ * modelFrame(model) -> { roof: { fns, flat, under, topFn, gap }, frame: { lotBox, wallBox, ext, E, lotCx, lotCz } }
+ * The model's roof height functions and its framing boxes, as ctx carries them.
+ */
+export function modelFrame(model) {
+  const site = model.site || {};
+  const fns = {};
+  for (const [id, r] of Object.entries(model.roofs || {})) {
+    const slope = r.slope ?? Math.tan(r.pitch_deg * D2R);
+    const sign = r.falls === 'west' ? -1 : 1;
+    fns[id] = x => r.high_y - sign * (x - r.high_x) * slope;
+  }
+  const flat = h => () => h;
+  const under = id => x => fns[id](x) - ROOF_GAP;
+  const topFn = top => (typeof top === 'string' ? under(top) : flat(top));
+
+  // framing follows the lot, the buildings set the orbit target
+  const bbox = pts => pts.reduce((b, [x, z]) => [Math.min(b[0], x), Math.min(b[1], z), Math.max(b[2], x), Math.max(b[3], z)], [Infinity, Infinity, -Infinity, -Infinity]);
+  const lotBox = bbox(site.lot && site.lot.length ? site.lot : (model.walls || []).flatMap(w => [w.a, w.b]));
+  const wallBox = bbox((model.walls || []).flatMap(w => [w.a, w.b]));
+  const lotCx = (lotBox[0] + lotBox[2]) / 2, lotCz = (lotBox[1] + lotBox[3]) / 2;
+  const ext = Math.max(lotBox[2] - lotBox[0], lotBox[3] - lotBox[1]);
+  const E = ext / 41; // the prototype's framing was tuned on a 41 m lot
+  return { roof: { fns, flat, under, topFn, gap: ROOF_GAP }, frame: { lotBox, wallBox, ext, E, lotCx, lotCz } };
+}
+
+/**
+ * buildLayer(mod, id, ctx) -> the layer, or null when the model has nothing for it or its
+ * build threw (logged as "house3d: layer <id> failed"); the other layers still build.
+ */
+export function buildLayer(mod, id, ctx) {
+  try {
+    return mod.default(ctx);
+  } catch (e) {
+    console.error(`house3d: layer ${id} failed`, e);
+    return null;
+  }
+}
+
+/**
+ * guardLayer(L, off) -> L, with update, markers, hit, setOn, listed and the api's functions wrapped:
+ * the first throw is logged, off() is called, and from then on none of them runs again
+ * (update and listed answer false, hit null). A layer that throws in the frame loop would otherwise
+ * stop the loop with raf still set, and nothing would draw again.
+ */
+export function guardLayer(L, off) {
+  let failed = false;
+  const wrap = (obj, name, fallback) => {
+    const fn = obj[name];
+    obj[name] = (...args) => {
+      if (failed) return fallback;
+      try {
+        return fn.apply(obj, args);
+      } catch (e) {
+        failed = true;
+        console.error(`house3d: layer ${L.id} failed`, e);
+        off();
+        return fallback;
+      }
+    };
+  };
+  [['update', false], ['markers', undefined], ['hit', null], ['setOn', undefined], ['listed', false]].forEach(([k, fb]) => { if (typeof L[k] === 'function') wrap(L, k, fb); });
+  if (L.api) {
+    for (const [k, d] of Object.entries(Object.getOwnPropertyDescriptors(L.api))) if (typeof d.value === 'function') wrap(L.api, k, undefined);
+  }
+  return L;
+}
+
+/**
+ * mount(element, model, options) -> { setMarkers, setMode, setSelection, setCar, setLayer, setSun, setTime,
+ *                                     reset, resize, dispose, mode, carState, carScreen, layers, time, view }
  *
  * model: geometry + rooms layers (private and showcase are ignored). site.decks and site.paving:
  *   items that are rects [x0, z0, x1, z1] or outlines [[x, z], ...]. site.gates: [{ a, b, kind,
@@ -124,8 +221,11 @@ const STYLE = `
  *   onRoom(id|null)  a room floor was tapped with the roof off; null for empty space
  *   onMode(mode)     the mode changed ('roof' | 'open')
  *   onCar()          the car's body was tapped (either mode, while it shows); no room tap follows
- *   bloom            default true; always off below 720 px width
+ *   bloom            default true; always off below 720 px width and in the real style
  *   mode             the starting mode, 'roof' (default) or 'open'
+ *   style            'simple' (default) or 'real'; another style is another mount
+ *   view             { position, target, fog? } as the view getter gives it: the first framing puts
+ *                    the camera there instead of the home view, so a remount keeps the user's orbit
  *   labels(roomId)   room label text; the room's own name when it returns nothing
  *   layers           { id: bool }: the starting state of the switchable layers, default on
  *   car              { profile, path }: a vehicle drawn from profile, built hidden. profile is in
@@ -143,6 +243,11 @@ const STYLE = `
  *   fades it out; both close the gate at once. carState is 'away' | 'driving' | 'parked'; carScreen
  *   is the car's projected centre { x, y } in CSS pixels relative to the element, or null when it
  *   is away, switched off or behind. Without a car, setCar does nothing, carState is 'away', carScreen null.
+ * setSun({ lat, lon, bearing } | null): the place for the real style's sun, in degrees, bearing
+ *   the L-EST97 grid azimuth of the model's +x axis (georef.x_axis_bearing_deg); null or any
+ *   missing value gives a fixed afternoon sun. setTime(date | null): the sun's time, null for
+ *   live (recomputed once a minute). time is the time in use. Both do nothing visible in the
+ *   simple style. view is { position, target, fog: [near, far] } for options.view.
  * layers: [{ id, on }] for the switchable layers present and listed now; setLayer(id, on) switches
  *   one and ignores an unknown id. Switchable: 'markers' (the overlay; off hides every marker but
  *   an alert), 'fans' (listed while a marker has a look), 'trees', 'surroundings' and 'car' (off
@@ -156,13 +261,13 @@ const STYLE = `
 export function mount(element, model, options = {}) {
   const root = document.createElement('div');
   root.className = 'h3d';
-  const style = document.createElement('style');
-  style.textContent = STYLE;
+  const css = document.createElement('style');
+  css.textContent = STYLE;
   const stage = document.createElement('div');
   stage.className = 'h3d-stage';
   const overlay = document.createElement('div');
   overlay.className = 'h3d-overlay';
-  root.append(style, stage, overlay);
+  root.append(css, stage, overlay);
   element.appendChild(root);
 
   const mq = q => (typeof matchMedia === 'function' ? matchMedia(q).matches : false);
@@ -178,14 +283,16 @@ export function mount(element, model, options = {}) {
     stage.appendChild(msg);
     const noop = () => {};
     return { failed: true, setMarkers: noop, setMode: noop, setSelection: noop, setCar: noop, setLayer: noop, reset: noop, resize: noop,
-      dispose: () => root.remove(), mode: 'roof', carState: 'away', carScreen: null, layers: [] };
+      setSun: noop, setTime: noop, dispose: () => root.remove(), mode: 'roof', carState: 'away', carScreen: null, layers: [], time: null, view: null };
   }
   const PR = Math.min(window.devicePixelRatio || 1, 2);
   renderer.setPixelRatio(PR);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   stage.appendChild(renderer.domElement);
 
-  const kit = createKit(THREE), C = kit.C;
+  const style = options.style === 'real' ? 'real' : 'simple', real = style === 'real';
+  const kit = createKit(THREE, style), C = kit.C;
+  root.classList.toggle('h3d-real', real);
   const scene = new THREE.Scene();
   scene.background = C.bg;
   scene.fog = new THREE.Fog(C.bg, 34, 78);
@@ -193,24 +300,8 @@ export function mount(element, model, options = {}) {
   /* ---------- model ---------- */
   const rooms = model.rooms || [];
   const roomById = Object.fromEntries(rooms.map(r => [r.id, r]));
-  const site = model.site || {};
-  const roofFns = {};
-  for (const [id, r] of Object.entries(model.roofs || {})) {
-    const slope = r.slope ?? Math.tan(r.pitch_deg * D2R);
-    const sign = r.falls === 'west' ? -1 : 1;
-    roofFns[id] = x => r.high_y - sign * (x - r.high_x) * slope;
-  }
-  const flat = h => () => h;
-  const under = id => x => roofFns[id](x) - ROOF_GAP;
-  const topFn = top => (typeof top === 'string' ? under(top) : flat(top));
-
-  // framing follows the lot, the buildings set the orbit target
-  const bbox = pts => pts.reduce((b, [x, z]) => [Math.min(b[0], x), Math.min(b[1], z), Math.max(b[2], x), Math.max(b[3], z)], [Infinity, Infinity, -Infinity, -Infinity]);
-  const lotBox = bbox(site.lot && site.lot.length ? site.lot : (model.walls || []).flatMap(w => [w.a, w.b]));
-  const wallBox = bbox((model.walls || []).flatMap(w => [w.a, w.b]));
-  const lotCx = (lotBox[0] + lotBox[2]) / 2, lotCz = (lotBox[1] + lotBox[3]) / 2;
-  const ext = Math.max(lotBox[2] - lotBox[0], lotBox[3] - lotBox[1]);
-  const E = ext / 41; // the prototype's framing was tuned on a 41 m lot
+  const { roof, frame: modelBox } = modelFrame(model);
+  const { wallBox, ext, E } = modelBox;
   // the model's z runs away from the street, so the home view looks in from -z, the street side,
   // 25 degrees round to the west, low like a passer-by (40 degrees up on a portrait screen, where a
   // lower view crops the house's sides); the target leans towards the street to centre the house
@@ -248,9 +339,9 @@ export function mount(element, model, options = {}) {
   }
   const byId = {};
   const ctx = {
-    THREE, kit, C, model, options, reduceMotion, state, screen,
-    frame: { lotBox, wallBox, ext, E, lotCx, lotCz },
-    roof: { fns: roofFns, flat, under, topFn, gap: ROOF_GAP },
+    THREE, kit, C, model, options, style, reduceMotion, state, screen,
+    frame: modelBox,
+    roof,
     ceiling: model.ceiling,
     layer: id => byId[id] || null,
     invalidate: () => invalidate()
@@ -258,15 +349,18 @@ export function mount(element, model, options = {}) {
   // the marker overlay is the core's own, switched like a layer; it has no group
   const markerLayer = { L: { id: 'markers', toggle: true, listed: () => markers.size > 0 }, wrap: null, on: true };
   const layers = [markerLayer];
-  BUILDERS.forEach(mod => {
-    const L = mod.default(ctx);
+  BUILDERS.forEach((mod, i) => {
+    const L = mod && buildLayer(mod, LAYERS[i], ctx);
     if (!L) return;
     const wrap = new THREE.Group();
     wrap.add(L.group);
     if (L.lift) wrap.add(L.lift);
     scene.add(wrap);
     byId[L.id] = L;
-    layers.push({ L, wrap, on: true });
+    const e = { L, wrap, on: true, failed: false };
+    // a failed layer stays hidden, leaves the Kihid list and takes no more taps
+    guardLayer(L, () => { e.failed = true; e.on = false; wrap.visible = false; });
+    layers.push(e);
   });
   function switchLayer(e, on) {
     e.on = on;
@@ -274,7 +368,7 @@ export function mount(element, model, options = {}) {
     if (e.L.setOn) e.L.setOn(on);
   }
   function setLayer(id, on) {
-    const e = layers.find(x => x.L.toggle && x.L.id === id);
+    const e = layers.find(x => x.L.toggle && x.L.id === id && !x.failed);
     if (!e || e.on === !!on) return;
     switchLayer(e, !!on);
     // a layer switched off under the mouse no longer takes the hover
@@ -298,7 +392,93 @@ export function mount(element, model, options = {}) {
     composer.setSize(width, height);
     return composer;
   }
-  const bloomOn = () => options.bloom !== false && width >= BLOOM_MIN_WIDTH;
+  const bloomOn = () => !real && options.bloom !== false && width >= BLOOM_MIN_WIDTH;
+
+  /* ---------- the real style's sun, sky and shadows ---------- */
+  let sun = null, hemi = null, sunPlace = null, sunTime = null, sunTimer = 0, liftCasts = true;
+  const sky = Object.fromEntries(Object.entries(SKY).map(([k, v]) => [k, new THREE.Color(v)]));
+  const lowSun = new THREE.Color(LOW_SUN);
+  if (real) {
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFShadowMap;
+    // neutral keeps the specification's colours closest
+    renderer.toneMapping = THREE.NeutralToneMapping;
+    scene.background = sky.day.clone();
+    scene.fog.color.copy(sky.day);
+    hemi = new THREE.HemisphereLight('#dfe8f0', '#5d6352', 1);
+    sun = new THREE.DirectionalLight('#ffffff', 2.5);
+    sun.castShadow = true;
+    sun.shadow.radius = 3;
+    sun.shadow.bias = -0.0005;
+    sun.shadow.normalBias = 0.02; // the walls are DoubleSide, both faces go into the map
+    scene.add(hemi, sun, sun.target);
+  }
+  // the shadow camera holds the lot from the ground to the highest roof or tree
+  const msite = model.site || {};
+  const shadowTop = 0.5 + Math.max(model.ceiling || 0, ...Object.values(model.roofs || {}).map(r => r.high_y + (r.thick || 0)),
+    ...(msite.trees || []).map(t => t.height), msite.garage_roof && msite.garage_roof.y ? msite.garage_roof.y[1] : 0,
+    msite.pergola ? msite.pergola.height : 0);
+  const sunV = new THREE.Vector3(), corner = new THREE.Vector3(), shadowCentre = new THREE.Vector3();
+  function placeSun(dir) {
+    const [x0, z0, x1, z1] = modelBox.lotBox;
+    shadowCentre.set((x0 + x1) / 2, shadowTop / 2, (z0 + z1) / 2);
+    sunV.set(dir[0], dir[1], dir[2]).normalize();
+    sun.position.copy(shadowCentre).addScaledVector(sunV, ext * 2);
+    sun.target.position.copy(shadowCentre);
+    sun.updateMatrixWorld();
+    sun.target.updateMatrixWorld();
+    // the box's corners in the shadow camera's frame, which looks from the sun at the centre
+    const cam = sun.shadow.camera;
+    cam.position.copy(sun.position);
+    cam.lookAt(shadowCentre);
+    cam.updateMatrixWorld();
+    const b = [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity];
+    for (const x of [x0, x1]) for (const y of [0, shadowTop]) for (const z of [z0, z1]) {
+      corner.set(x, y, z).applyMatrix4(cam.matrixWorldInverse);
+      ['x', 'y', 'z'].forEach((k, i) => { b[i] = Math.min(b[i], corner[k]); b[i + 3] = Math.max(b[i + 3], corner[k]); });
+    }
+    cam.left = b[0] - 0.5;
+    cam.right = b[3] + 0.5;
+    cam.bottom = b[1] - 0.5;
+    cam.top = b[4] + 0.5;
+    // the far plane runs on past the box: a low sun's shadow lands on ground deeper than the lot
+    cam.near = Math.max(0.1, -b[5] - 1);
+    cam.far = -b[2] + 4 * ext;
+    cam.updateProjectionMatrix();
+  }
+  function updateSun() {
+    if (!real) return;
+    let alt, dir;
+    if (sunPlace) {
+      const p = sunPosition(sunTime || new Date(), sunPlace.lat, sunPlace.lon);
+      alt = p.altitude;
+      dir = sunDirection(alt, gridBearing(p.azimuth, sunPlace.lon), sunPlace.bearing);
+    } else {
+      dir = FIXED_SUN;
+      alt = Math.asin(dir[1] / Math.hypot(...dir)) / D2R;
+    }
+    if (alt >= DUSK_ALT) scene.background.copy(sky.day);
+    else if (alt >= 0) scene.background.copy(sky.dusk).lerp(sky.day, alt / DUSK_ALT);
+    else scene.background.copy(sky.night);
+    scene.fog.color.copy(scene.background);
+    const high = Math.min(1, Math.max(0, alt / 25));
+    sun.visible = alt > 0;
+    sun.intensity = 1 + 2.4 * high;
+    sun.color.set('#ffffff').lerp(lowSun, Math.max(0, 1 - alt / DUSK_ALT));
+    hemi.intensity = alt < 0 ? 0.15 : 0.35 + 0.45 * high;
+    if (alt > 0) placeSun(dir);
+    invalidate();
+  }
+  // place: { lat, lon, bearing } in degrees, bearing the grid azimuth of the model's +x; null
+  // for the fixed sun
+  function setSun(place) {
+    sunPlace = place && [place.lat, place.lon, place.bearing].every(Number.isFinite) ? { lat: place.lat, lon: place.lon, bearing: place.bearing } : null;
+    updateSun();
+  }
+  function setTime(at) {
+    sunTime = at ? new Date(at) : null;
+    updateSun();
+  }
 
   /* ---------- labels and markers ---------- */
   const labels = rooms.map(r => {
@@ -421,6 +601,20 @@ export function mount(element, model, options = {}) {
     controls.update();
     invalidate();
   }
+  // a remount's first framing: the camera, and the fog when given, where the last mount left
+  // them (its fog was set for its own size, which may differ); otherwise the fog as reset() sets it
+  const isVec = (p, n) => Array.isArray(p) && p.length === n && p.every(Number.isFinite);
+  const startView = options.view && isVec(options.view.position, 3) && isVec(options.view.target, 3) ? options.view : null;
+  function frameFirst() {
+    if (!startView) return reset();
+    const fog = isVec(startView.fog, 2) ? startView.fog : [homeDistance() * 0.95, homeDistance() * 2.2];
+    scene.fog.near = fog[0];
+    scene.fog.far = fog[1];
+    controls.target.fromArray(startView.target);
+    camera.position.fromArray(startView.position);
+    controls.update();
+    invalidate();
+  }
   function resize() {
     const w = Math.max(1, root.clientWidth), h = Math.max(1, root.clientHeight);
     if (w === width && h === height) return;
@@ -430,8 +624,15 @@ export function mount(element, model, options = {}) {
     renderer.setSize(w, h, false);
     if (composer) composer.setSize(w, h);
     root.classList.toggle('h3d-narrow', w < BLOOM_MIN_WIDTH);
+    if (sun) {
+      const size = w < BLOOM_MIN_WIDTH ? 1024 : 2048;
+      if (sun.shadow.mapSize.x !== size) {
+        sun.shadow.mapSize.set(size, size);
+        if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; }
+      }
+    }
     // frame once, at the first real size: a later hide and show keeps the user's orbit
-    if (!framed && w > 1 && h > 1) { framed = true; reset(); }
+    if (!framed && w > 1 && h > 1) { framed = true; frameFirst(); }
     invalidate();
   }
   const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(() => resize()) : null;
@@ -461,6 +662,17 @@ export function mount(element, model, options = {}) {
       L.lift.position.y = (1 - fade.cur) * 4.5;
       kit.applyFade(L.lift, Math.max(0, fade.cur * 1.25 - 0.25));
     });
+    // the shadow pass ignores opacity, so the lift casts only while the roof is fully on
+    if (real && liftCasts !== fade.cur > 0.99) {
+      liftCasts = fade.cur > 0.99;
+      layers.forEach(({ L }) => {
+        if (L.lift) L.lift.traverse(o => {
+          if (!o.isMesh) return;
+          if (o.userData.cast === undefined) o.userData.cast = o.castShadow;
+          o.castShadow = liftCasts && o.userData.cast;
+        });
+      });
+    }
     layers.forEach(({ L }) => { if (L.update && L.update(dt, k)) moving = true; });
     if (!moving && !dirty) { raf = 0; return; }
     dirty = false;
@@ -489,10 +701,15 @@ export function mount(element, model, options = {}) {
 
   resize();
   setMode(options.mode === 'open' ? 'open' : 'roof', true);
+  updateSun();
+  // live: the sun moves on once a minute
+  if (real) sunTimer = setInterval(() => { if (!sunTime && sunPlace) updateSun(); }, 60000);
   invalidate();
 
   function dispose() {
     disposed = true;
+    clearInterval(sunTimer);
+    if (sun) sun.dispose();
     cancelAnimationFrame(raf);
     raf = 0;
     if (ro) ro.disconnect();
@@ -512,11 +729,13 @@ export function mount(element, model, options = {}) {
 
   // carState and carScreen stay getters, so a copy of this object would freeze them
   return {
-    setMarkers, setMode, setSelection, setLayer, reset, resize, dispose,
+    setMarkers, setMode, setSelection, setLayer, reset, resize, dispose, setSun, setTime,
     setCar: s => { if (byId.car) byId.car.api.setCar(s); },
     get mode() { return mode; },
+    get time() { return sunTime ? new Date(sunTime) : new Date(); },
+    get view() { return { position: camera.position.toArray(), target: controls.target.toArray(), fog: [scene.fog.near, scene.fog.far] }; },
     get carState() { return byId.car ? byId.car.api.carState : 'away'; },
     get carScreen() { return byId.car ? byId.car.api.carScreen : null; },
-    get layers() { return layers.filter(e => e.L.toggle && (!e.L.listed || e.L.listed())).map(e => ({ id: e.L.id, on: e.on })); }
+    get layers() { return layers.filter(e => e.L.toggle && !e.failed && (!e.L.listed || e.L.listed())).map(e => ({ id: e.L.id, on: e.on })); }
   };
 }

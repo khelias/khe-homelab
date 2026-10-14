@@ -6,8 +6,9 @@ Usage:  house3d-build.py MODEL OUTDIR           build, then scan OUTDIR
 
 The build writes OUTDIR/index.html (viewer.html), house3d.js, scene/, vendor/ and model.json
 from the geometry, rooms and showcase layers of MODEL (khe-meta house/house-model.md). The
-private and surroundings layers and the georeference never go in. Publishing the folder
-is a separate decision.
+private and surroundings layers and the georeference never go in; model.json gets only the
+plan's grid bearing in whole degrees as orientation.x_axis_bearing_deg, for the real style's
+sun. Publishing the folder is a separate decision.
 
 The scan reads the private layer of MODEL and fails on every occurrence of an entity id,
 a device name, a family room name or the car's entity and name
@@ -122,7 +123,10 @@ def run_scan(model, paths):
 def build(model_path, outdir):
     layers = full_model(model_path)
     public = house3d_model.merge(layers, house3d_model.PUBLIC)
-    public.pop("georef", None)  # the viewer does not use it, and a public page should not pin the house
+    # a public page should not pin the house; whole degrees of bearing turn the sun, not a map
+    geo = public.pop("georef", None) or {}
+    if isinstance(geo.get("x_axis_bearing_deg"), (int, float)):
+        public["orientation"] = {"x_axis_bearing_deg": round(geo["x_axis_bearing_deg"])}
     assert "surroundings" not in public, "the surroundings layer fixes the location; it never goes public"
     out = Path(outdir)
     out.mkdir(parents=True, exist_ok=True)

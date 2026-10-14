@@ -2,7 +2,7 @@
 // the card config, written by scripts/ha-dashboard.py; this file carries no house data.
 // Bump HOUSE3D_VERSION on every change to this file or the engine, and the same ?v= on the
 // Lovelace resource URL: HA's /local and the phone app cache aggressively.
-const HOUSE3D_VERSION = 12;
+const HOUSE3D_VERSION = 13;
 const engine = import(`./house3d.js?v=${HOUSE3D_VERSION}`);
 
 const nf1 = new Intl.NumberFormat('et-EE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
@@ -41,6 +41,28 @@ function writeLayers(layers) {
   seenMemory.set(LAYERS_KEY, layers);
   try { localStorage.setItem(LAYERS_KEY, JSON.stringify(layers)); } catch (e) { /* the in-memory copy stands */ }
 }
+
+// The style is kept per browser too; the time of day is not.
+const STYLE_KEY = 'house3d-style';
+function readStyle() {
+  try {
+    const v = localStorage.getItem(STYLE_KEY);
+    if (v === 'simple' || v === 'real') return v;
+  } catch (e) { /* the in-memory copy answers */ }
+  return seenMemory.get(STYLE_KEY) === 'real' ? 'real' : 'simple';
+}
+function writeStyle(v) {
+  seenMemory.set(STYLE_KEY, v);
+  try { localStorage.setItem(STYLE_KEY, v); } catch (e) { /* the in-memory copy stands */ }
+}
+
+// The real style's sliders: the time of day in quarter hours (96 is 24:00) and the day of this year.
+const dayFmt = new Intl.DateTimeFormat('et-EE', { day: 'numeric', month: 'long' });
+const pad = n => String(n).padStart(2, '0');
+const yearStart = () => new Date(new Date().getFullYear(), 0, 1);
+const dayOfYear = d => Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - yearStart()) / 86400000);
+const hourText = q => `${pad(Math.floor(q / 4))}:${pad((q % 4) * 15)}`;
+const dayDate = n => new Date(yearStart().getFullYear(), 0, 1 + n);
 
 // true when the car is home ('home' from a tracker, 'on' from the arrival helper), null when the
 // state says nothing (unavailable, unknown), false otherwise and for a missing entity
@@ -128,6 +150,13 @@ button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 [aria-checked="true"] .sw { background: rgba(111, 227, 255, 0.35); }
 [aria-checked="true"] .sw::after { transform: translateX(14px); background: var(--line); }
 @media (prefers-reduced-motion: reduce) { .sw, .sw::after { transition: none; } }
+.row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; }
+.sheet .seg button { padding: 7px 12px; }
+.slider { display: grid; gap: 6px; }
+.slider output { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.slider input { width: 100%; margin: 0; accent-color: var(--line); }
+.now { justify-self: start; font: inherit; font-size: 13px; line-height: 1; color: var(--ink); background: var(--chip); border: 1px solid var(--edge); border-radius: 8px; padding: 8px 12px; cursor: pointer; }
+.now[aria-pressed="true"] { color: var(--bg); background: var(--line); border-color: var(--line); }
 .msg { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; color: var(--muted); text-align: center; background: var(--bg); }
 .credit { position: absolute; top: 10px; left: 12px; max-width: calc(100% - 24px); font-size: 11px; line-height: 1.3; color: var(--muted); opacity: .8; pointer-events: none; }
 @media (max-width: 600px) {
@@ -143,6 +172,8 @@ class House3dCard extends HTMLElement {
     this.attachShadow({ mode: 'open' });
     this._states = new Map();
     this._room = null;
+    this._style = readStyle();
+    this._time = null; // null: live
   }
 
   setConfig(config) {
@@ -158,6 +189,7 @@ class House3dCard extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     if (!this._view) return;
+    if (!this._sunSet) this._applySun(hass);
     // the first push after mount always runs, so entities missing from HA still show dimmed
     let changed = !this._pushed;
     for (const d of this._devices) {
@@ -216,6 +248,8 @@ class House3dCard extends HTMLElement {
       <aside class="sheet" hidden aria-live="polite"></aside>${this._credit()}</ha-card>`;
     this._sheet = null;
     const token = (this._mounting = {});
+    const keep = this._keep || {};
+    this._keep = null;
     engine.then(mod => {
       if (this._mounting !== token || !this.isConnected) return;
       this._mounting = null;
@@ -230,6 +264,9 @@ class House3dCard extends HTMLElement {
           if (m === 'roof') this._openRoom(null);
         },
         layers: readLayers(),
+        style: this._style,
+        mode: keep.mode,
+        view: keep.view,
         car: this._car ? { profile: this._car.profile, path: this._car.path } : undefined,
         surroundings: this._config.model.surroundings,
         // a tap on the car replays the drive-in; the stored arrival stays as it is
@@ -243,16 +280,78 @@ class House3dCard extends HTMLElement {
         if (row) return this._moreInfo(row.dataset.entity);
         const sw = ev.target.closest('[data-layer]');
         if (sw) return this._switchLayer(sw.dataset.layer, sw.getAttribute('aria-checked') !== 'true');
+        const st = ev.target.closest('[data-style]');
+        if (st) return this._restyle(st.dataset.style);
+        if (ev.target.closest('[data-act="now"]')) return this._setTime(null);
         if (ev.target.closest('[data-act="close"]')) return this._sheet === 'layers' ? this._closeSheet() : this._openRoom(null);
       });
+      sr.querySelector('.sheet').addEventListener('input', ev => { if (ev.target.closest('[data-time]')) this._setTime(this._sliderTime()); });
       this._states.clear();
       this._pushed = false;
       this._carSt = undefined;
       this._carHome = undefined;
+      this._sunSet = false;
+      if (this._time) this._view.setTime(this._time);
       if (this._hass) this.hass = this._hass;
+      if (keep.layers) this._openLayers();
     }).catch(err => {
       sr.querySelector('.view').innerHTML = `<div class="msg">3D-vaate laadimine ebaõnnestus: ${esc(err && err.message || err)}</div>`;
     });
+  }
+
+  // a new style remounts the engine; the mode, the camera, the time and the open Kihid sheet carry over
+  _restyle(style) {
+    if (style === this._style || !this._view) return;
+    this._style = style;
+    writeStyle(style);
+    this._keep = { mode: this._view.mode, view: this._view.view, layers: this._sheet === 'layers' };
+    this._unmount();
+    this._render();
+  }
+
+  // the sun needs the house's place: HA's location and the model's grid bearing; without any of
+  // them the real style keeps its fixed sun
+  _applySun(hass) {
+    const c = hass.config || {}, geo = this._config.model.georef || {};
+    const place = { lat: num(c.latitude), lon: num(c.longitude), bearing: num(geo.x_axis_bearing_deg) };
+    if (place.lat === null || place.lon === null || place.bearing === null) return;
+    this._view.setSun(place);
+    this._sunSet = true;
+  }
+
+  _sliderTime() {
+    const sr = this.shadowRoot;
+    const q = Number(sr.querySelector('[data-time="hour"]').value), d = Number(sr.querySelector('[data-time="day"]').value);
+    return new Date(yearStart().getFullYear(), 0, 1 + d, 0, q * 15);
+  }
+
+  _setTime(t) {
+    this._time = t;
+    if (this._view) this._view.setTime(t);
+    this._syncTime();
+  }
+
+  // the sliders show the time in use; live, they jump to now and the hour shows to the minute
+  _syncTime() {
+    const sr = this.shadowRoot, hour = sr.querySelector('[data-time="hour"]'), day = sr.querySelector('[data-time="day"]');
+    if (!hour || !day) return;
+    const now = new Date();
+    if (!this._time) {
+      hour.value = String(now.getHours() * 4 + Math.floor(now.getMinutes() / 15));
+      day.value = String(dayOfYear(now));
+    }
+    sr.querySelector('[data-out="hour"]').textContent = this._time ? hourText(Number(hour.value)) : `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    sr.querySelector('[data-out="day"]').textContent = dayFmt.format(dayDate(Number(day.value)));
+    sr.querySelector('[data-act="now"]').setAttribute('aria-pressed', String(!this._time));
+  }
+
+  _timeRows() {
+    const days = Math.round((new Date(yearStart().getFullYear() + 1, 0, 1) - yearStart()) / 86400000);
+    return `<div class="slider"><div class="row"><label for="h3d-hour">Kellaaeg</label><output data-out="hour"></output></div>
+        <input id="h3d-hour" type="range" min="0" max="96" step="1" data-time="hour"></div>
+      <div class="slider"><div class="row"><label for="h3d-day">Kuupäev</label><output data-out="day"></output></div>
+        <input id="h3d-day" type="range" min="0" max="${days - 1}" step="1" data-time="day"></div>
+      <button type="button" class="now" data-act="now" aria-pressed="true">Praegu</button>`;
   }
 
   // the licence asks for the licensor, the dataset and its date; the bottom corners hold the
@@ -269,7 +368,7 @@ class House3dCard extends HTMLElement {
     this._view.setMarkers(this._devices.map(d => toMarker(d, this._states.get(d.entity))));
     this._pushCar();
     if (this._sheet === 'room') this._refreshRoom();
-    else if (this._sheet === 'layers') this._renderLayers();
+    else if (this._sheet === 'layers') { this._renderLayers(); this._syncTime(); }
   }
 
   // acts only when home/away changes, so attribute updates (a new location) never replay the drive-in
@@ -349,8 +448,13 @@ class House3dCard extends HTMLElement {
     if (this._view) this._view.setSelection(null);
     sheet.innerHTML = `<div class="head"><div><h2>Kihid</h2></div>
       <button type="button" class="close" data-act="close" aria-label="Sulge">${this._mod.icon('close')}</button></div>
+      <div class="row"><span>Stiil</span><div class="seg" role="group" aria-label="Stiil">
+        <button type="button" data-style="simple" aria-pressed="${this._style === 'simple'}">Lihtne</button>
+        <button type="button" data-style="real" aria-pressed="${this._style === 'real'}">Päris</button></div></div>
+      ${this._style === 'real' ? this._timeRows() : ''}
       <div class="list switches"></div>`;
     this._sheet = 'layers';
+    this._syncTime();
     this._renderLayers();
     sheet.hidden = false;
     this.shadowRoot.querySelector('[data-act="layers"]').setAttribute('aria-expanded', 'true');

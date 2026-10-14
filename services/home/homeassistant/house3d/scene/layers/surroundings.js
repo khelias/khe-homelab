@@ -1,9 +1,25 @@
 // The surroundings (private, HA only): the neighbours' buildings and the street, fainter than
 // the lot and outside every tap test.
-export default function build({ THREE, kit, C, options }) {
+export default function build({ THREE, kit, C, options, style }) {
   const sur = options.surroundings;
   if (!sur) return null;
   const group = new THREE.Group();
+  // the real style: plain lit surfaces that take the lot's shadows and cast none
+  if (style === 'real') {
+    const bldM = kit.surface('neighbour'), roadM = kit.surface('road');
+    (sur.buildings || []).forEach(b => {
+      const m = new THREE.Mesh(kit.prism(b.outline, 0, b.height), bldM);
+      m.receiveShadow = true;
+      group.add(m);
+    });
+    (sur.roads || []).forEach(r => {
+      const m = new THREE.Mesh(kit.flatShape(r.outline, r.holes || []), roadM);
+      m.position.y = -0.01;
+      m.receiveShadow = true;
+      group.add(m);
+    });
+    return { id: 'surroundings', group, toggle: true };
+  }
   const bldM = kit.basic({ color: C.wall, opacity: 0.05, side: THREE.DoubleSide });
   const bldE = kit.lineMat({ color: C.lineSoft, opacity: 0.3 });
   (sur.buildings || []).forEach(b => {

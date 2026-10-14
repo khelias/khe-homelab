@@ -30,8 +30,8 @@ services/
   media/           Immich
   home/            Home Assistant, Mosquitto, PAI (Paradox alarm)
     homeassistant/house3d/  3D house view: engine (core house3d.js, scene/ layer
-                   modules), HA card, standalone viewer, placement page,
-                   vendored three.js (house data stays in khe-meta)
+                   modules, kit and sun), HA card, standalone viewer, placement
+                   page, vendored three.js (house data stays in khe-meta)
   apps/            landing, games, pages, trips
   observability/   Loki, Grafana, Alloy, Alertmanager (one stack)
 infrastructure/    Proxmox, network, Cloudflare, Tailscale docs
@@ -39,14 +39,18 @@ scripts/           setup, deploy, backup, hardening, validate-compose,
                    ha-dashboard.py (HA Overview generator),
                    ha-ws.py (HA WebSocket commands from the CLI),
                    house3d-* and house3d_model.py (3D view build, vendoring,
-                   device and tree placement, ETAK surroundings, model)
+                   device and tree placement, ETAK surroundings, model),
+                   house3d-test.sh (the 3D view's tests)
+tests/house3d/     3D view tests on a made-up fixture house: model and build
+                   (Python unittest), engine and simple-style snapshot (node:test)
 ```
 
 Image tags live in each `docker-compose.yml`; Renovate opens the bump PRs,
 except for the estate's own images (rule 3). CI (`validate.yml`, the required
 check) runs the pin App guard, `scripts/verify-estate-pins.sh`, `bash -n` on
 each `scripts/*.sh` and `scripts/validate-compose.sh`, every script from the
-base branch against the PR tree.
+base branch against the PR tree. The workspace commit gate's `check:` also
+runs `scripts/house3d-test.sh` (needs `node` and `python3`); CI does not yet.
 
 ## Rules
 
