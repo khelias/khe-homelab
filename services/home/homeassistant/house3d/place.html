@@ -168,7 +168,8 @@ el('polygon', { points: lot.map(p => p.join(',')).join(' '), class: 'lot' });
 [...(model.site.decks || []), ...(model.site.paving || [])].forEach(v => Array.isArray(v[0])
   ? el('polygon', { points: v.map(p => p.join(',')).join(' '), class: 'site' }) : rect(v, 'site'));
 if (model.site.porch) rect(model.site.porch, 'site');
-['sandpit', 'swing', 'pergola', 'garage_roof'].forEach(k => model.site[k] && rect(model.site[k].rect, 'site'));
+['sandpit', 'swing', 'pergola'].forEach(k => model.site[k] && rect(model.site[k].rect, 'site'));
+if (model.site.garage_roof) (model.site.garage_roof.rects || [model.site.garage_roof.rect]).forEach(r => rect(r, 'site'));
 (model.site.outdoor_units || []).forEach(u => rect(u.rect, 'furn'));
 const roomEls = {};
 rooms.forEach(r => { roomEls[r.id] = r.rects.map(q => rect(q, 'room')); });

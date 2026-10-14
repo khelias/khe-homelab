@@ -249,9 +249,22 @@ def validate(layers):
     for key in ("porch",):
         if key in site:
             rect(f"site.{key}", site[key])
-    for key in ("sandpit", "swing", "garage_roof", "pergola"):
+    for key in ("sandpit", "swing", "pergola"):
         if key in site:
             rect(f"site.{key}", site[key].get("rect"))
+    if "garage_roof" in site:
+        gr = site["garage_roof"]
+        if ("rect" in gr) == ("rects" in gr):
+            bad("site.garage_roof: needs either rect or rects")
+        elif "rect" in gr:
+            rect("site.garage_roof", gr["rect"])
+        elif not (isinstance(gr["rects"], list) and gr["rects"]):
+            bad("site.garage_roof.rects: not a non-empty list")
+        else:
+            for i, r in enumerate(gr["rects"]):
+                rect(f"site.garage_roof.rects[{i}]", r)
+        if not (_point(gr.get("y")) and gr["y"][0] < gr["y"][1]):
+            bad("site.garage_roof: y must be [y0, y1] with y0 < y1")
     for i, u in enumerate(site.get("outdoor_units", [])):
         rect(f"site.outdoor_units[{i}]", u.get("rect"))
         if not (_point(u.get("y")) and u["y"][0] < u["y"][1]):

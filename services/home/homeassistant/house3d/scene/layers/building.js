@@ -68,7 +68,7 @@ export default function build({ THREE, kit, C, model, roof, ceiling, state }) {
     parent.add(g);
   }
 
-  if (site.garage_roof) box(lift, mR.wall, mR.edge, site.garage_roof.rect, site.garage_roof.y);
+  if (site.garage_roof) (site.garage_roof.rects || [site.garage_roof.rect]).forEach(r => box(lift, mR.wall, mR.edge, r, site.garage_roof.y));
 
   (model.walls || []).forEach(w => {
     const base = { ...w, top: roof.topFn(w.top) };
