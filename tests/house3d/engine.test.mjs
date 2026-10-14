@@ -192,7 +192,7 @@ test('sunDirection and gridBearing', () => {
 
 // the real style: each surface colour has one shadow role per layer, [castShadow, receiveShadow]
 const REAL_FLAGS = {
-  building: { cladding: [true, true], interior: [true, true], frame: [true, true], glass: [false, false], floor: [false, true], roof: [true, false] },
+  building: { cladding: [true, true], interior: [true, true], frame: [true, true], glass: [false, false], floor: [false, true], tile: [false, true], roof: [true, false] },
   site: { deck: [false, true], paving: [false, true], hedge: [true, false], unit: [true, false], fence: [true, false] },
   trees: { trunk: [true, false], crown: [true, false] },
   pergola: { frame: [true, false] },
@@ -211,14 +211,40 @@ test('real style: lit materials and shadow flags', () => {
     seen[id] = new Set();
     [L.group, L.lift].filter(Boolean).forEach(root => root.traverse(o => {
       if (!o.isMesh) return;
-      assert.equal(o.material.type, 'MeshStandardMaterial', `${id}: a ${o.geometry.type}`);
-      const name = names.get(o.material.color.getHexString());
-      assert.ok(name in want, `${id}: unexpected surface ${name}`);
-      seen[id].add(name);
-      assert.deepEqual([o.castShadow, o.receiveShadow], want[name], `${id}: ${name} shadow flags`);
+      [o.material].flat().forEach(mt => {
+        assert.equal(mt.type, 'MeshStandardMaterial', `${id}: a ${o.geometry.type}`);
+        const name = names.get(mt.color.getHexString());
+        assert.ok(name in want, `${id}: unexpected surface ${name}`);
+        seen[id].add(name);
+        assert.deepEqual([o.castShadow, o.receiveShadow], want[name], `${id}: ${name} shadow flags`);
+      });
     }));
   }
   assert.ok(seen.building.has('frame'));
+  assert.ok(seen.building.has('tile'), 'a room with floor tile');
+});
+
+test('real style: an exterior wall is boarded on its outer face only', () => {
+  const { byId } = buildAll({ ...options, style: 'real' });
+  const walls = [];
+  byId.building.group.traverse(o => { if (o.isMesh && Array.isArray(o.material)) walls.push(o); });
+  assert.ok(walls.length >= 6);
+  const inRoom = ([x, , z]) => model.rooms.some(r => r.rects.some(([x0, z0, x1, z1]) => x >= x0 && x <= x1 && z >= z0 && z <= z1));
+  byId.building.group.updateMatrixWorld(true);
+  walls.forEach(w => {
+    const [back, front, edge] = w.material, t = w.geometry.parameters.options.depth;
+    assert.deepEqual(w.geometry.groups.map(g => g.materialIndex), [0, 1, 2]);
+    assert.equal(edge.map, null);
+    // the face whose material has the boards has no room just beyond it
+    [[back, -1], [front, 1]].forEach(([mt, z]) => {
+      if (!mt.map) return;
+      const L = w.geometry.boundingBox || (w.geometry.computeBoundingBox(), w.geometry.boundingBox);
+      const mid = new THREE.Vector3((L.min.x + L.max.x) / 2, 1, z * (t / 2 + 0.3)).applyMatrix4(w.matrixWorld);
+      assert.ok(!inRoom(mid.toArray()), 'the boards face out');
+    });
+    assert.ok(back.map || front.map, 'boarded on one face at least');
+    assert.notEqual(back.map, front.map, 'the back face takes the mirrored boards');
+  });
 });
 
 test('real style: exterior walls get a base strip broken at doors', () => {
@@ -262,9 +288,9 @@ test('real style: every floor has its own material', () => {
 test('real style: the lift fades out and back on its own materials', () => {
   const { ctx, byId } = buildAll({ ...options, style: 'real' });
   const lift = byId.building.lift, mats = new Set();
-  lift.traverse(o => { if (o.isMesh) mats.add(o.material); });
+  lift.traverse(o => { if (o.isMesh) [o.material].flat().forEach(m => mats.add(m)); });
   const below = new Set();
-  byId.building.group.traverse(o => { if (o.isMesh) below.add(o.material); });
+  byId.building.group.traverse(o => { if (o.isMesh) [o.material].flat().forEach(m => below.add(m)); });
   mats.forEach(m => assert.ok(!below.has(m), 'a lift material is used below the lift'));
   ctx.kit.applyFade(lift, 0);
   assert.equal(lift.visible, false);

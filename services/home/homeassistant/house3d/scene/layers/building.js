@@ -2,8 +2,9 @@
 // Walls that run up to a roof are cut at the ceiling, and the part above goes in lift with the
 // roofs, which rises and fades with the roof mode. The floors are the room tap targets and warm
 // with a room's markers in state 'on'. The real style draws them as lit surfaces: exterior walls
-// clad, interior walls plain, framed openings, floors that tint from their own colour, and the
-// lift on materials of its own, so its fade never reaches the lower walls.
+// boarded outside and plain inside, interior walls plain, framed openings, floors in the room's
+// finish that tint from their own colour, and the lift on materials of its own, so its fade never
+// reaches the lower walls.
 const FRAME = 0.06, FRAME_D = 0.1; // real style: an opening's frame width and depth
 const BASE_H = 0.12; // real style: the dark strip along an exterior wall's foot
 
@@ -18,16 +19,21 @@ export default function build({ THREE, kit, C, model, roof, ceiling, state, styl
   if (real) {
     // walls and roofs are DoubleSide: a roof's remapped extrusion faces inwards
     const two = { side: THREE.DoubleSide }, fades = { ...two, transparent: true };
-    const clad = kit.surface('cladding', two), inner = kit.surface('interior', two), glass = kit.surface('glass');
+    const [front, back] = kit.boards();
+    const clad = o => ({ front: kit.surface('cladding', { ...o, map: front }), back: kit.surface('cladding', { ...o, map: back }), edge: kit.surface('cladding', o) });
+    const inner = kit.surface('interior', two), glass = kit.surface('glass');
     const frame = kit.surface('frame'), panel = kit.surface('frame', two);
+    const boarded = { ...clad(two), inner };
     mH = { furn: kit.surface('interior') };
-    mR = { wall: kit.surface('cladding', fades), roof: kit.surface('roof', fades), panel: kit.surface('frame', fades) };
+    // the lift's inner faces are never seen, so they keep the cladding's colour without boards
+    const lifted = clad(fades);
+    mR = { boarded: { ...lifted, inner: lifted.edge }, roof: kit.surface('roof', fades), panel: kit.surface('frame', fades) };
     // a panel (the carport's walls and posts) is anthracite; else exterior is thick or running up
-    // to a roof, and only it gets the base strip
+    // to a roof, and only it gets the boards and the base strip
     wallMats = w => {
       if (w.finish === 'panel') return { wall: panel, glass, frame, base: false };
       const outside = w.t >= 0.3 || typeof w.top === 'string';
-      return { wall: outside ? clad : inner, glass, frame, base: outside };
+      return outside ? { boarded, glass, frame, base: true } : { wall: inner, glass, frame, base: false };
     };
   } else {
     mH = mats();
@@ -40,7 +46,8 @@ export default function build({ THREE, kit, C, model, roof, ceiling, state, styl
   // real style: the wall solid, glass in windows and glass doors, a leaf in doors, and a frame
   // round each opening
   function dressWall(g, geo, ops, m, w, L) {
-    const mesh = new THREE.Mesh(geo, m.wall);
+    const side = outerSide(w, L);
+    const mesh = new THREE.Mesh(geo, m.boarded ? faces(geo, m.boarded, side) : m.wall);
     mesh.castShadow = mesh.receiveShadow = true;
     g.add(mesh);
     const bar = (x0, x1, y0, y1, d = FRAME_D) => {
@@ -67,7 +74,7 @@ export default function build({ THREE, kit, C, model, roof, ceiling, state, styl
     if (!m.base || w.bot) return;
     // the base strip sits on the outer face, the side with no room just beyond it; when that
     // cannot be told, on both
-    const side = outerSide(w, L), d = side ? 0.02 : w.t + 0.02, zc = side * (w.t / 2 + 0.01);
+    const d = side ? 0.02 : w.t + 0.02, zc = side * (w.t / 2 + 0.01);
     // it runs the wall's length, broken by every opening that reaches the ground
     const gaps = ops.filter(o => (o.sill || 0) < BASE_H).map(o => [o.c - o.w / 2, o.c + o.w / 2]).sort((p, q) => p[0] - q[0]);
     let from = 0;
@@ -77,8 +84,20 @@ export default function build({ THREE, kit, C, model, roof, ceiling, state, styl
     });
   }
 
-  // +1 or -1 for the wall group's local z that faces out, 0 when both or neither side has a room
-  const inRoom = (x, z) => rooms.some(r => r.rects.some(([x0, z0, x1, z1]) => x >= x0 && x <= x1 && z >= z0 && z <= z1));
+  // an extruded wall's first group holds both faces, the -z one first, then the +z one; split it
+  // so the outer face is boarded and the inner one plain (both boarded when side is 0)
+  function faces(geo, b, side) {
+    const [lids, sides] = geo.groups, half = lids.count / 2;
+    geo.clearGroups();
+    geo.addGroup(lids.start, half, 0);
+    geo.addGroup(lids.start + half, half, 1);
+    geo.addGroup(sides.start, sides.count, 2);
+    return [side === 1 ? b.inner : b.back, side === -1 ? b.inner : b.front, b.edge];
+  }
+
+  // +1 or -1 for the wall group's local z that faces out, 0 when both or neither side has a room;
+  // a paved room (the carport) is outdoors under a roof
+  const inRoom = (x, z) => rooms.some(r => r.floor !== 'paving' && r.rects.some(([x0, z0, x1, z1]) => x >= x0 && x <= x1 && z >= z0 && z <= z1));
   function outerSide(w, L) {
     const ux = (w.b[0] - w.a[0]) / L, uz = (w.b[1] - w.a[1]) / L, mx = (w.a[0] + w.b[0]) / 2, mz = (w.a[1] + w.b[1]) / 2;
     // the group's rotation turns local +z to (-uz, ux) on the plan
@@ -167,7 +186,7 @@ export default function build({ THREE, kit, C, model, roof, ceiling, state, styl
   const floorMeshes = [];
   rooms.forEach(r => {
     r.rects.forEach(([x0, z0, x1, z1]) => {
-      const mat = real ? kit.surface('floor') : basic({ color: C.floor.clone(), opacity: 0.85, side: THREE.DoubleSide });
+      const mat = real ? kit.surface(r.floor || 'floor') : basic({ color: C.floor.clone(), opacity: 0.85, side: THREE.DoubleSide });
       const inset = 0.05;
       const mesh = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0 - inset * 2, z1 - z0 - inset * 2), mat);
       mesh.rotation.x = -Math.PI / 2;

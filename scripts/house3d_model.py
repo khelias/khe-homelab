@@ -29,6 +29,7 @@ LAYERS = REQUIRED + ("surroundings",)
 PUBLIC = ("geometry", "rooms", "showcase")
 OUTDOOR = "oues"
 GATE_KINDS = ("sliding", "swing1", "swing2")
+ROOM_FLOORS = ("tile", "paving")  # the real style's floor finishes besides the default oak
 SLIDE_OFFSET = 0.12  # a sliding leaf runs this far to the lot side of the fence line, past its rails
 CAR_CLEARANCE = 0.3  # between the car and a gate leaf's sweep
 BLOCK = re.compile(r"^```json house3d:(\w+)[ \t]*\n(.*?)^```[ \t]*$", re.M | re.S)
@@ -310,6 +311,8 @@ def validate(layers):
             rect(where, q)
         if "label" in r and not _point(r["label"]):
             bad(f"{where}: label must be [x, z]")
+        if "floor" in r and r["floor"] not in ROOM_FLOORS:
+            bad(f"{where}: floor {r['floor']!r} is not one of {', '.join(ROOM_FLOORS)}")
 
     known = set(room_ids)
     for rid in model.get("room_names", {}):

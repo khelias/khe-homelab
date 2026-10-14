@@ -9,17 +9,22 @@ const COLORS = {
 };
 
 // The real style's surfaces, from photos of the house (2026-10-14) where they differ from the
-// drawings' specification (A-101/A-102, AR-5): the cladding is the light grey glaze, roofs and
-// flashing RR23, and every frame, door, trim, the wall's base strip, the carport's panels and
-// the pergola one anthracite, about RAL 7016 (the drawings' RR25 yellow frames were not built).
-// The deck is dark composite, the paving warm concrete pavers, the outdoor units white. The car
-// and surroundings are plain stand-ins; outside is the neutral ground beyond the lot.
+// drawings' specification (A-101/A-102, AR-5): the cladding is grey-glazed diagonal boarding
+// (its boards come from boards()), roofs and flashing a mid grey standing seam, and every frame,
+// door, trim, the wall's base strip, the carport's panels and the pergola one anthracite, about
+// RAL 7016 (the drawings' RR25 yellow frames were not built). Inside, the walls are light grey,
+// the living floors oak and the wet rooms a dark wood-look tile. The deck is dark composite, the
+// paving warm concrete pavers, the outdoor units white. The car and surroundings are plain
+// stand-ins; outside is the neutral ground beyond the lot.
 const REAL = {
-  cladding: '#c9ccc8', roof: '#3e4245', frame: '#383e42', unit: '#e4e4e0',
-  glass: '#9fb8c4', interior: '#eceae4', floor: '#cdb48e', deck: '#4d4540', paving: '#b3a38c',
+  cladding: '#bebeb8', roof: '#7b8083', frame: '#383e42', unit: '#e4e4e0',
+  glass: '#9fb8c4', interior: '#dddcd8', floor: '#c39566', tile: '#5e4a3c', deck: '#4d4540', paving: '#b3a38c',
   lawn: '#5f7f45', outside: '#8e9088', hedge: '#355a32', crown: '#4f7a3a', trunk: '#5b4636',
   fence: '#4a4d50', car: '#2f3336', neighbour: '#b9b6ae', road: '#6b6b68'
 };
+// the cladding's boards: about 12 cm wide, rising to the right at 45 degrees, on a 2 m tile of
+// the walls' metre UVs
+const BOARD_TILE = 2, BOARDS = 12, BOARD_PX = 512, GROOVE = 0.07;
 const GLASS_OPACITY = 0.35;
 
 export function createKit(THREE, style = 'simple') {
@@ -80,6 +85,38 @@ export function createKit(THREE, style = 'simple') {
     return tex;
   }
 
+  // real style: [front, back], the board texture as seen on a wall's local +z face and its
+  // mirror for the -z face, so the boards rise to the right on both; one pair per mount. A
+  // DataTexture, not a canvas: the engine tests run without a DOM
+  let boardPair;
+  function boards() {
+    if (boardPair) return boardPair;
+    const S = BOARD_PX, data = new Uint8Array(S * S * 4);
+    const rnd = k => { const x = Math.sin(k * 12.9898 + 78.233) * 43758.5453; return x - Math.floor(x); };
+    const shade = Array.from({ length: BOARDS }, (_, k) => 0.9 + 0.14 * rnd(k));
+    const phase = Array.from({ length: BOARDS }, (_, k) => 6.28 * rnd(k + 40));
+    for (let j = 0; j < S; j++) for (let i = 0; i < S; i++) {
+      // i - j counts across the boards, i + j along them; both wrap with the tile
+      const t = ((i - j + S) * BOARDS) / S, k = Math.floor(t) % BOARDS, f = t - Math.floor(t);
+      const grain = 1 + 0.03 * Math.sin((2 * Math.PI * 3 * (i + j)) / S + phase[k]);
+      const v = Math.min(1, f < GROOVE ? 0.55 : shade[k] * grain) * 255;
+      data.set([v, v, v * 0.985, 255], (j * S + i) * 4);
+    }
+    const front = keep(new THREE.DataTexture(data, S, S));
+    front.wrapS = front.wrapT = THREE.RepeatWrapping;
+    front.colorSpace = THREE.SRGBColorSpace;
+    front.magFilter = THREE.LinearFilter;
+    front.minFilter = THREE.LinearMipmapLinearFilter;
+    front.generateMipmaps = true;
+    front.anisotropy = 8;
+    front.repeat.set(1 / BOARD_TILE, 1 / BOARD_TILE);
+    front.needsUpdate = true;
+    const back = keep(front.clone());
+    back.repeat.x = -1 / BOARD_TILE;
+    back.needsUpdate = true;
+    return (boardPair = [front, back]);
+  }
+
   // real style: box() without the outline
   function solid(group, mat, [x0, z0, x1, z1], [y0, y1]) {
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, y1 - y0, z1 - z0), mat);
@@ -112,5 +149,5 @@ export function createKit(THREE, style = 'simple') {
 
   const near = (a, b) => Math.abs(a - b) < 0.002;
 
-  return { C, style, REAL, disposables, keep, basic, lineMat, mats, edges, box, prism, canvasTexture, applyFade, near, surface, solid, flatShape };
+  return { C, style, REAL, disposables, keep, basic, lineMat, mats, edges, box, prism, canvasTexture, applyFade, near, surface, solid, flatShape, boards };
 }

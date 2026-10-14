@@ -70,7 +70,7 @@ model, never this file.
 {
  "rooms": [
   { "id": "r1", "no": "01", "name": "Elutuba", "rects": [[2.2, 2.2, 7, 9.8]] },
-  { "id": "r2", "no": "02", "name": "Magamistuba", "rects": [[7, 2.2, 11.8, 9.8]] },
+  { "id": "r2", "no": "02", "name": "Magamistuba", "rects": [[7, 2.2, 11.8, 9.8]], "floor": "tile" },
   { "id": "carport", "no": "03", "name": "Varjualune", "rects": [[13, 1, 17, 7]] }
  ]
 }

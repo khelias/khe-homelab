@@ -110,6 +110,10 @@ def _bad_finish(L):
     _walls(L)[6]["finish"] = "brick"
 
 
+def _bad_floor(L):
+    L["rooms"]["rooms"][0]["floor"] = "carpet"
+
+
 def _short_path(L):
     L["private"]["car"]["path"][0] = [15.137, -7.137]
 
@@ -127,6 +131,7 @@ MUTATIONS = [
     ("key in two layers", _twice, "key ceiling is in more than one layer"),
     ("car path does not clear the drive gate", _short_path, "car: path starts"),
     ("unknown wall finish", _bad_finish, "walls[6]: finish 'brick' is not panel"),
+    ("unknown floor finish", _bad_floor, "room r1: floor 'carpet' is not one of tile, paving"),
 ]
 
 

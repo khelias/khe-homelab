@@ -211,7 +211,8 @@ export function guardLayer(L, off) {
  *                                     reset, resize, dispose, mode, carState, carScreen, layers, time, view }
  *
  * model: geometry + rooms layers (private and showcase are ignored). A wall with finish 'panel' is
- *   drawn in the real style as anthracite panel (the carport's walls and posts). site.decks and site.paving:
+ *   drawn in the real style as anthracite panel (the carport's walls and posts); a room's floor
+ *   ('tile' or 'paving', else oak) is its floor finish there. site.decks and site.paving:
  *   items that are rects [x0, z0, x1, z1] or outlines [[x, z], ...]. site.gates: [{ a, b, kind,
  *   height, opens?, slide?, name? }], drawn closed in the fence line; kind 'sliding' (one leaf, set
  *   to the lot side, sliding past the end named by slide, 'a' or 'b'), 'swing1' (one leaf hinged
@@ -406,7 +407,9 @@ export function mount(element, model, options = {}) {
     renderer.toneMapping = THREE.NeutralToneMapping;
     scene.background = sky.day.clone();
     scene.fog.color.copy(sky.day);
-    hemi = new THREE.HemisphereLight('#dfe8f0', '#5d6352', 1);
+    // the ground bounces light onto the walls: a shaded wall in the photos is a little darker than
+    // a sunlit one, not near black
+    hemi = new THREE.HemisphereLight('#dfe8f0', '#9a9c8c', 1);
     sun = new THREE.DirectionalLight('#ffffff', 2.5);
     sun.castShadow = true;
     sun.shadow.radius = 3;
@@ -464,9 +467,9 @@ export function mount(element, model, options = {}) {
     scene.fog.color.copy(scene.background);
     const high = Math.min(1, Math.max(0, alt / 25));
     sun.visible = alt > 0;
-    sun.intensity = 1 + 2.4 * high;
+    sun.intensity = 1 + 2 * high;
     sun.color.set('#ffffff').lerp(lowSun, Math.max(0, 1 - alt / DUSK_ALT));
-    hemi.intensity = alt < 0 ? 0.15 : 0.35 + 0.45 * high;
+    hemi.intensity = alt < 0 ? 0.15 : 0.5 + 1.9 * high;
     if (alt > 0) placeSun(dir);
     invalidate();
   }
