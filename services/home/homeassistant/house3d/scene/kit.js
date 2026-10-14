@@ -22,9 +22,9 @@ const REAL = {
   lawn: '#5f7f45', outside: '#8e9088', hedge: '#355a32', crown: '#4f7a3a', trunk: '#5b4636',
   fence: '#4a4d50', car: '#2f3336', neighbour: '#b9b6ae', road: '#6b6b68'
 };
-// the cladding's boards: about 12 cm wide, rising to the right at 45 degrees, on a 2 m tile of
-// the walls' metre UVs
-const BOARD_TILE = 2, BOARDS = 12, BOARD_PX = 512, GROOVE = 0.07;
+// the cladding's boards: about 12 cm wide, rising to the right at 45 degrees, only their grooves
+// drawn, on a 2 m tile of the walls' metre UVs
+const BOARD_TILE = 2, BOARDS = 12, BOARD_PX = 512, GROOVE = 0.045;
 const GLASS_OPACITY = 0.35;
 
 export function createKit(THREE, style = 'simple') {
@@ -92,15 +92,10 @@ export function createKit(THREE, style = 'simple') {
   function boards() {
     if (boardPair) return boardPair;
     const S = BOARD_PX, data = new Uint8Array(S * S * 4);
-    const rnd = k => { const x = Math.sin(k * 12.9898 + 78.233) * 43758.5453; return x - Math.floor(x); };
-    const shade = Array.from({ length: BOARDS }, (_, k) => 0.9 + 0.14 * rnd(k));
-    const phase = Array.from({ length: BOARDS }, (_, k) => 6.28 * rnd(k + 40));
     for (let j = 0; j < S; j++) for (let i = 0; i < S; i++) {
-      // i - j counts across the boards, i + j along them; both wrap with the tile
-      const t = ((i - j + S) * BOARDS) / S, k = Math.floor(t) % BOARDS, f = t - Math.floor(t);
-      const grain = 1 + 0.03 * Math.sin((2 * Math.PI * 3 * (i + j)) / S + phase[k]);
-      const v = Math.min(1, f < GROOVE ? 0.55 : shade[k] * grain) * 255;
-      data.set([v, v, v * 0.985, 255], (j * S + i) * 4);
+      // i - j counts across the boards and wraps with the tile; one shade, a thin groove between
+      const t = ((i - j + S) * BOARDS) / S, v = (t - Math.floor(t) < GROOVE ? 0.72 : 1) * 255;
+      data.set([v, v, v, 255], (j * S + i) * 4);
     }
     const front = keep(new THREE.DataTexture(data, S, S));
     front.wrapS = front.wrapT = THREE.RepeatWrapping;
