@@ -15,11 +15,10 @@ pointers; the reference lives in:
 - [SECURITY.md](SECURITY.md), [ROADMAP.md](ROADMAP.md),
   [infrastructure/](infrastructure/) (Proxmox, network, Cloudflare, Tailscale)
 
-House documentation (HA rollout, dashboard layout, HVAC protocols, energy)
-is in the private `khe-meta` repo under `house/`: it names devices, LAN
-addresses and metering data. This repo keeps the container and ops layer.
-Read `house/home-assistant-plan.md` before analysing house data: its method
-rules are not loaded into context on their own.
+Home Assistant's configuration, dashboard generator and 3D house view are in
+[khe-home-assistant](https://github.com/khelias/khe-home-assistant), whose
+`AGENTS.md` points on to the house documentation in the private `khe-meta`
+repo. This repo keeps HA's container and ops layer.
 
 ## Layout
 
@@ -28,31 +27,18 @@ services/
   core/            NPM, AdGuard, Cloudflare Tunnel, Vaultwarden,
                    Uptime Kuma, Homepage, autoheal
   media/           Immich
-  home/            Home Assistant, Mosquitto, PAI (Paradox alarm)
-    homeassistant/house3d/  3D house view: engine (core house3d.js, scene/ layer
-                   modules, kit and sun), HA card, standalone viewer, placement
-                   page, vendored three.js (house data stays in khe-meta)
+  home/            Home Assistant (container only), Mosquitto, PAI (Paradox alarm)
   apps/            landing, games, pages, trips
   observability/   Loki, Grafana, Alloy, Alertmanager (one stack)
 infrastructure/    Proxmox, network, Cloudflare, Tailscale docs
-scripts/           setup, deploy, backup, hardening, validate-compose,
-                   ha-dashboard.py (HA Overview generator),
-                   ha-ws.py (HA WebSocket commands from the CLI),
-                   house3d-* and house3d_model.py (3D view build, vendoring,
-                   device and tree placement, ETAK surroundings, model),
-                   house3d-test.sh (the 3D view's tests),
-                   pv-sim.py (rooftop PV, battery and EV simulation against
-                   the Estfeed hourly load; its input stays in khe-meta)
-tests/house3d/     3D view tests on a made-up fixture house: model and build
-                   (Python unittest), engine and simple-style snapshot (node:test)
+scripts/           setup, deploy, backup, hardening, validate-compose
 ```
 
 Image tags live in each `docker-compose.yml`; Renovate opens the bump PRs,
 except for the estate's own images (rule 3). CI (`validate.yml`, the required
 check) runs the pin App guard, `scripts/verify-estate-pins.sh`, `bash -n` on
 each `scripts/*.sh` and `scripts/validate-compose.sh`, every script from the
-base branch against the PR tree. The workspace commit gate's `check:` also
-runs `scripts/house3d-test.sh` (needs `node` and `python3`); CI does not yet.
+base branch against the PR tree.
 
 ## Rules
 
@@ -75,10 +61,12 @@ runs `scripts/house3d-test.sh` (needs `node` and `python3`); CI does not yet.
    `verify-estate-pins.sh` requires every pinned digest to be attested by its
    repo's `ci.yml` on main, all images of a repo from one commit.
 4. **State in named volumes or bind mounts under `/srv/data/<service>/`**,
-   never `/home` or arbitrary paths. The exception is `services/home/`: HA's
-   `./config` and Mosquitto's `./data` live in the checkout. `backup.sh` tars
-   HA's config (plus a recorder dump) and Mosquitto's `config/`, not its
-   `data/`.
+   never `/home` or arbitrary paths. HA's config is the named volume
+   `homeassistant_ha_config`, not `/srv/data`, because the recorder is SQLite
+   and `/srv/data` is a soft NFS mount; khe-home-assistant's deploy writes
+   its managed files there. The remaining checkout exception is Mosquitto's
+   `./data`. `backup.sh` tars HA's config volume (plus a recorder dump) and
+   Mosquitto's `config/`, not its `data/`.
 5. **Ingress through the shared `proxy` network** for NPM; separate networks
    isolate databases. The `draft.khe.ee` editor, which runs without an app
    login, sits on `draft-tunnel`, shared only with `cloudflare-tunnel`; the
@@ -100,7 +88,7 @@ runs `scripts/house3d-test.sh` (needs `node` and `python3`); CI does not yet.
   only. Admin credentials live in the VM's `.env` files, except NPM's login
   (in its database) and AdGuard's (in its live `AdGuardHome.yaml`).
 - On the VM: `./scripts/deploy.sh status|pull|up|down`, `./scripts/backup.sh`
-  (Postgres dumps, config snapshots, HA recorder). Per service:
+  (Postgres dumps, config snapshots, HA's config volume and recorder). Per service:
   `cd services/<group>/<service> && docker compose up -d`.
 - **A push to `main` is the deploy.** `deploy.yml` runs when `services/**`,
   `scripts/deploy.sh`, `scripts/deploy-stacks.sh`, `scripts/homelab-status.sh`,
@@ -143,41 +131,10 @@ runs `scripts/house3d-test.sh` (needs `node` and `python3`); CI does not yet.
 
 ## Working on Home Assistant
 
-HA is operated through its API: not the UI, not SSH.
-
-- **Token:** a long-lived token in `~/.config/khe/ha-token` on the operator's
-  machine, mode 600. Read it inside scripts; never print or commit it.
-- **REST** for states, service calls, `POST /api/template`, diagnostics and
-  `POST /api/services/homeassistant/restart` (back in ~10 s; wait another
-  ~40 s before trusting a state read). **WebSocket** (`/api/websocket`) for
-  the entity and device registries, config entries, dashboards and HACS,
-  sent with `scripts/ha-ws.py '{"type": "..."}'`, which handles auth and ids.
-  Host and port are in `scripts/ha-dashboard.py` and `scripts/ha-ws.py`.
-- **Config lives in git, not on the VM.** Edit
-  `services/home/homeassistant/config/packages/*.yaml`, commit, the operator
-  pushes, CI pulls on the VM, then restart HA through the API. Never scp into
-  the VM checkout: deploy runs `git pull --ff-only`, and one drifted file
-  stops every deploy after it.
-- **YAML platforms need a restart, not a reload:** `input_*`, `rest:`,
-  `shell_command:` and the group `cover:`/`light:` platforms. Automations and
-  templates reload, but a template reload blanks the trigger-based price
-  sensors until the hourly tick: follow every `template/reload` at once with
-  `POST /api/events/khe_price_refresh`
-  ([notes](docs/operational-notes.md#home-assistant)).
-- **Helpers come up at their minimum.** Set the first value through the API;
-  `initial:` would overwrite the household's choice on every restart.
-- **The dashboard is generated** by `scripts/ha-dashboard.py`, and HA adds
-  sections to the stored config by itself when a new device appears. Before
-  rerunning, diff the generator's output against the live config: exec the
-  script up to `async def main`, dump `config`, compare with a WebSocket
-  `lovelace/config` read.
-- **Keep the house idiom in a new view**, and read two existing views first.
-  A row is a `horizontal-stack` of 2-4 vertical tiles or `third()`, never a
-  lone full-width tile; full width is for charts, forecast cards and alerts.
-  Each number appears once (turn off a forecast card's `show_current` when a
-  tile already carries the value). Badge labels are short and still say what
-  they control. The front page holds what is done daily; per-side controls,
-  rare settings and diagnostics go on a `subview` behind a "Seaded" badge. A
-  `note()` truncates to one line, so longer text needs a markdown card.
-- Read the integration's section in `docs/operational-notes.md` before
-  touching it.
+The procedure (API, token, reloads, the dashboard generator) is in
+[khe-home-assistant's AGENTS.md](https://github.com/khelias/khe-home-assistant/blob/main/AGENTS.md);
+its deploy writes the config into the `homeassistant_ha_config` volume and
+never restarts HA. What stays here: the container in
+`services/home/homeassistant/docker-compose.yml` and its volume, the image
+pin, the Renovate hold on HA bumps and the backup in `scripts/backup.sh`
+([notes](docs/operational-notes.md#home-assistant)).

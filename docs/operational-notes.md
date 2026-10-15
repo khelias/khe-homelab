@@ -140,6 +140,7 @@ Stack: `services/apps/games/` (nginx + adventure-web + adventure-proxy).
 - `/home/khe/actions-runner-sites` - khe-sites
 - `/home/khe/actions-runner-trips` - khe-trips
 - `/home/khe/actions-runner-homelab` - khe-homelab
+- `/home/khe/actions-runner-home-assistant` - khe-home-assistant
 
 `backup.sh` saves the identity of every `actions-runner*` directory that has
 a `.runner` file.
@@ -509,33 +510,15 @@ fault and is not one.
 existing VM the rule has to be added by hand:
 `sudo ufw allow from 192.168.0.0/24 to any port 8123`.
 
-**Config directory is mostly gitignored.** HA rewrites the directory at runtime
-and `.storage` holds the user database, long-lived tokens and integration
-credentials. Only `configuration.yaml` and `config/packages/*.yaml` are
-tracked; the ignore rule is a
-blanket `config/*` plus a whitelist, so every new hand-written YAML file must
-be added to `.gitignore` explicitly or it silently stays untracked. HACS and
-its integrations (`custom_components/`) are deliberately untracked and
-reinstalled by hand; they are covered by the config-dir backup.
-
-**Every `template/reload` must be followed at once by
-`POST /api/events/khe_price_refresh`.** Trigger-based template sensors do not
-re-run on reload, so the whole price stack (`elektri_hinna_prognoos`, `_tase`,
-`odavaim_aken_*`) goes blank and the Kodu Elekter card renders `None. None`
-until the hourly tick. A restart is safe, the package has a `start` trigger;
-only reload breaks it. An `event_template_reloaded` trigger does not fix it,
-the reload races the entities listening for it (core issues #65832, #101835).
-
-**A Nord Pool delivery date is a CET day**, 01:00-01:00 Estonian time, so
-`nordpool.get_prices_for_date` for today starts at 01:00. The forecast sensor
-also fetches yesterday and keeps slots from local midnight; without that the
-00:00 hour is missing and the price level goes blank every night until 01:04.
-The integration's own "tomorrow available" flag flips on the same CET clock.
-
-**Config changes need a restart.** The config dir is a bind mount, so editing
-YAML and running `deploy-stacks.sh` changes nothing in the running container.
-Validate, then restart:
-`docker exec homeassistant hass --script check_config -c /config && docker restart homeassistant`.
+**The live config is the `homeassistant_ha_config` volume** on the VM's local
+disk, not `/srv/data`: the recorder is a live SQLite database in WAL mode, and
+`/srv/data` is a soft NFS mount of the HDD pool. khe-home-assistant's deploy
+replaces `configuration.yaml`, `packages/`, `tuya_local_devices/` and
+`www/house3d/` in it, after `check_config` passes in a throwaway container of
+the running image; it never restarts HA. `.storage` (users, long-lived tokens,
+integration credentials), `custom_components/` (HACS and its integrations,
+reinstalled by hand) and the recorder are live state that only `backup.sh`
+covers.
 
 **Not on the Cloudflare Tunnel, deliberately.** CF Access breaks the HA
 companion app login and webhooks, and this host will eventually control the
@@ -543,294 +526,19 @@ ventilation and heat pump. Remote access is Tailscale.
 
 **Backup.** `backup.sh` copies the recorder DB via Python's `sqlite3` backup
 API inside the container (`homeassistant-recorder.db.gz`) and tars the config
-dir with the live DB, its journals and the log excluded
-(`homeassistant-config.tar.gz`). Restore: untar the config dir, drop the
-gunzipped DB in as `home-assistant_v2.db`, start the container.
+volume with the live DB, its journals and the log excluded
+(`homeassistant-config.tar.gz`). Restore: with HA stopped, untar into the
+volume through a throwaway alpine container
+(`docker run --rm -v homeassistant_ha_config:/config -v <backup dir>:/backup:ro alpine:3 tar xzf /backup/homeassistant-config.tar.gz -C /config`),
+drop the gunzipped DB in as `home-assistant_v2.db` the same way, start the
+container.
 
-**Grid consumption from Estfeed (since 2026-09-13).** HACS custom repository
-`khelias/ha-estfeed` (fork of `tehisain/ha-estfeed` with the day/night grid
-tariff, cost sensors, the resume-point fix and the hourly price statistic
-`estfeed:estfeed_price`; a permanent fork that merges upstream in). The API key is entered in the integration's UI
-flow and lives in `.storage`, nowhere else. Tariff options are on the config
-entry (Settings -> Devices -> Estfeed -> Configure); the values and the
-reasoning are in
-khe-meta's `house/home-assistant-plan.md`, section "House meter without
-hardware".
-If the cost history looks like spot-only after an options change, or the
-cumulative sums jump (check monthly totals against the self-service), run
-the `estfeed.backfill_history` service (months: 2): it rewrites both series
-from zero over the window. The integration's default
-entity ids embed the metering point EIC; they were renamed in the entity
-registry to `sensor.maja_*`, `binary_sensor.maja_andmed_varsked` and
-`button.maja_*` so the dashboard generator can reference them in this public
-repo. A fresh install of the integration would recreate the EIC-based ids.
-Options can also be set over REST through
-`/api/config/config_entries/options/flow`, but a change made while the
-initial backfill is still running gets overwritten; run `backfill_history`
-afterwards. The fork has no releases, so HACS sees a new commit only after
-`hacs/repository/refresh` (WebSocket); download the update in the HACS UI
-after that.
-
-**UniFi Network (since 2026-10-13).** The core integration talks to the
-Cloud Gateway Ultra at the gateway address, port 443, with a local UniFi
-user made for HA, and SSL verification off (the gateway's certificate is
-self-signed). Options: track clients and UniFi devices on, wired clients
-off, "ignore private MAC" off. Client trackers arrive disabled by the
-integration and the config entry's "Enable newly added entities" is off, so
-guests and new IoT clients add nothing; enable only household phones, which
-need "Private Wi-Fi Address: Fixed" (not "Rotating") for this network or
-their tracker changes identity. Used for network health (gateway and AP
-state, firmware update entities) and phone presence beside the Companion
-app. The integration has no plain WAN up/down entity, so the dashboard shows
-the gateway's Cloudflare latency probe, and Kodu turns red when it goes
-unavailable. The WLAN's own entities embed the SSID, so the generator here
-uses the AP's client count instead. Both `sensor.unifi_gateway_cloudflare_wan_latentsus`
-and `sensor.u6_lr_kliendid` are disabled by default and were enabled by hand
-in the entity registry; re-adding the integration needs that again, or the
-"Võrk" tiles show "Entity not found".
-
-**Pergola via Tuya Local (since 2026-09-20).** The two motorised pergolas are
-Tuya WiFi devices (protocol 3.5). Tuya's cloud only declares three datapoints
-for them, so the built-in Tuya integration can offer nothing but a door
-binary sensor: the roof control and both LED circuits are custom datapoints
-that are reachable over the LAN only. They run on HACS custom repository
-`make-all/tuya-local`, which is a *custom* repository, not in the HACS default
-store.
-
-That integration ships its device definitions inside its own folder and has no
-user config directory (the PR that would have added one,
-make-all/tuya-local#5141, was rejected), **and a tuya-local update deletes
-anything extra in there.** The folder is also owned by root, because the
-container runs as root, so the deploy runner cannot write into it and a
-tracked file at that path breaks `git pull --ff-only` with "Permission
-denied" (hit on 2026-09-20).
-
-So the device definition is tracked at
-`config/tuya_local_devices/nordin_eco_pergola.yaml` and copied into place from
-inside the container by `shell_command.sync_tuya_local_devices`
-(`config/packages/pergola.yaml`), which an automation runs on every Home
-Assistant start. The copy lands too late for the config entries of that boot,
-and a reload does not rescue them: 2026.9.2 bumped the entry version, the
-migration failed on the missing file and left both entries in
-`migration_error`, which only a restart clears (2026-09-25). So the automation
-restarts HA once whenever the copy changed a file; the second boot finds the
-file identical and does not restart again. Updating tuya-local therefore costs
-one restart more than the one HACS asks for, and it happens by itself.
-
-Device ids, local keys and LAN addresses are not in this repo; the local keys
-live in `.storage` and the addresses in khe-meta's
-`house/home-assistant-plan.md`.
-
-**These units report no roof position, and that is settled.** Measured three
-ways on 2026-09-20:
-
-- Over the LAN, dp1 does not exist. A tinytuya `updatedps([1,14,24,101,102,110])`
-  returns nothing and the following `status()` is unchanged, so tuya-local's
-  `force` flag has nobody to ask.
-- dp2 holds the last command only until the motor stops, then the device
-  resets it to `stop` by itself, seen passively with no movement at all.
-- In the cloud dp1 exists but is frozen at its pairing value. Driving the roof
-  fully open and fully closed while polling the built-in Tuya integration's
-  diagnostics showed `control` tracking live (stop -> open -> close, within
-  15 s) while `status` never moved off `opened` - with the louvres physically
-  shut the whole time. The cloud link is alive; the datapoint is not.
-
-So the cover entities are command-only and sit at `unknown`, which is honest
-rather than broken, and the built-in Tuya integration adds nothing that
-tuya-local does not already have locally. Any state shown in Home Assistant
-would have to be remembered on the HA side, and would be wrong whenever the
-RF remote is used. If the manufacturer's rain sensor is ever fitted, re-check
-dp24 (`switch_sensor`): it reads false and never moves today.
-
-**Helpers start at their minimum, not at a sensible value.** An `input_number`
-or `input_datetime` created in a package comes up at the bottom of its range
-(the pergola evening brightness landed at 5 %, the off time at 00:00). `initial:`
-is not the fix, because it overwrites whatever the household chose on every
-restart. Set the value once through the API after first deploy instead.
-
-**Editing a tuya-local device config renames its entities.** The unique id is
-derived from the entity's type plus its name or class, so dropping
-`class: awning` from the cover made tuya-local register brand new entities
-(`cover.aed_pergola_parem`, area-prefixed because the old id was taken) and
-left the originals behind as unavailable orphans, which also broke the group
-that referenced them. After such an edit, delete the orphans from the entity
-registry and rename the new entities back, or the dashboard quietly points at
-nothing.
-
-**The roof rain rule runs on Open-Meteo, not on met.no.** met.no reported
-`partlycloudy` and 0.0 mm for six hours while it was raining on the terrace
-(2026-09-20), because it is a grid forecast and a local shower fits between
-the grid points. `config/packages/pergola.yaml` has a `rest:` sensor pair
-(`sensor.sademed_praegu`, `sensor.sademed_kahe_tunniga`) reading Open-Meteo's
-15 minute nowcast; the URL is a `resource_template` so the house coordinates
-come from `zone.home` and stay out of this repo. Whether the nowcast catches
-a shower this one missed is not proven yet.
-
-**New devices drift the generated dashboard.** Home Assistant adds a section
-for a newly discovered device to the stored Overview config by itself, so
-`scripts/ha-dashboard.py` and the live dashboard diverge after every new
-integration. That is what the generator is for; diff before assuming the
-drift is someone's deliberate edit.
-
-**A tile's colour is not a state indicator by itself.** A tile paints its
-icon whenever the entity counts as active, and a select, a sensor or a water
-heater in its normal mode (`on`) always does. So a coloured tile on such an
-entity is coloured all day. Where colour has to mean "this is running",
-the generator shows two tiles picked by a visibility condition, coloured and
-`disabled` (`by_state`, `heater_month`). Red is kept for faults and for
-things that should be zero and are not.
-
-**Integrations without translations show raw option keys** (`working_week`,
-`heating`, `twice`). The Estonian labels are template sensors in the device's
-package, and the dashboard tile shows the label with a `more-info` tap action
-on the select (`"entity": <select>`), so the picker is one tap away as before.
-
-**The 3D house view (`house3d`) is a read-only mount, not part of `config/www`.**
-The code lives in `services/home/homeassistant/house3d/` (engine `house3d.js`
-and its `scene/` modules, card `house3d-card.js`, standalone `viewer.html`,
-vendored three.js) and the
-compose file mounts it at `/config/www/house3d:ro`, so HA serves it as
-`/local/house3d/`. It is kept out of `config/www` because `config/*` is
-gitignored and the container has left root-owned directories there before
-(tuya-local, above), which would stop the runner's `git pull --ff-only`. Only
-adding the mount recreates HA; later file changes arrive live through it.
-- **Cache:** `/local` and the phone app keep old files. Every change to the
-  card or the engine bumps `HOUSE3D_VERSION` in `house3d-card.js` and the same
-  `?v=` on the Lovelace resource (`scripts/ha-ws.py` with
-  `lovelace/resources/update`). The engine loads its `scene/` modules with
-  its own URL's query, so the card's `?v=` covers them too. The vendor
-  directory is versioned (`vendor/three-<version>/`), so its URLs change with
-  it.
-- **Engine layout:** `house3d.js` is the core (renderer, camera and framing,
-  the marker overlay, roof mode, taps, the frame loop, the layer registry) and
-  builds no geometry. `scene/kit.js` makes each mount's colours, materials and
-  geometry helpers, and `scene/layers/` holds one module per scene layer
-  (ground, site, trees, gates, surroundings, pergola, building, car, camera
-  view fans); `scene/sun.js` holds the sun's position and direction, pure
-  functions loaded like the kit. A new scene layer is a module there plus its
-  line in the engine's `LAYERS` list; the contract (`build(ctx)` and its
-  hooks) is in the engine's header. Modules under `scene/` load nothing
-  themselves, no `import` of any kind and no `export ... from`: they get
-  three.js and the rest through `ctx`, because a module loaded by a static
-  import would come without `?v=` and could stay stale in the cache. Their
-  module scope holds constants only, since a module runs once per URL and a
-  second card or a remount would share its state. The engine tests check the
-  import rule (below).
-- **One broken layer does not blank the view.** A layer module that fails to
-  load, or whose build throws (say a model shape the deployed engine does not
-  know yet), is left out and logged as `house3d: layer <id> failed`; the rest
-  draws. A layer whose per-frame update, marker hook, tap test or API throws
-  is logged once and switched off for good, so the frame loop keeps running.
-  The kit and `sun.js` are required: if either fails to load, the card shows
-  its load error.
-- **Styles:** "Lihtne" (the neon wireframe, the default) and "Päris" (lit
-  surfaces in the house's colours and diagonal boarding with anthracite
-  trims and corners from photos, paving stones, the play area, bar and mesh
-  fences, the sun in the sky, the real sun and shadows),
-  chosen per browser in the Kihid sheet and kept in `localStorage` under
-  `house3d-style`. Switching remounts the engine with the roof mode, camera
-  and fog kept. The real style has no bloom; its shadow map is 2048 px, 1024
-  below 720 px width, and the roof and the car cast only while fully shown,
-  since the shadow pass ignores opacity.
-- **The sun** in the real style comes from HA's own location
-  (`hass.config.latitude`/`longitude`, read at runtime, never stored in the
-  card config) and the model's `georef.x_axis_bearing_deg`, the plan's
-  L-EST97 grid bearing. Sun azimuths are from true north; `sun.js` turns them
-  to grid azimuths with the projection's convergence, 0.854 x (lon - 24)
-  degrees. Without a location the real style uses a fixed afternoon sun. The
-  sky follows the sun's altitude: day, dusk below 8 degrees, night below 0
-  with the sun off. The standalone viewer gets the bearing in whole degrees
-  only (`orientation` in `model.json`) and puts the sun over the middle of
-  Estonia, never over the house.
-- **Kihid:** the card's layers button opens a sheet. Its first row, Stiil,
-  picks the style; in the real style the Kellaaeg (quarter hours) and
-  Kuupäev (days of this year) sliders scrub the sun, and Praegu returns to
-  live, which moves on once a minute; the time is not stored. Below them the
-  switches for the devices' markers (an alert always shows), the camera view
-  fans, the trees, the car (off, an arrival parks it and the gate stays shut)
-  and the neighbours and street; that choice is kept per browser in
-  `localStorage` under `house3d-layers`.
-- **three.js updates** are manual, Renovate does not see the vendored copy:
-  `scripts/house3d-vendor.sh <version>`, point the engine's imports at the new
-  directory, bump the version, remove the old directory.
-- **The model** (walls, rooms, trees, devices) is not in this repo. It is the
-  `house3d:*` blocks of khe-meta's `house/house-model.md`;
-  `scripts/ha-dashboard.py` reads it (`HOUSE3D_MODEL`, else the sibling
-  khe-meta checkout) and writes everything but the showcase layer into the
-  card config, which lives only in HA's `.storage`.
-- **Placing devices and trees:** `scripts/house3d-place.py serve <model>`
-  serves `place.html` on 127.0.0.1 with the private layer from memory. Pick a
-  device or a tree, click or drag it into place on the plan, turn a camera
-  with the Suund slider, size a tree with the Kõrgus and Võra sliders, then
-  copy the changes, `{"devices": {...}, "trees": {...}}` with only the groups
-  that changed; `pbpaste | scripts/house3d-place.py apply <model> -` rewrites
-  those device lines in the private block (heights stay by type) and those
-  tree lines in the geometry block's `site.trees`. Trees are geometry, so they
-  show in the standalone viewer too and the privacy scan does not cover them.
-  Commit the model in khe-meta and rerun `ha-dashboard.py`. HA serves
-  `place.html` too, but without a model it shows nothing.
-- **Privacy scan:** `scripts/house3d-build.py --scan <model>
-  services/home/homeassistant/house3d/` with the real model before every
-  commit that touches the directory. It fails on any device name, entity id,
-  family room name or device coordinate, on the car's name, entity, path and
-  outline points, on the surroundings' building and road vertices and on the
-  georeference's origin. Never scan with `tests/house3d/fixture-model.md`
-  as the files to check: it has a `devices` key, which the scan always
-  flags. The same script builds the standalone viewer from the shareable
-  layers only.
-- **Tests:** `scripts/house3d-test.sh` runs the model and build tests
-  (`tests/house3d/test_house3d_model.py`), the engine tests in Node
-  (`tests/house3d/engine.test.mjs`: every layer builds, the simple style
-  matches `simple-snapshot.json`, failure isolation, the sun, the real
-  style's materials and shadow flags, the scene import rule) and a syntax
-  check of every engine module, all on a made-up house,
-  `tests/house3d/fixture-model.md`. The workspace commit gate runs it as part
-  of this repo's `check:`; CI does not yet. A deliberate change to the simple
-  style rewrites the snapshot with `UPDATE_SNAPSHOT=1 node --test
-  tests/house3d/engine.test.mjs`.
-- **The car** stands in the carport when it is home and drives in from the
-  street the first time the view opens after it arrived; a tap on it replays
-  the drive. The engine only draws a generic vehicle from data: the car's
-  outline, lights and drive-in path are the optional `car` object of the
-  model's private layer, so neither this repo nor the standalone viewer
-  carries the car. Its `entity` is home when the state is `home` or `on`;
-  `unavailable` and `unknown` keep the last known value, a missing entity is
-  away, and only a change of home/away acts, so location updates do nothing.
-  The drive plays once per arrival per browser: the arrival key (the entity's
-  `arrived_at` attribute, else `last_changed`) is kept in `localStorage`
-  under `house3d-car-seen:<entity>`. The entity is an arrival helper, a
-  trigger-based template binary sensor fed by the Volvo integration's
-  `device_tracker`, not the tracker itself: the tracker's `last_changed` also
-  moves on every cloud outage and HA restart, which would replay the drive,
-  while the helper restores its state and sets `arrived_at` only on a real
-  arrival. Without an entity the car stays hidden.
-- **Gates** are `site.gates` in the geometry layer, drawn closed in the fence
-  line; `kind` (`sliding`, `swing1`, `swing2`) is data. The gate the car's
-  path crosses is the drive gate: on an arrival it opens first (1.2 s, the car
-  waiting at the start), the car drives, and the gate closes once the car's
-  tail is past its leaves' sweep. No motor and no HA entity, a view effect
-  only; `parked`, `away` and reduced motion leave it closed. The validator
-  makes the path start far enough out for the whole car to clear the closed
-  gate.
-- **Neighbours and the street** are the optional `house3d:surroundings` layer:
-  the buildings around the lot as flat-topped boxes and the street's road
-  area, from Maa- ja Ruumiamet's ETAK. Together they fix the house's
-  location, so the layer is private like the devices: `ha-dashboard.py` puts
-  it into the card config, the standalone viewer never gets it, and the scan
-  covers it. `scripts/house3d-surroundings.py <model> <ETAK_EESTI_GPKG.gpkg>`
-  writes it (`--write`; a dry run prints the checks) from the whole-Estonia
-  GeoPackage, read offline so the service never learns the area. It stops
-  unless ETAK's house footprint matches the model's walls within 1 m and a
-  street runs along the lot's front. The licence (Maa- ja Ruumiamet open
-  data, 01.01.2025) asks for the licensor, the dataset and its date, which
-  the card shows top left.
-
-### HVAC integrations
-
-The Komfovent and Daikin integration quirks (Modbus client rules, register
-gotchas, the broken space-heating energy channel) name the units and their LAN
-addresses, so they live in the private `khe-meta` repo under
-`house/house-hvac.md`.
+**Everything about the configuration** (template reloads and the price
+refresh, the Nord Pool day, restarts after a deploy, each integration's
+quirks, the dashboard and the 3D house view) is in khe-home-assistant's
+[operational notes](https://github.com/khelias/khe-home-assistant/blob/main/docs/operational-notes.md).
+The HVAC integrations name the units and their LAN addresses, so they live in
+the private `khe-meta` repo under `house/house-hvac.md`.
 
 ## Healthchecks
 

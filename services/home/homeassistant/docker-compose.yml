@@ -7,9 +7,11 @@ services:
       - "8123:8123"
     environment:
       - TZ=Europe/Tallinn
+    # khe-home-assistant's deploy writes configuration.yaml, packages/,
+    # tuya_local_devices/ and www/house3d/ into ha_config. A named volume on
+    # the VM's local disk, not /srv/data, because the recorder is SQLite.
     volumes:
-      - ./config:/config
-      - ./house3d:/config/www/house3d:ro
+      - ha_config:/config
       - /etc/localtime:/etc/localtime:ro
     networks:
       - proxy
@@ -24,6 +26,9 @@ services:
         limits:
           memory: 1536M
           cpus: '1.0'
+
+volumes:
+  ha_config:
 
 networks:
   proxy:

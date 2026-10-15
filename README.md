@@ -138,7 +138,8 @@ Operational work is kept to a minimum by pushing everything into code and cron.
 - **Renovate** — watches every pinned image tag except the estate's own and opens PRs for updates (digests + changelogs).
 - **GitHub Actions self-hosted runners** — repo-specific runners on the Docker VM deploy
   `khe-sites` (`khe.ee` and the games launcher), `khe-study` and `khe-trips` into
-  `/srv/data/...` directories served by nginx.
+  `/srv/data/...` directories served by nginx, and `khe-home-assistant` into Home
+  Assistant's config volume.
 - **Estate images**: `khe-ai-adventure` is built in GitHub-hosted CI and published to
   GHCR; this repo pins the digests and the app's CI moves them in an automerged pin PR,
   so its deploy is a merge here, minutes after the push.
@@ -199,8 +200,10 @@ sudo ./scripts/setup-status-timer.sh  # 11. 5-min status snapshot into Loki
 ./scripts/deploy.sh up       # (Re)start everything
 ./scripts/deploy.sh down     # Stop everything
 ./scripts/backup.sh          # Backup databases + configs
-./scripts/ha-dashboard.py    # Regenerate the Home Assistant Overview dashboard
 ```
+
+The Home Assistant configuration and its dashboard generator are in
+[khe-home-assistant](https://github.com/khelias/khe-home-assistant).
 
 Health snapshot without touching the VM: a timer writes it every 5 min into
 Loki (`{job="homelab-status"}` in Grafana Explore), and this refreshes it now,
@@ -219,7 +222,8 @@ When something is broken, follow [docs/runbook.md](docs/runbook.md).
 - [docs/service-choices.md](docs/service-choices.md) - why each service
 - [infrastructure/](infrastructure/) - Proxmox, network, Cloudflare, Tailscale, offsite backup
 - [SECURITY.md](SECURITY.md), [ROADMAP.md](ROADMAP.md)
-- [AGENTS.md](AGENTS.md) - layout, conventions and the Home Assistant procedure for working on the repo
+- [AGENTS.md](AGENTS.md) - layout and conventions for working on the repo; the Home
+  Assistant procedure is in [khe-home-assistant](https://github.com/khelias/khe-home-assistant/blob/main/AGENTS.md)
 
 ---
 

@@ -591,8 +591,9 @@ ESPHome not set up) and integrations come from HACS instead.
 deliberately untracked, so that layer is restored from the config backup, not
 from git. Constraint 6 (public-repo blast radius) also bites harder here than
 anywhere else — `.storage` holds the user database, tokens and integration
-credentials, and the house's coordinates, so almost the whole config dir is
-gitignored behind a whitelist.
+credentials, and the house's coordinates, so only the hand-written YAML is
+in git, in the separate public `khe-home-assistant` repo, and the rest of the
+config volume is covered by the backup alone.
 
 **When we'd revisit:** we need something only the Supervisor provides, or a
 HACS integration we depend on starts requiring it.

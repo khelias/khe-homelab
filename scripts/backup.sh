@@ -192,7 +192,7 @@ done
 #     point-in-time copy of a live DB) and excluded from the tar together
 #     with its -wal/-shm journals and the rotating log.
 HA_CONTAINER="homeassistant"
-HA_CONFIG="/home/khe/homelab/services/home/homeassistant/config"
+HA_CONFIG="homeassistant_ha_config"
 HA_RECORDER_TMP="/tmp/recorder-backup.db"
 if container_running "$HA_CONTAINER"; then
   echo "-> sqlite: $HA_CONTAINER recorder"
@@ -217,14 +217,14 @@ else
   fail "container not running: $HA_CONTAINER"
 fi
 
-if [ -d "$HA_CONFIG" ]; then
-  echo "-> bind: $HA_CONFIG (recorder DB excluded, dumped above)"
+if volume_exists "$HA_CONFIG"; then
+  echo "-> volume: $HA_CONFIG (recorder DB excluded, dumped above)"
   tar_via_alpine "$HA_CONFIG" "homeassistant-config" \
       --exclude='home-assistant_v2.db*' \
       --exclude='home-assistant.log*' \
     || fail "tar failed: $HA_CONFIG (see homeassistant-config.err)"
 else
-  fail "bind path missing: $HA_CONFIG"
+  fail "volume missing: $HA_CONFIG"
 fi
 
 # --- VM-local state that lives outside filesystem dirs or needs selective
