@@ -83,7 +83,7 @@ fi
 # - ~/homelab      VM-local .env files (not in git) needed for clean rebuild;
 #                  .git is redundant (history lives on GitHub);
 #                  service config dirs with root-owned files (adguard live
-#                  yaml, HA .storage, mosquitto passwd) are captured via
+#                  yaml, mosquitto passwd) are captured via
 #                  /srv/backups tarballs — excluded here because restic runs
 #                  as khe, and one unreadable file makes restic exit 3, which
 #                  skips forget and check below. mosquitto/data is only the
@@ -94,7 +94,6 @@ if ! restic backup \
        --tag cron-daily \
        --exclude "${HOME}/homelab/.git" \
        --exclude "${HOME}/homelab/services/core/adguard/config" \
-       --exclude "${HOME}/homelab/services/home/homeassistant/config" \
        --exclude "${HOME}/homelab/services/home/mosquitto/config" \
        --exclude "${HOME}/homelab/services/home/mosquitto/data" \
        "/srv/backups" \

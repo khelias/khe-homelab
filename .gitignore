@@ -25,20 +25,6 @@ services/observability/alertmanager/config/alertmanager.yml
 # Homepage auto-creates this sample file; we don't use Kubernetes.
 services/core/homepage/config/kubernetes.yaml
 
-# Home Assistant rewrites its whole config directory at runtime, and .storage
-# holds the user database, long-lived tokens and integration credentials.
-# Only hand-written YAML is tracked; everything else HA generates stays local.
-services/home/homeassistant/config/*
-!services/home/homeassistant/config/configuration.yaml
-!services/home/homeassistant/config/packages/
-
-# tuya-local has no user config directory (make-all/tuya-local#5141 was
-# rejected) and its folder under custom_components/ is root-owned by the
-# container, so the deploy runner cannot write there. The pergola device
-# config is kept here instead; HA copies it into place from inside the
-# container. See docs/operational-notes.md.
-!services/home/homeassistant/config/tuya_local_devices/
-
 # Mosquitto password file - created on the VM with mosquitto_passwd, never
 # committed. The broker refuses to start without it.
 services/home/mosquitto/config/passwd
@@ -59,10 +45,6 @@ Thumbs.db
 # Backup files (can be large)
 backups/*.tar.gz
 backups/*.sql
-
-# Python bytecode (scripts/ha-dashboard.py)
-__pycache__/
-*.pyc
 
 # Editor
 .vscode/
