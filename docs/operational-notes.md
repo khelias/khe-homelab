@@ -220,8 +220,9 @@ PR run on the same commit.
 - Static SPA: bind mount `/srv/data/trips/app:/usr/share/nginx/html:ro`,
   SPA fallback to `/index.html`.
 - Source: `khelias/khe-trips` (private).
-- Share sites (one trip each, public by link) are served by landing at
-  `khe.ee/r/<slug>/`, not here; see "Landing page".
+- Share sites (one trip each, public by link) and the public demo are served
+  by landing at `khe.ee/r/<slug>/` and `khe.ee/trips/`, not here; see
+  "Landing page".
 - GH Actions runner: `/home/khe/actions-runner-trips`,
   systemd unit `actions.runner.khelias-khe-trips.trips-runner.service`.
 
@@ -335,6 +336,16 @@ PR run on the same commit.
   un-shared trip is gone at once. `/srv/data/trips/share` must exist, owned by
   the runner user, before landing starts, or Docker creates it root-owned and
   the khe-trips deploy can no longer write it.
+- `/trips/` serves the public khe-trips demo
+  ([estate ADR-013](https://github.com/khelias/khe-architecture/blob/main/decisions/013-trips-public-demo.md))
+  from `/srv/data/trips/demo`, mounted at `/srv/demo/trips`. It is a
+  single-page app: a trip URL falls back to `/trips/index.html`, a missing
+  file under `/trips/assets/` is a 404, and `/trips` answers 301 to `/trips/`
+  with the query string kept. Headers and caching as on `/r/` (private, never
+  at the edge, `X-Robots-Tag` noindex) plus HSTS, and no `robots.txt`
+  disallow, so a crawler can read the noindex. The khe-trips deploy creates
+  `/srv/data/trips/demo` first, so it must deploy before landing gets the
+  mount; the same root-owned trap applies.
 - Homepage dashboard moved to `dash.khe.ee` (CF Access protected).
 - `HOMEPAGE_DOMAIN=dash.khe.ee` in homepage `.env`; compose builds
   `HOMEPAGE_ALLOWED_HOSTS` from it plus `homepage:3000`, the Uptime Kuma

@@ -78,6 +78,12 @@ base branch against the PR tree.
    enters only through the Cloudflare Tunnel, never a forwarded port, and an
    app without a login of its own sits behind Cloudflare Access
    ([estate ADR-011](https://github.com/khelias/khe-architecture/blob/main/decisions/011-cloudflare-tunnel-and-access-edge.md)).
+   The one exception for the private khe-trips atlas is its public demo at
+   `khe.ee/trips/`, which shows only trips that are over, and only their
+   short title, place and start date for trips that do not open
+   ([estate ADR-013](https://github.com/khelias/khe-architecture/blob/main/decisions/013-trips-public-demo.md)).
+   Landing serves it as khe-trips built it, like `/r/`: no edge cache and
+   never indexed.
 6. **AdGuard's live `AdGuardHome.yaml` is gitignored.** Apply changes as
    delta patches against `AdGuardHome.template.yaml`; replacing it wholesale
    wipes admin credentials and sessions

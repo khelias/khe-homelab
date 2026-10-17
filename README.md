@@ -59,7 +59,7 @@ immich-server and Immich machine-learning both use `/dev/dri` for Quick Sync acc
 
 | | Service | Domain | What it does |
 |---|---------|--------|-------------|
-| 🌐 | **Landing Page** | `khe.ee` | Public family landing page; shared trips under `/r/` |
+| 🌐 | **Landing Page** | `khe.ee` | Public family landing page; shared trips under `/r/`, the trip atlas demo under `/trips/` |
 | 🏠 | **Homepage** | `dash.khe.ee` | Service dashboard with live widgets (CF Access protected) |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/immich.svg" width="22" /> | **Immich** | `photos.khe.ee` | Photo library with ML tagging (Google Photos replacement) |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/vaultwarden.svg" width="22" /> | **Vaultwarden** | `vault.khe.ee` | Password manager with Passkey support |

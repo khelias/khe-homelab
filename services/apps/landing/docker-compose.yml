@@ -7,6 +7,9 @@ services:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - /srv/data/sites/khe:/usr/share/nginx/html:ro
       - /srv/data/trips/share:/srv/share/r:ro
+      # Created and filled by the khe-trips deploy; it must exist before this
+      # container starts, or Docker creates it root-owned.
+      - /srv/data/trips/demo:/srv/demo/trips:ro
     networks:
       - proxy
     healthcheck:
