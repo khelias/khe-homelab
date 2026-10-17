@@ -5,7 +5,7 @@ services:
   # cloudflare-tunnel: nothing on proxy can reach it. Runs as UID 1000 and
   # only sees /data (the published tree).
   draft:
-    image: sigoden/dufs:v0.46.0@sha256:8dd3b750015734703e64b55641fb7d2254c112e0ff3967074766177dc15dc982
+    image: sigoden/dufs:v0.47.0@sha256:e5152c04e41d5a9d785546278b632bf035c8a08c52d7e8d35f4b59681f5ff35a
     container_name: draft
     restart: unless-stopped
     user: "1000:1000"
