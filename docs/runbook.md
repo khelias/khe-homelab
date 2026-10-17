@@ -337,14 +337,15 @@ the web UI.
 Renovate automerges Docker patch, minor and digest updates (`renovate.json`),
 and a push to `main` deploys them. If one breaks a service:
 
-1. Revert the pin or tag commit on `main` (`git revert <commit>`) and push.
-   The deploy brings the previous image back.
-2. For an image that keeps state, the revert is not enough. A database, or an
-   app that migrates its data when it starts, may already have rewritten that
-   data for the new version, and the old image cannot be trusted to read it.
-   Restore the service's data from the backup taken before the update (read
-   [Before you restore from backup](#before-you-restore-from-backup) first),
-   then start the reverted image on it.
+1. For an image that keeps state, the revert alone is not enough. A database,
+   or an app that migrates its data when it starts, may already have rewritten
+   that data for the new version, and the old image cannot be trusted to read
+   it. Stop the service first (`docker compose down` in its directory), then
+   restore its data from the backup taken before the update (read
+   [Before you restore from backup](#before-you-restore-from-backup) first).
+2. Revert the pin or tag commit on `main` (`git revert <commit>`) and push.
+   The deploy brings the previous image back, on the restored data where
+   step 1 applied.
 3. If Renovate opens the same update again, set `automerge: false` for that
    image in `renovate.json` until the cause is fixed.
 
