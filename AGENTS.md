@@ -65,8 +65,9 @@ base branch against the PR tree.
    never `/home` or arbitrary paths. HA's config is the named volume
    `homeassistant_ha_config`, not `/srv/data`, because the recorder is SQLite
    and `/srv/data` is a soft NFS mount; khe-home-assistant's deploy writes
-   its managed files there. The remaining checkout exception is Mosquitto's
-   `./data`. `backup.sh` tars HA's config volume (plus a recorder dump) and
+   its managed files there. State that lives in the checkout: Mosquitto's
+   `./data`, and AdGuard's live `config/AdGuardHome.yaml` (gitignored, seeded
+   from the committed template, rule 6). `backup.sh` tars HA's config volume (plus a recorder dump) and
    Mosquitto's `config/`, not its `data/`.
 5. **Ingress through the shared `proxy` network** for NPM; separate networks
    isolate databases. The `draft.khe.ee` editor, which runs without an app
