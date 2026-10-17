@@ -332,6 +332,25 @@ pick the previous kernel under "Advanced options" in GRUB. Once it is up,
 100 is not running five minutes after the host is back, read its task log in
 the web UI.
 
+## Undoing an automerged update
+
+Renovate automerges Docker patch, minor and digest updates (`renovate.json`),
+and a push to `main` deploys them. If one breaks a service:
+
+1. Revert the pin or tag commit on `main` (`git revert <commit>`) and push.
+   The deploy brings the previous image back.
+2. For an image that keeps state, the revert is not enough. A database, or an
+   app that migrates its data when it starts, may already have rewritten that
+   data for the new version, and the old image cannot be trusted to read it.
+   Restore the service's data from the backup taken before the update (read
+   [Before you restore from backup](#before-you-restore-from-backup) first),
+   then start the reverted image on it.
+3. If Renovate opens the same update again, set `automerge: false` for that
+   image in `renovate.json` until the cause is fixed.
+
+An estate app (`ghcr.io/khelias/*`) is rolled back with a `sha-` pin instead,
+as in `AGENTS.md`.
+
 ## Before you restore from backup
 
 Restoring is the last resort, not a diagnostic step. Confirm what is actually

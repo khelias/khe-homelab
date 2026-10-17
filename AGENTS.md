@@ -114,6 +114,22 @@ base branch against the PR tree.
   manifest fetch of `ghcr.io/v2/khelias/<image>/manifests/main`; the next
   app push then moves them again. `homelab-status.sh` prints the revision
   each estate container runs.
+- **Automated writers**
+  ([estate ADR-007](https://github.com/khelias/khe-architecture/blob/main/decisions/007-automated-writers.md)): Renovate
+  automerges Docker patch, minor and digest updates except Home Assistant
+  minors and the critical-infrastructure group (`renovate.json`), the pin
+  Apps automerge estate image pins (rule 3), every merge to `main` deploys,
+  and scheduled jobs back up and prune, verify a restore and clean the
+  runner. The way back from a bad update is to revert its commit on `main`
+  and push; for an image that keeps state, also restore its data from the
+  backup taken before the update
+  ([runbook](docs/runbook.md#undoing-an-automerged-update)). A new automated
+  writer joins the estate's writer register in khe-meta in the same change.
+- **A new app database** joins `POSTGRES_JOBS` in `scripts/backup.sh` and the
+  weekly restore check (`restore-verify.yml`, Immich only today) in the
+  change that creates it, and one passing restore of it comes before any
+  data that is not the family's own
+  ([estate ADR-004](https://github.com/khelias/khe-architecture/blob/main/decisions/004-app-backend-and-identity.md) point 6).
 - **Check the branch before writing.** The VM pulls `main`, and finished work
   sometimes sits on a feature branch for weeks. A push to the wrong branch
   shows up as "Already up to date" on the VM and "Unknown stack" from the
