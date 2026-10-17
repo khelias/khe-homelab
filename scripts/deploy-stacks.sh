@@ -6,6 +6,8 @@ SERVICES_DIR="$ROOT_DIR/services"
 
 # shellcheck source=scripts/deploy-order.sh
 source "$(dirname "$0")/deploy-order.sh"
+# shellcheck source=scripts/lib.sh
+source "$(dirname "$0")/lib.sh"
 
 usage() {
   cat <<'USAGE'
@@ -14,18 +16,6 @@ Usage:
   scripts/deploy-stacks.sh changed <before-sha> <after-sha> [--force-recreate] [--dry-run]
   scripts/deploy-stacks.sh stack <services/group/name|group/name>... [--force-recreate] [--dry-run]
 USAGE
-}
-
-add_unique() {
-  local value="$1"
-  shift
-  local existing
-
-  for existing in "$@"; do
-    [ "$existing" = "$value" ] && return 0
-  done
-
-  printf '%s\n' "$value"
 }
 
 normalize_stack() {
@@ -39,45 +29,6 @@ normalize_stack() {
 
   echo "Unknown stack: $1" >&2
   return 1
-}
-
-stack_from_path() {
-  local path="${1#./}"
-  local root group name rest
-
-  IFS=/ read -r root group name rest <<< "$path"
-  if [ "$root" != "services" ] || [ -z "${group:-}" ] || [ -z "${name:-}" ]; then
-    return 0
-  fi
-
-  if [ -f "$SERVICES_DIR/$group/$name/docker-compose.yml" ]; then
-    printf '%s/%s\n' "$group" "$name"
-  fi
-}
-
-changed_stacks() {
-  local before="$1"
-  local after="$2"
-  local stacks=()
-  local file stack unique
-
-  while IFS= read -r file; do
-    stack="$(stack_from_path "$file")"
-    if [ -n "$stack" ]; then
-      if [ "${#stacks[@]}" -eq 0 ]; then
-        stacks+=("$stack")
-      else
-        unique="$(add_unique "$stack" "${stacks[@]}")"
-        if [ -n "$unique" ]; then
-          stacks+=("$unique")
-        fi
-      fi
-    fi
-  done < <(git diff --name-only "$before" "$after" -- services)
-
-  if [ "${#stacks[@]}" -gt 0 ]; then
-    printf '%s\n' "${stacks[@]}"
-  fi
 }
 
 ordered_stacks() {

@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# Deploy or update all services in correct order
+# Manual whole-fleet control on the VM: up, down (reverse order), pull, status.
+# CI deploys go through deploy-stacks.sh, which also builds, pulls and removes
+# orphans; `up` here is a plain `docker compose up -d` of every stack.
 set -euo pipefail
 
 SERVICES_DIR="$(cd "$(dirname "$0")/../services" && pwd)"
@@ -7,28 +9,12 @@ SERVICES_DIR="$(cd "$(dirname "$0")/../services" && pwd)"
 # shellcheck source=scripts/deploy-order.sh
 source "$(dirname "$0")/deploy-order.sh"
 
-# Services that require external setup before they can run.
-# Add here only if a stack currently has a missing precondition (e.g. unconfigured token).
-SKIP_SERVICES=()
-
 ACTION="${1:-up}"
-
-is_skipped() {
-  local service="$1"
-  for skip in "${SKIP_SERVICES[@]}"; do
-    [ "$service" = "$skip" ] && return 0
-  done
-  return 1
-}
 
 validate_deploy_order() {
   local missing=0
 
   for service in "${DEPLOY_ORDER[@]}"; do
-    if is_skipped "$service"; then
-      continue
-    fi
-
     if [ ! -f "$SERVICES_DIR/$service/docker-compose.yml" ]; then
       echo "Missing compose file for $service: $SERVICES_DIR/$service/docker-compose.yml" >&2
       missing=1
@@ -45,10 +31,6 @@ case "$ACTION" in
     validate_deploy_order
     echo "=== Deploying all services ==="
     for service in "${DEPLOY_ORDER[@]}"; do
-      if is_skipped "$service"; then
-        echo "Skipping $service (not configured yet)"
-        continue
-      fi
       dir="$SERVICES_DIR/$service"
       if [ -f "$dir/docker-compose.yml" ]; then
         echo "Starting $service..."

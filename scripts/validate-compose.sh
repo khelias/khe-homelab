@@ -7,6 +7,9 @@ ROOT_DIR="$PWD"
 SERVICES_DIR="$ROOT_DIR/services"
 CREATED_ENV_FILES=()
 
+# shellcheck source=scripts/lib.sh
+source "$(dirname "$0")/lib.sh"
+
 usage() {
   cat <<'USAGE'
 Usage:
@@ -26,57 +29,6 @@ cleanup() {
   done
 }
 trap cleanup EXIT
-
-add_unique() {
-  local value="$1"
-  shift
-  local existing
-
-  for existing in "$@"; do
-    [ "$existing" = "$value" ] && return 0
-  done
-
-  printf '%s\n' "$value"
-}
-
-stack_from_path() {
-  local path="${1#./}"
-  local root group name rest
-
-  IFS=/ read -r root group name rest <<< "$path"
-  if [ "$root" != "services" ] || [ -z "${group:-}" ] || [ -z "${name:-}" ]; then
-    return 0
-  fi
-
-  if [ -d "$SERVICES_DIR/$group/$name" ]; then
-    printf '%s/%s\n' "$group" "$name"
-  fi
-}
-
-changed_stacks() {
-  local before="$1"
-  local after="$2"
-  local stacks=()
-  local file stack unique
-
-  while IFS= read -r file; do
-    stack="$(stack_from_path "$file")"
-    if [ -n "$stack" ]; then
-      if [ "${#stacks[@]}" -eq 0 ]; then
-        stacks+=("$stack")
-      else
-        unique="$(add_unique "$stack" "${stacks[@]}")"
-        if [ -n "$unique" ]; then
-          stacks+=("$unique")
-        fi
-      fi
-    fi
-  done < <(git diff --name-only "$before" "$after" -- services)
-
-  if [ "${#stacks[@]}" -gt 0 ]; then
-    printf '%s\n' "${stacks[@]}"
-  fi
-}
 
 ensure_ci_env_file() {
   local dir="$1"

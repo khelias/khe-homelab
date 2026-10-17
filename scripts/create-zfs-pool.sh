@@ -16,6 +16,7 @@ echo "Looking for WD Ultrastar drives..."
 # Using disk-by-id for stable device names (best practice)
 echo ""
 echo "Disk IDs:"
+# shellcheck disable=SC2010 # for the operator to read: ls shows each id's -> device
 ls -la /dev/disk/by-id/ | grep -E "^.*(ata|scsi)-WDC" | grep -v part
 
 echo ""

@@ -578,10 +578,11 @@ the private `khe-meta` repo under `house/house-hvac.md`.
 
 ## Restore verify (GH Action)
 
-- `.github/workflows/restore-verify.yml` runs Sundays 04:00 UTC on the
-  self-hosted homelab runner. Pulls the latest restic snapshot from R2,
-  restores the newest dated `immich-postgres.dump` into a throwaway
-  Postgres container, and asserts ≥20 public tables before tearing down.
+- `.github/workflows/restore-verify.yml` runs `scripts/restore-verify.sh`
+  Sundays 04:00 UTC on the self-hosted homelab runner. Pulls the latest
+  restic snapshot from R2, restores the newest dated `immich-postgres.dump`
+  into a throwaway Postgres container, and asserts ≥20 public tables before
+  tearing down.
   Heartbeat pings Kuma at the end.
 - **Why immich-postgres:** it is the one Postgres data service left. Only
   the newest dated copy is restored, because every copy carries the
@@ -601,7 +602,9 @@ the private `khe-meta` repo under `house/house-hvac.md`.
 - `scripts/backup.sh` and `scripts/offsite-backup.sh` ping a configurable
   URL on exit — `status=up` on success, `status=down` with exit code +
   failure count on any non-zero exit. Without the URL set, both scripts
-  remain fully silent on this dimension.
+  remain fully silent on this dimension. `scripts/restore-verify.sh` does
+  the same with its failed stage. The shared part (`heartbeat_init`,
+  `heartbeat`) is in `scripts/lib.sh`; each script keeps its own `on_exit`.
 - Configuration lives in `~/homelab/.env.heartbeat` (mode 0600,
   gitignored via `.env.*`). See [`../.env.heartbeat.example`](../.env.heartbeat.example)
   for the variable names and the matching Uptime Kuma push-monitor setup.

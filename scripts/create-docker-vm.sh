@@ -28,6 +28,7 @@ if [ ! -s "$CLOUD_IMAGE_PATH" ]; then
   wget -O "$CLOUD_IMAGE_PATH" "$CLOUD_IMAGE_URL"
 fi
 
+# shellcheck disable=SC2012 # one known file; ls -lh gives its human-readable size
 echo "Image ready: $(ls -lh "$CLOUD_IMAGE_PATH" | awk '{print $5}')"
 
 # 2. Create VM with cloud-init support

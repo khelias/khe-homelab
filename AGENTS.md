@@ -31,7 +31,8 @@ services/
   apps/            landing, games, pages, trips
   observability/   Loki, Grafana, Alloy, Alertmanager (one stack)
 infrastructure/    Proxmox, network, Cloudflare, Tailscale docs
-scripts/           setup, deploy, backup, hardening, validate-compose
+scripts/           setup, deploy, backup, hardening, validate-compose;
+                   lib.sh holds the helpers they share
 ```
 
 Image tags live in each `docker-compose.yml`; Renovate opens the bump PRs,
@@ -91,8 +92,9 @@ base branch against the PR tree.
   (Postgres dumps, config snapshots, HA's config volume and recorder). Per service:
   `cd services/<group>/<service> && docker compose up -d`.
 - **A push to `main` is the deploy.** `deploy.yml` runs when `services/**`,
-  `scripts/deploy.sh`, `scripts/deploy-stacks.sh`, `scripts/homelab-status.sh`,
-  `scripts/retire-stack.sh` (the status timer runs both from the VM
+  `scripts/deploy.sh`, `scripts/deploy-stacks.sh`, `scripts/lib.sh` (which
+  deploy-stacks.sh and the cron backups source), `scripts/homelab-status.sh`,
+  `scripts/retire-stack.sh` (the status timer runs those two from the VM
   checkout) or the workflow changes: the runner pulls `/home/khe/homelab`
   with `git pull --ff-only` and deploys the stacks changed since
   `.deploy/last-successful-sha`. A manual deploy after that push is a no-op.
