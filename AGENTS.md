@@ -1,7 +1,9 @@
 # khe-homelab
 
 Family homelab as code: one Proxmox host, one Debian 13 VM running Docker
-Compose stacks for core, media, home and app services. Every compose file,
+Compose stacks for core, media, home and app services, no Kubernetes
+([estate ADR-010](https://github.com/khelias/khe-architecture/blob/main/decisions/010-one-host-docker-compose.md)).
+Every compose file,
 AdGuard and Homepage config lives here. This file holds rules and
 pointers; the reference lives in:
 
@@ -72,7 +74,10 @@ base branch against the PR tree.
 5. **Ingress through the shared `proxy` network** for NPM; separate networks
    isolate databases. The `draft.khe.ee` editor, which runs without an app
    login, sits on `draft-tunnel`, shared only with `cloudflare-tunnel`; the
-   tunnel stack owns that network because it deploys first.
+   tunnel stack owns that network because it deploys first. Public traffic
+   enters only through the Cloudflare Tunnel, never a forwarded port, and an
+   app without a login of its own sits behind Cloudflare Access
+   ([estate ADR-011](https://github.com/khelias/khe-architecture/blob/main/decisions/011-cloudflare-tunnel-and-access-edge.md)).
 6. **AdGuard's live `AdGuardHome.yaml` is gitignored.** Apply changes as
    delta patches against `AdGuardHome.template.yaml`; replacing it wholesale
    wipes admin credentials and sessions
