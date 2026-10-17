@@ -315,6 +315,10 @@ PR run on the same commit.
 ## Landing page
 
 - Static HTML at `khe.ee` (public), served by nginx alpine (pinned by Renovate).
+- `nginx.conf` is a single-file bind mount, so a change to it alone needs a
+  deploy of `services/apps/landing` with `force_recreate` (the same inode
+  trap as `immich.config.json`); the push deploy's plain `up -d` leaves the
+  old config running.
 - Security headers (HSTS, nosniff, referrer, permissions, a CSP with no
   third-party hosts but Cloudflare Web Analytics) are set at server level and
   repeated in the static-asset location, since a location with its own
@@ -325,6 +329,9 @@ PR run on the same commit.
   landing fallback, so an old link does not get the home page with a 200.
 - `/lab` and `/lab/`, the Lab Atlas retired in 2026-10, answer 301 to
   `/architecture/` with the query string kept (`?lang=et` survives).
+- `/house3d` and everything under `/house3d/`, the Home Assistant demo's old
+  path, answer 301 to the same path under `/ha/`, where khe-sites builds it
+  since 2026-10, query string kept.
 - `/architecture/decisions/<NNN>/` are the ADR pages built by khe-sites; an
   unknown id answers 404 rather than the landing fallback, and the bare
   `/architecture/decisions/` answers 301 to `/architecture/#decisions`.
