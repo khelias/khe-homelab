@@ -44,9 +44,13 @@ jobs:
           persist-credentials: false
 
       # Staging and hashing need no Node, so an hour with nothing new ends
-      # here without installing Wrangler.
+      # here without installing Wrangler. An app deploy that lands mid-copy
+      # swaps its hashed files out from under cp, so a failed stage waits
+      # for it once and tries again.
       - name: Stage
-        run: bash ../../scripts/edge-fallback-stage.sh .stage | tee "$RUNNER_TEMP/trees"
+        run: |
+          stage() { bash ../../scripts/edge-fallback-stage.sh .stage | tee "$RUNNER_TEMP/trees"; }
+          stage || { echo "Stage failed, retrying in 30 s"; sleep 30; stage; }
 
       - name: Find changed sites
         id: changes
