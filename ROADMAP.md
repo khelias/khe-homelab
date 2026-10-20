@@ -110,9 +110,9 @@ The sections above come first.
     `restic check`.
   - *Waits for:* a willing host household and a low-power machine.
   - *Risk and cost:* hardware and electricity at someone else's home, and
-    support calls when their router changes. For the static sites the
-    Cloudflare Pages fallback in the estate roadmap is cheaper; the case for
-    a second site is data, not availability.
+    support calls when their router changes. The static sites already have
+    the edge fallback ([estate ADR-016](https://github.com/khelias/khe-architecture/blob/main/decisions/016-static-fallback-at-the-edge.md));
+    the case for a second site is data, not availability.
 - **Agent-operated homelab.** Scheduled agents read Loki alerts, Renovate
   PRs held for review and Uptime Kuma state, diagnose, and prepare a fix as
   a branch or a written proposal. The operator reads, approves and pushes;

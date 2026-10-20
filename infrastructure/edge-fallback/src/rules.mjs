@@ -56,6 +56,12 @@ export function shareAssetCache(status) {
     : "private, no-cache";
 }
 
+// nginx's expires applies only to a success, and landing's asset
+// Cache-Control has no "always"; on a miss the copy sends ifMissed.
+function onSuccess(value, ifMissed) {
+  return (status) => (status === 200 || status === 206 || status === 304 ? value : ifMissed);
+}
+
 // Requests the copy never answers: the origin's reply, failure included,
 // reaches the client (estate ADR-016 point 5).
 export const PASS_THROUGH = {
@@ -89,7 +95,7 @@ const kheLocations = [
   [(p) => p === "/trips", { redirect: "/trips/", keepQuery: true }],
   [(p) => p.startsWith("/trips/assets/"), { file: true, headers: "trips", cache: shareAssetCache }],
   [(p) => p.startsWith("/trips/"), { file: true, dir: true, fallback: "/trips/index.html", headers: "trips" }],
-  [(p) => LANDING_ASSET.test(p), { file: true, cache: "public, max-age=2592000" }],
+  [(p) => LANDING_ASSET.test(p), { file: true, cache: onSuccess("public, max-age=2592000") }],
   [() => true, { file: true, dir: true, fallback: "/index.html" }],
 ];
 
@@ -101,7 +107,7 @@ const gamesLocations = [
   [(p) => p === "/adventure/config.js", { file: true, cache: "no-store" }],
   [(p) => p.startsWith("/adventure/assets/"), { file: true, cache: "public, max-age=31536000, immutable" }],
   [(p) => p.startsWith("/adventure/"), { file: true, dir: true, fallback: "/adventure/index.html", cache: "no-cache, must-revalidate" }],
-  [(p) => p.startsWith("/study/assets/"), { file: true, cache: "public, max-age=31536000, immutable" }],
+  [(p) => p.startsWith("/study/assets/"), { file: true, cache: onSuccess("public, max-age=31536000, immutable", "public, immutable") }],
   [(p) => p.startsWith("/study/"), { file: true, dir: true, fallback: "/study/index.html" }],
   [(p) => OUTSIDE_LAUNCHER.test(p), { fallback: "/index.html" }],
   [() => true, { file: true, dir: true, fallback: "/index.html" }],

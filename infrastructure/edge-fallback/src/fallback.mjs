@@ -96,7 +96,7 @@ function finish(response, location) {
   }
   if (location.cache) {
     const cache = typeof location.cache === "function" ? location.cache(out.status) : location.cache;
-    out.headers.set("Cache-Control", cache);
+    if (cache) out.headers.set("Cache-Control", cache);
   }
   out.headers.set("X-KHE-Fallback", "1");
   return out;

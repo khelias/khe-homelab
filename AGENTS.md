@@ -87,6 +87,15 @@ base branch against the PR tree. The edge fallback's Worker tests
    ([estate ADR-013](https://github.com/khelias/khe-architecture/blob/main/decisions/013-trips-public-demo.md)).
    Landing serves it as khe-trips built it, like `/r/`: no edge cache and
    never indexed.
+6. **AdGuard's live `AdGuardHome.yaml` is gitignored.** Apply changes as
+   delta patches against `AdGuardHome.template.yaml`; replacing it wholesale
+   wipes admin credentials and sessions
+   ([notes](docs/operational-notes.md#adguard-home)).
+7. **Deployment surface changes update their doc in the same commit:** a
+   service or domain goes into the README services table and diagram, a
+   service quirk into `docs/operational-notes.md`, a network, DNS,
+   Cloudflare or Tailscale change into `infrastructure/*.md`, a security
+   model change into `SECURITY.md`.
 8. **The edge fallback mirrors the landing and games nginx**
    ([estate ADR-016](https://github.com/khelias/khe-architecture/blob/main/decisions/016-static-fallback-at-the-edge.md)).
    Two Cloudflare Workers (`infrastructure/edge-fallback/`) serve a copy of
@@ -99,15 +108,6 @@ base branch against the PR tree. The edge fallback's Worker tests
    `trips.khe.ee` and secrets never do, and the adventure `config.js` is a
    stub without `API_SECRET`. The Worker routes live in the dashboard, fail
    open, and are not in `wrangler.jsonc`.
-6. **AdGuard's live `AdGuardHome.yaml` is gitignored.** Apply changes as
-   delta patches against `AdGuardHome.template.yaml`; replacing it wholesale
-   wipes admin credentials and sessions
-   ([notes](docs/operational-notes.md#adguard-home)).
-7. **Deployment surface changes update their doc in the same commit:** a
-   service or domain goes into the README services table and diagram, a
-   service quirk into `docs/operational-notes.md`, a network, DNS,
-   Cloudflare or Tailscale change into `infrastructure/*.md`, a security
-   model change into `SECURITY.md`.
 
 ## Access and operations
 

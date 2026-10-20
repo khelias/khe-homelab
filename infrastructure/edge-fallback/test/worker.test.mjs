@@ -124,9 +124,21 @@ describe("hard 404s", () => {
     });
   }
 
-  test("games /study/assets/ miss is 404", async () => {
+  test("games /study/assets/ miss is 404 and not cached for a year", async () => {
     const { response } = await request("games", "/study/assets/missing.js");
     assert.equal(response.status, 404);
+    assert.equal(response.headers.get("Cache-Control"), "public, immutable");
+  });
+
+  test("a landing asset miss carries no long cache", async () => {
+    const { response } = await request("khe", "/assets/missing.js");
+    assert.equal(response.status, 404);
+    assert.equal(response.headers.get("Cache-Control"), null);
+  });
+
+  test("a landing asset hit is cached 30 days", async () => {
+    const { response } = await request("khe", "/assets/site-a1b2c3.js");
+    assert.equal(response.headers.get("Cache-Control"), "public, max-age=2592000");
   });
 
   test("a known ADR id is served", async () => {
