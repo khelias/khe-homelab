@@ -1,0 +1,98 @@
+name: Edge Fallback
+
+# Hourly copy of what the homelab serves on khe.ee and games.khe.ee to the
+# two Cloudflare Workers that answer when the homelab does not (estate
+# ADR-016). A site is deployed only when its staged tree or the Worker
+# changed since the last deploy. Never on a PR: the job holds a
+# deploy token on the self-hosted runner.
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+  push:
+    branches: [main]
+    paths:
+      - 'infrastructure/edge-fallback/**'
+      - 'scripts/edge-fallback-stage.sh'
+      - 'services/apps/games/docker-compose.yml'
+      - '.github/workflows/edge-fallback.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: edge-fallback
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Stage and deploy
+    runs-on: [self-hosted, linux, homelab]
+    timeout-minutes: 20
+    environment: edge-fallback
+    defaults:
+      run:
+        # bash -eo pipefail, so a failed stage piped into tee fails the step.
+        shell: bash
+        working-directory: infrastructure/edge-fallback
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      # Staging and hashing need no Node, so an hour with nothing new ends
+      # here without installing Wrangler.
+      - name: Stage
+        run: bash ../../scripts/edge-fallback-stage.sh .stage | tee "$RUNNER_TEMP/trees"
+
+      - name: Find changed sites
+        id: changes
+        run: |
+          state="$HOME/.cache/khe-edge-fallback"
+          code="$(cat src/*.mjs wrangler.jsonc package-lock.json | sha256sum | cut -d' ' -f1)"
+          changed=""
+          while read -r site tree; do
+            hash="$(printf '%s %s\n' "$tree" "$code" | sha256sum | cut -d' ' -f1)"
+            if [ "$(cat "$state/$site.sha" 2>/dev/null || true)" = "$hash" ]; then
+              echo "$site: unchanged, skipped"
+            else
+              changed="$changed $site"
+              printf '%s\n' "$hash" > "$RUNNER_TEMP/$site.sha"
+            fi
+          done < "$RUNNER_TEMP/trees"
+          echo "sites=${changed# }" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node
+        if: steps.changes.outputs.sites != ''
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: '24'
+          # ~/.npm already persists on this runner; the Actions cache would
+          # download it again over the home line on every run.
+          package-manager-cache: false
+
+      - name: Install
+        if: steps.changes.outputs.sites != ''
+        run: npm ci --ignore-scripts
+
+      - name: Test
+        if: steps.changes.outputs.sites != ''
+        run: npm test
+
+      - name: Deploy changed sites
+        if: steps.changes.outputs.sites != ''
+        env:
+          SITES: ${{ steps.changes.outputs.sites }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WRANGLER_SEND_METRICS: 'false'
+        run: |
+          state="$HOME/.cache/khe-edge-fallback"
+          mkdir -p "$state"
+          for site in $SITES; do
+            npx wrangler deploy --env "$site"
+            cp "$RUNNER_TEMP/$site.sha" "$state/$site.sha"
+          done

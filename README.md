@@ -103,7 +103,7 @@ every LAN service gets HTTPS without per-service certs. AdGuard does split-horiz
 
 ## Resilience
 
-Five layers, each catching what the others miss:
+Six layers, each catching what the others miss:
 
 1. **Kernel hang — hardware watchdog.** The Docker VM runs the `watchdog` daemon
    pinging `/dev/watchdog` (Proxmox-emulated iTCO, 30s hardware timeout). If the
@@ -124,10 +124,16 @@ Five layers, each catching what the others miss:
    update reports; all notify the same Telegram bot (`@khe_homelab_bot`).
    Alert lands on the owner's phone within ~90s. Kuma
    DB is in `backup.sh`, so monitor + notification config survives a VM rebuild.
-5. **Whole homelab down — external UptimeRobot.** Pings `khe.ee` every 5 min
-   from outside the home network, pushes to the UptimeRobot iOS app. The only
-   layer that can notify when the VM, Proxmox, or the home internet itself is
-   unreachable (when layers 1–4 can't reach any network).
+5. **Whole homelab down — external UptimeRobot.** Pings `khe.ee/healthz`
+   every 5 min from outside the home network, pushes to the UptimeRobot iOS
+   app. The only layer that can notify when the VM, Proxmox, or the home
+   internet itself is unreachable (when layers 1–4 can't reach any network).
+6. **Whole homelab down, static copy at the edge.** A Cloudflare Worker in
+   front of `khe.ee` and `games.khe.ee` serves an hourly copy of the static
+   sites when the homelab answers 5xx or not at all
+   ([estate ADR-016](https://github.com/khelias/khe-architecture/blob/main/decisions/016-static-fallback-at-the-edge.md)). Visitors outside the home network still get the
+   pages; the APIs and `/healthz` fail as they should, so layer 5 still
+   alerts.
 
 ## Automation
 

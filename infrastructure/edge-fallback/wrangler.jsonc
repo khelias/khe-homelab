@@ -1,0 +1,71 @@
+// The edge fallback Workers (estate ADR-016), one script with an env per
+// site. Deploy with `npx wrangler deploy --env khe|games` after
+// scripts/edge-fallback-stage.sh has filled .stage/.
+//
+// No `routes`: the dashboard owns them, set to fail open, and routes that
+// Wrangler deploys would overwrite that setting. workers_dev, preview_urls,
+// vars and assets are not inherited by an env, so each env sets them.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "khe-fallback",
+  "main": "src/worker.mjs",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": false,
+  "preview_urls": false,
+  "env": {
+    "khe": {
+      "name": "khe-fallback-khe-ee",
+      "workers_dev": false,
+      "preview_urls": false,
+      "vars": { "SITE": "khe" },
+      "assets": {
+        "directory": ".stage/khe/",
+        "binding": "ASSETS",
+        "run_worker_first": true,
+        "html_handling": "none",
+        "not_found_handling": "none"
+      }
+    },
+    "games": {
+      "name": "khe-fallback-games",
+      "workers_dev": false,
+      "preview_urls": false,
+      "vars": { "SITE": "games" },
+      "assets": {
+        "directory": ".stage/games/",
+        "binding": "ASSETS",
+        "run_worker_first": true,
+        "html_handling": "none",
+        "not_found_handling": "none"
+      }
+    },
+    // Local runs only: the origin is a closed port, so every request takes
+    // the fallback path.
+    "dev-khe": {
+      "name": "khe-fallback-dev-khe",
+      "workers_dev": false,
+      "preview_urls": false,
+      "vars": { "SITE": "khe", "ORIGIN_URL": "http://127.0.0.1:9" },
+      "assets": {
+        "directory": ".stage/khe/",
+        "binding": "ASSETS",
+        "run_worker_first": true,
+        "html_handling": "none",
+        "not_found_handling": "none"
+      }
+    },
+    "dev-games": {
+      "name": "khe-fallback-dev-games",
+      "workers_dev": false,
+      "preview_urls": false,
+      "vars": { "SITE": "games", "ORIGIN_URL": "http://127.0.0.1:9" },
+      "assets": {
+        "directory": ".stage/games/",
+        "binding": "ASSETS",
+        "run_worker_first": true,
+        "html_handling": "none",
+        "not_found_handling": "none"
+      }
+    }
+  }
+}

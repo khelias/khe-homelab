@@ -39,6 +39,7 @@ comparable, the one that scores better on these wins.
 | DNS blocker           | AdGuard Home          | High       | 2026-05-05    |
 | Reverse proxy (LAN)   | Nginx Proxy Manager   | Medium     | 2026-05-05    |
 | External tunnel       | Cloudflare Tunnel     | High       | 2026-05-05    |
+| Static fallback       | Cloudflare Workers    | Medium     | 2026-10-20    |
 | Mesh VPN              | Tailscale             | High       | 2026-05-05    |
 | Password manager      | Vaultwarden           | High       | 2026-05-05    |
 | Photo management      | Immich                | High       | 2026-05-05    |
@@ -183,6 +184,41 @@ friction during high-churn periods.
 - Tunnel becomes the bottleneck (currently nowhere near it).
 
 ---
+
+## Static fallback - Cloudflare Workers
+
+A copy of the static sites on `khe.ee` and `games.khe.ee` that answers only
+when the homelab does not ([estate ADR-016](https://github.com/khelias/khe-architecture/blob/main/decisions/016-static-fallback-at-the-edge.md)). Code in
+[`infrastructure/edge-fallback/`](../infrastructure/edge-fallback/), routes in
+[cloudflare.md](../infrastructure/cloudflare.md#workers-routes).
+
+### Alternatives considered
+
+| Tool | Notable strengths | Why not for us |
+|------|-------------------|----------------|
+| **Workers with static assets on a route** | Runs in front of the existing tunnel origin, passes its answer through and serves the copy only on 5xx or no answer; free tier; same vendor as DNS and tunnel | (selected) |
+| Cloudflare Pages | Made for static sites, Git integration | A custom domain replaces the hostname's DNS record, so Pages and the tunnel cannot both answer `khe.ee`; failover needs Load Balancing |
+| Netlify / GitHub Pages | Independent of Cloudflare | Same DNS problem, and a second vendor to hold the copy |
+| Cloudflare Load Balancing | Health-checked failover between pools | Paid add-on |
+| Edge-primary hosting | Simplest failover: the edge always serves the static sites | The homelab leaves the static path, and with it the point of self-hosting (estate ADR-010) |
+
+### Why Workers
+
+- **Fails over per request.** The Worker sees the origin's 502 (container
+  down) or 530 (tunnel down) and answers from its copy; there is no DNS
+  switch and no health-check lag.
+- **Fails open.** The routes are set to fail open in the dashboard, so a
+  spent free quota (100,000 requests a day) leaves the sites as they were
+  without the Worker, not behind an error page.
+- **One owner.** This repo stages exactly what the homelab serves and
+  deploys it hourly (`edge-fallback.yml`); the app pipelines do not change.
+
+### When we'd revisit
+
+- Traffic nears the free daily quota (check the zone analytics first).
+- The trips backend changes what is private, or a private site needs a
+  fallback.
+- A second host arrives and failover can stay inside the estate.
 
 ## Mesh VPN — Tailscale
 

@@ -36,6 +36,15 @@ the required `validate.yml` check:
   repo's `ci.yml` on `main`, or whose images of one repo come from different
   commits. The accepted residual risk (the App can merge or fast-forward an
   already-green change it did not write) is in [estate ADR-008](https://github.com/khelias/khe-architecture/blob/main/decisions/008-container-images.md).
+- **The edge fallback sync** (`edge-fallback.yml`, hourly) deploys two
+  Cloudflare Workers with a copy of the public static sites
+  ([estate ADR-016](https://github.com/khelias/khe-architecture/blob/main/decisions/016-static-fallback-at-the-edge.md)).
+  Its API token can edit Workers in the one account and zone only and sits in
+  the `edge-fallback` environment, which only `main` can use; the workflow
+  never runs on pull requests. The staging script copies an allowlist of
+  public trees, fails on a symlink or an `apiSecret` value, and replaces the
+  adventure `config.js` with a stub, so the private trips atlas and the API
+  secret never reach Cloudflare.
 
 ## Automated readers
 
@@ -56,7 +65,9 @@ the required `validate.yml` check:
 ## Network exposure
 
 The router forwards no ports; the internet reaches the homelab only through
-Cloudflare Tunnel. Docker-published ports bypass UFW, because Docker's
+Cloudflare Tunnel. The edge fallback Workers sit in front of the tunnel on
+`khe.ee/*` and `games.khe.ee/*` and add no path into the homelab: they
+forward the request as it came and, on failure, answer from their own copy. Docker-published ports bypass UFW, because Docker's
 iptables rules come before UFW's, so every published port (Grafana's 3030
 included) is reachable from the LAN and over the Tailscale subnet route,
 whatever the UFW port list says.

@@ -32,7 +32,8 @@ services/
   home/            Home Assistant (container only), Mosquitto, PAI (Paradox alarm)
   apps/            landing, games, pages, trips
   observability/   Loki, Grafana, Alloy, Alertmanager (one stack)
-infrastructure/    Proxmox, network, Cloudflare, Tailscale docs
+infrastructure/    Proxmox, network, Cloudflare, Tailscale docs;
+                   edge-fallback/ holds the edge copy's Worker
 scripts/           setup, deploy, backup, hardening, validate-compose;
                    lib.sh holds the helpers they share
 ```
@@ -41,7 +42,9 @@ Image tags live in each `docker-compose.yml`; Renovate opens the bump PRs,
 except for the estate's own images (rule 3). CI (`validate.yml`, the required
 check) runs the pin App guard, `scripts/verify-estate-pins.sh`, `bash -n` on
 each `scripts/*.sh` and `scripts/validate-compose.sh`, every script from the
-base branch against the PR tree.
+base branch against the PR tree. The edge fallback's Worker tests
+(`node --test infrastructure/edge-fallback/test/`, no install needed) run in
+`edge-fallback.yml` before every deploy and in the workspace commit gate.
 
 ## Rules
 
@@ -84,6 +87,18 @@ base branch against the PR tree.
    ([estate ADR-013](https://github.com/khelias/khe-architecture/blob/main/decisions/013-trips-public-demo.md)).
    Landing serves it as khe-trips built it, like `/r/`: no edge cache and
    never indexed.
+8. **The edge fallback mirrors the landing and games nginx**
+   ([estate ADR-016](https://github.com/khelias/khe-architecture/blob/main/decisions/016-static-fallback-at-the-edge.md)).
+   Two Cloudflare Workers (`infrastructure/edge-fallback/`) serve a copy of
+   the static sites when the homelab answers 5xx or not at all. A header,
+   redirect or SPA-fallback change in `services/apps/landing/nginx.conf` or
+   `services/apps/games/nginx.conf` is mirrored in
+   `infrastructure/edge-fallback/src/rules.mjs` in the same commit; the
+   Worker tests catch header drift. The allowlist in
+   `scripts/edge-fallback-stage.sh` is the only way a tree reaches the copy:
+   `trips.khe.ee` and secrets never do, and the adventure `config.js` is a
+   stub without `API_SECRET`. The Worker routes live in the dashboard, fail
+   open, and are not in `wrangler.jsonc`.
 6. **AdGuard's live `AdGuardHome.yaml` is gitignored.** Apply changes as
    delta patches against `AdGuardHome.template.yaml`; replacing it wholesale
    wipes admin credentials and sessions
@@ -126,7 +141,9 @@ base branch against the PR tree.
   minors and the critical-infrastructure group (`renovate.json`), the pin
   Apps automerge estate image pins (rule 3), every merge to `main` deploys,
   and scheduled jobs back up and prune, verify a restore and clean the
-  runner. The way back from a bad update is to revert its commit on `main`
+  runner. `edge-fallback.yml` deploys the edge copy hourly when a served tree
+  changed; it is undone by disabling the workflow and deleting the two
+  Worker routes. The way back from a bad update is to revert its commit on `main`
   and push; for an image that keeps state, also restore its data from the
   backup taken before the update
   ([runbook](docs/runbook.md#undoing-an-automerged-update)). A new automated

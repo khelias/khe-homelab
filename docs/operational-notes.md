@@ -88,6 +88,40 @@ file in every session is wasteful; the entries are independent.
   had no path out while every container kept running normally.
 - See [`infrastructure/cloudflare.md`](../infrastructure/cloudflare.md).
 
+## Edge fallback
+
+Two Cloudflare Workers hold a copy of the static `khe.ee` and `games.khe.ee`
+sites and answer only when the homelab does not ([estate ADR-016](https://github.com/khelias/khe-architecture/blob/main/decisions/016-static-fallback-at-the-edge.md); routes and
+token in [cloudflare.md](../infrastructure/cloudflare.md#workers-routes)).
+
+- **Is it serving?** A response from the copy carries `X-KHE-Fallback: 1`:
+  `curl -sI https://khe.ee/ | grep -i x-khe-fallback`, from outside the home
+  network (inside it `khe.ee` goes to NPM). `https://khe.ee/healthz` and
+  `/adventure/api/*` never come from the copy, so they fail during an outage.
+  In fallback the adventure game shows "AI unavailable": the copy's
+  `config.js` has no API secret and the proxy is down anyway.
+- **Sync.** `edge-fallback.yml` runs hourly on the homelab runner:
+  `scripts/edge-fallback-stage.sh` copies `/srv/data/sites/khe`,
+  `/srv/data/trips/share`, `/srv/data/trips/demo`, `/srv/data/games/launcher`,
+  `/srv/data/games/study` and the pinned `adventure-web` image's build into
+  `.stage/`, and each site is deployed only when its tree or the Worker
+  changed (hash in `~/.cache/khe-edge-fallback/` on the runner). A deploy
+  reaches the copy within the hour; nothing syncs while the homelab is down.
+  A withdrawn share slug stays in the copy until the next sync.
+- **Force a sync:** `gh workflow run edge-fallback.yml -R khelias/khe-homelab`.
+  To redeploy an unchanged tree, delete the site's hash file on the runner
+  first.
+- **Turn it off:** delete the two routes in the dashboard (Workers & Pages →
+  the Worker → Domains & Routes); the sites behave as before at once. Disable
+  `edge-fallback.yml` so the sync stops too.
+- **Changing nginx:** a header, redirect or SPA-fallback change in the
+  landing or games `nginx.conf` goes into
+  `infrastructure/edge-fallback/src/rules.mjs` in the same commit;
+  `node --test infrastructure/edge-fallback/test/` (also the workspace
+  commit gate) fails on header drift. A new public tree under `khe.ee` or
+  `games.khe.ee` reaches the copy only through the staging script's
+  allowlist.
+
 ## Homepage
 
 - Live widgets where the service has an API. Config in `services/core/homepage/config/`
@@ -353,6 +387,10 @@ PR run on the same commit.
   disallow, so a crawler can read the noindex. The khe-trips deploy creates
   `/srv/data/trips/demo` first, so it must deploy before landing gets the
   mount; the same root-owned trap applies.
+- `/healthz` answers `ok` with `no-store`; UptimeRobot and
+  `homelab-status.sh`'s edge probe watch it. The edge fallback passes it
+  through, so it fails when the homelab is down even while the copy serves
+  the pages.
 - Homepage dashboard moved to `dash.khe.ee` (CF Access protected).
 - `HOMEPAGE_DOMAIN=dash.khe.ee` in homepage `.env`; compose builds
   `HOMEPAGE_ALLOWED_HOSTS` from it plus `homepage:3000`, the Uptime Kuma

@@ -364,12 +364,12 @@ if [ -z "${edge_ip:-}" ]; then
 else
   code="$(curl -sS -o /tmp/edge-probe.$$ -w '%{http_code}' --max-time 15 \
     -A "$BROWSER_UA" --resolve "${EDGE_PROBE_HOST}:443:${edge_ip}" \
-    "https://${EDGE_PROBE_HOST}" 2>/dev/null)"
+    "https://${EDGE_PROBE_HOST}/healthz" 2>/dev/null)"
   cf_err="$(grep -oE 'error code: [0-9]{4}' /tmp/edge-probe.$$ 2>/dev/null | head -1)"
   rm -f /tmp/edge-probe.$$
   case "$code" in
     200|301|302|304)
-      ok "public edge probe ${EDGE_PROBE_HOST} -> ${code}"
+      ok "public edge probe ${EDGE_PROBE_HOST}/healthz -> ${code}"
       ;;
     530)
       fail "public edge probe -> 530 (${cf_err:-error code: 1033}); tunnel is not registered with the edge"

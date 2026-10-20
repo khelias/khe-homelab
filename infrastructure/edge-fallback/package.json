@@ -1,0 +1,11 @@
+{
+  "name": "khe-edge-fallback",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/"
+  },
+  "devDependencies": {
+    "wrangler": "4.151.3"
+  }
+}

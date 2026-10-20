@@ -11,17 +11,48 @@ Tunnel routes directly to Docker containers. LAN traffic goes via NPM (split-hor
 
 | Domain              | CF Tunnel → (external)      | NPM → (LAN)                | Notes |
 |---------------------|-----------------------------|-----------------------------|-------|
-| khe.ee              | landing:80                  | landing:80                  | public; `/r/` = khe-trips share sites and `/trips/` = the khe-trips demo ([estate ADR-013](https://github.com/khelias/khe-architecture/blob/main/decisions/013-trips-public-demo.md)), public by design (no Access, no dashboard change) |
+| khe.ee              | landing:80                  | landing:80                  | public; `/r/` = khe-trips share sites and `/trips/` = the khe-trips demo ([estate ADR-013](https://github.com/khelias/khe-architecture/blob/main/decisions/013-trips-public-demo.md)), public by design (no Access, no dashboard change); edge fallback Worker on `khe.ee/*` ([Workers routes](#workers-routes)) |
 | dash.khe.ee         | homepage:3000               | homepage:3000               | CF Access (external only) |
 | vault.khe.ee        | vaultwarden:80              | vaultwarden:80              | |
 | photos.khe.ee       | immich-server:2283          | immich-server:2283          | NPM: unlimited upload, 600s timeout |
 | status.khe.ee       | uptime-kuma:3001            | uptime-kuma:3001            | |
-| games.khe.ee        | games:80                    | — (CF only)                 | no AdGuard rewrite |
+| games.khe.ee        | games:80                    | — (CF only)                 | no AdGuard rewrite; edge fallback Worker on `games.khe.ee/*` ([Workers routes](#workers-routes)) |
 | trips.khe.ee        | trips:80                    | — (CF Access)               | CF Access OTP on all networks; no AdGuard rewrite |
 | draft.khe.ee        | draft:8080                  | — (CF Access)               | dufs editor; CF Access OTP on all networks; **sole auth layer** (dufs runs without `--auth`, see service-choices.md); only on `draft-tunnel`; no AdGuard rewrite |
 | pages.khe.ee        | pages:80                    | — (CF only)                 | public; serves published pages read-only; no AdGuard rewrite |
 
 Not exposed via tunnel (LAN only): AdGuard (:8080), NPM admin (:81), Proxmox (:8006)
+
+## Workers routes
+
+Workers & Pages → the Worker → Settings → Domains & Routes. The edge
+fallback ([estate ADR-016](https://github.com/khelias/khe-architecture/blob/main/decisions/016-static-fallback-at-the-edge.md)): two Workers with a static copy of the sites, deployed
+by `.github/workflows/edge-fallback.yml` from
+[`edge-fallback/`](edge-fallback/). Wrangler deploys the script and assets
+only; the routes are set here, because routes Wrangler deploys overwrite
+the failure mode.
+
+| Route | Worker | Failure mode |
+|-------|--------|--------------|
+| `khe.ee/*` | `khe-fallback-khe-ee` | Fail open |
+| `games.khe.ee/*` | `khe-fallback-games` | Fail open |
+
+- Every request goes to the tunnel first and gets its answer unchanged; the
+  copy answers only on a 5xx, a timeout (5 s) or no connection, with
+  `X-KHE-Fallback: 1`.
+- Never from the copy: `khe.ee/healthz`, `games.khe.ee/adventure/api/*` and
+  any request that is not GET or HEAD. With the homelab down they fail, so
+  UptimeRobot (on `https://khe.ee/healthz`) still sees the outage.
+- Fail open: once the free quota (100,000 requests a day) is spent, requests
+  go straight to the origin, as if no Worker existed.
+- `workers.dev` and Preview URLs are off for both Workers, so the copy is
+  reachable only through these routes.
+- `trips.khe.ee` and the other hostnames have no route and no copy.
+- LAN and Tailscale visitors never see it: `khe.ee` resolves through AdGuard
+  to NPM, and with the VM down AdGuard is down too.
+- API token: the "Edit Cloudflare Workers" template limited to this account
+  and the `khe.ee` zone, in the `edge-fallback` environment of this repo
+  (`main` only) with the account id.
 
 ## Cloudflare Access
 
