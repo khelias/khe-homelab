@@ -48,8 +48,10 @@ the failure mode.
 - `workers.dev` and Preview URLs are off for both Workers, so the copy is
   reachable only through these routes.
 - `trips.khe.ee` and the other hostnames have no route and no copy.
-- LAN and Tailscale visitors never see it: `khe.ee` resolves through AdGuard
-  to NPM, and with the VM down AdGuard is down too.
+- LAN and Tailscale visitors to `khe.ee` never reach it: AdGuard resolves
+  `khe.ee` to NPM. `games.khe.ee` has no rewrite, so they do go through its
+  Worker, which passes the origin's answer through. With the VM down
+  AdGuard is down too, so the fallback serves only visitors outside.
 - API token: the "Edit Cloudflare Workers" template limited to this account
   and the `khe.ee` zone, in the `edge-fallback` environment of this repo
   (`main` only) with the account id.
