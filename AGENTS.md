@@ -107,7 +107,12 @@ base branch against the PR tree. The edge fallback's Worker tests
    `scripts/edge-fallback-stage.sh` is the only way a tree reaches the copy:
    `trips.khe.ee` and secrets never do, and the adventure `config.js` is a
    stub without `API_SECRET`. The Worker routes live in the dashboard, fail
-   open, and are not in `wrangler.jsonc`.
+   open, and are not in `wrangler.jsonc`. games.khe.ee's root is khe-sites'
+   launcher build, and /study and /adventure load the consent banner from
+   its `/assets/analytics-consent.js`
+   ([estate ADR-019](https://github.com/khelias/khe-architecture/blob/main/decisions/019-consent-banner-from-the-origin-root.md)),
+   so a route change keeps that path on the launcher, in the games nginx,
+   in `rules.mjs` and in the staged copy.
 
 ## Access and operations
 
