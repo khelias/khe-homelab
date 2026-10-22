@@ -146,7 +146,7 @@ is not the deploy checkout.
 
 ## After `main` was rewritten
 
-A history rewrite is an operator decision; [estate ADR-006](https://github.com/khelias/khe-architecture/blob/main/decisions/006-branch-protection.md) sets the guards
+A history rewrite is an operator decision; [estate ADR-020](https://github.com/khelias/khe-architecture/blob/main/decisions/020-agent-work-through-pull-requests.md) sets the guards
 that block it. In most estate repos that is a ruleset: on `khe-homelab`
 classic branch protection *allows* force pushes and the ruleset blocks them,
 so Settings -> Branches alone gives the wrong answer. `khe-sites` has no
@@ -157,7 +157,9 @@ out of the payload), push, set it back to `active` at once, then check with
 `gh api repos/khelias/<repo>/rulesets/<id>` that `rules` and `conditions`
 are intact. The live required checks of a repo are what
 `gh api repos/khelias/<repo>/branches/main/protection --jq .required_status_checks.contexts`
-returns.
+returns; a repo on the pull request route (`pr: true` in the workspace's
+`repos/repos.yaml`, so far `khe-sites`) requires its CI check and the
+"Personal-data scan", and putting the protection back must keep both.
 
 For `khe-homelab` the VM checkout then has to follow. Do not re-clone
 the VM checkout, because the gitignored `.env` files would go with it. Check

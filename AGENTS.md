@@ -179,7 +179,7 @@ base branch against the PR tree. The edge fallback's Worker tests
   only what the task needs, and never quote personal data or tokens from them.
 - **Fork PRs can reach the runner.** Fork PR approval stays at
   `all_external_contributors`, and a fork run is approved only after reading
-  its `.github/workflows/` diff ([estate ADR-006](https://github.com/khelias/khe-architecture/blob/main/decisions/006-branch-protection.md)).
+  its `.github/workflows/` diff ([estate ADR-020](https://github.com/khelias/khe-architecture/blob/main/decisions/020-agent-work-through-pull-requests.md)).
 
 ## Working on Home Assistant
 
