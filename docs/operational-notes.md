@@ -366,9 +366,9 @@ PR run on the same commit.
 - `/house3d` and everything under `/house3d/`, the Home Assistant demo's old
   path, answer 301 to the same path under `/ha/`, where khe-sites builds it
   since 2026-10, query string kept.
-- `/architecture/decisions/<NNN>/` are the ADR pages built by khe-sites; an
-  unknown id answers 404 rather than the landing fallback, and the bare
-  `/architecture/decisions/` answers 301 to `/architecture/#decisions`.
+- `/architecture/decisions/` is the decisions page with the register, and
+  `/architecture/decisions/<NNN>/` are the ADR pages, all built by
+  khe-sites; an unknown id answers 404 rather than the landing fallback.
 - `/r/<slug>/` serves khe-trips share sites from `/srv/data/trips/share`,
   written by the khe-trips runner and mounted outside the html root
   (`/srv/share/r`). An unknown slug, `/r` and `/r/` answer 404, not the

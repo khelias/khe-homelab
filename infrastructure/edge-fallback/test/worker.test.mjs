@@ -146,6 +146,12 @@ describe("hard 404s", () => {
     assert.equal(response.status, 200);
     assert.match(body, /adr 001/);
   });
+
+  test("the bare decisions directory serves the register", async () => {
+    const { response, body } = await request("khe", "/architecture/decisions/");
+    assert.equal(response.status, 200);
+    assert.match(body, /khe register/);
+  });
 });
 
 describe("redirects", () => {
@@ -154,7 +160,6 @@ describe("redirects", () => {
     ["khe", "/lab/atlas?lang=et", "/architecture/?lang=et"],
     ["khe", "/house3d", "/ha/"],
     ["khe", "/house3d/a?b=1", "/ha/a?b=1"],
-    ["khe", "/architecture/decisions/", "/architecture/#decisions"],
     ["khe", "/trips", "/trips/"],
     ["khe", "/trips?x=1", "/trips/?x=1"],
     ["khe", "/architecture", "/architecture/"],

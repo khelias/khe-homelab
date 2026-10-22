@@ -87,7 +87,6 @@ const kheLocations = [
   [(p) => p === "/lab" || p.startsWith("/lab/"), { redirect: "/architecture/", keepQuery: true }],
   [(p) => p === "/house3d", { redirect: "/ha/", keepQuery: true }],
   [(p) => p.startsWith("/house3d/"), (p) => ({ redirect: `/ha/${p.slice("/house3d/".length)}`, keepQuery: true })],
-  [(p) => p === "/architecture/decisions/", { redirect: "/architecture/#decisions" }],
   [(p) => p.startsWith("/architecture/decisions/"), { file: true, dir: true }],
   [(p) => p === "/r" || p === "/r/", { notFound: true }],
   [(p) => /^\/r\/[a-z0-9]+\/assets\//.test(p), { file: true, headers: "share", cache: shareAssetCache }],

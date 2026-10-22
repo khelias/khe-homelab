@@ -87,6 +87,8 @@ case "$site" in
   khe)
     page / "<html"
     page /architecture/ "<html"
+    page /architecture/decisions/ 'data-page="decisions"'
+    page /agents/ 'data-page="agents"'
     page /ha/ "<html"
     page /trips/ "/trips/assets/"
     page /trips/some/deep/link "/trips/assets/"
