@@ -1,6 +1,6 @@
 services:
   pai:
-    image: paradoxalarminterface/pai:3.7.0@sha256:8e9e94f38b841dded71cadfa02de929b0f8170b1b98ad837ad111cdcf3379e48
+    image: paradoxalarminterface/pai:3.8.1@sha256:9bd5055263ae007f5a2a65e65f2968463cf0c7f238b9c7aedbaa4bfb1b8268b8
     container_name: pai
     restart: unless-stopped
     environment:
