@@ -42,7 +42,7 @@ file in every session is wasteful; the entries are independent.
 
 - **Wildcard `*.khe.ee` Let's Encrypt cert** via Cloudflare DNS-01 (auto-renew).
 - **Proxy hosts**: one per AdGuard rewrite: `khe.ee`, `dash`, `vault`,
-  `photos`, `status`, `home`.
+  `photos`, `status`, `home`, `trips`.
 - **The upload-heavy host** (photos) has unlimited body size + 600s
   timeouts. Applies to LAN clients only; the CF
   tunnel does not route through NPM (see Cloudflare Tunnel section).
@@ -62,7 +62,9 @@ file in every session is wasteful; the entries are independent.
   applies to LAN traffic only** - split-horizon DNS sends LAN clients to NPM,
   external clients bypass it entirely.
 - Access policies (email OTP) protect: `dash.khe.ee`, `trips.khe.ee`,
-  `draft.khe.ee`.
+  `draft.khe.ee`. For `dash` and `trips` only from outside: on the LAN and
+  over Tailscale their AdGuard rewrite sends clients to NPM, so Access never
+  sees them.
 - `khe.ee` is fully public (landing page).
 - **Healthcheck must be `cloudflared tunnel ready`, not `cloudflared version`.**
   The old check only proved the binary could execute, so it stayed green through
@@ -247,10 +249,11 @@ PR run on the same commit.
 ## Trips
 
 - `services/apps/trips/` stack (nginx alpine, pinned by Renovate, mirrors landing).
-- `trips.khe.ee` -> `trips:80` via CF Tunnel (no AdGuard rewrite, CF only
-  for HTTPS).
-- CF Access protected with the shared `Email + Country=EE` policy
-  (same as dash, draft).
+- `trips.khe.ee` -> `trips:80` via CF Tunnel from outside, and via an AdGuard
+  rewrite and an NPM proxy host on the LAN and over Tailscale, like dash.
+- CF Access protected from outside with the shared `Email + Country=EE`
+  policy (same as dash, draft). On the LAN every device on the home Wi-Fi
+  reads it without a login; that is the household's choice, as for dash.
 - Static SPA: bind mount `/srv/data/trips/app:/usr/share/nginx/html:ro`,
   SPA fallback to `/index.html`.
 - Source: `khelias/khe-trips` (private).

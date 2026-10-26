@@ -17,7 +17,7 @@ Tunnel routes directly to Docker containers. LAN traffic goes via NPM (split-hor
 | photos.khe.ee       | immich-server:2283          | immich-server:2283          | NPM: unlimited upload, 600s timeout |
 | status.khe.ee       | uptime-kuma:3001            | uptime-kuma:3001            | |
 | games.khe.ee        | games:80                    | — (CF only)                 | no AdGuard rewrite; edge fallback Worker on `games.khe.ee/*` ([Workers routes](#workers-routes)) |
-| trips.khe.ee        | trips:80                    | — (CF Access)               | CF Access OTP on all networks; no AdGuard rewrite |
+| trips.khe.ee        | trips:80                    | trips:80                    | CF Access (external only), like dash |
 | draft.khe.ee        | draft:8080                  | — (CF Access)               | dufs editor; CF Access OTP on all networks; **sole auth layer** (dufs runs without `--auth`, see service-choices.md); only on `draft-tunnel`; no AdGuard rewrite |
 | pages.khe.ee        | pages:80                    | — (CF only)                 | public; serves published pages read-only; no AdGuard rewrite |
 
@@ -71,10 +71,10 @@ All three apps share a single reusable policy (edit once → applies to all).
 Policy combines `Include: Email = owner` AND `Require: Countries = Estonia`.
 The VM is not a Tailscale exit node (it advertises only the `192.168.0.0/24`
 subnet route), so Tailscale does not carry the owner past the country rule
-when abroad. Over Tailscale, `dash.khe.ee` resolves through AdGuard to
-`192.168.0.11` and goes through NPM, so Access never sees it. `trips.khe.ee`
-and `draft.khe.ee` have no AdGuard rewrite: they reach Cloudflare from the
-device's own connection, and the country rule blocks them outside Estonia.
+when abroad. Over Tailscale, `dash.khe.ee` and `trips.khe.ee` resolve through AdGuard to
+`192.168.0.11` and go through NPM, so Access never sees them, abroad
+included. `draft.khe.ee` has no AdGuard rewrite: it reaches Cloudflare from
+the device's own connection, and the country rule blocks it outside Estonia.
 
 `draft.khe.ee` has no application-level login behind Access (dufs runs
 without `--auth`), so removing or loosening its Access application exposes the
