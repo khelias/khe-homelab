@@ -19,8 +19,11 @@ file in every session is wasteful; the entries are independent.
   of traffic. Better to fail loudly if AdGuard is down.
 - **Blocklists**: AdGuard DNS filter + OISD big (~330k rules) + Hagezi Pro
   Plus (~245k, covers EU/EE trackers like Cxense/Piano/Gemius) + Hagezi
-  Threat Intelligence (paired with built-in Safe Browsing for layered
-  defense).
+  Threat Intelligence medium (paired with built-in Safe Browsing for layered
+  defense). Not the full TIF: it swings between 1.0M and 2.2M rules, and the
+  daily filter update holds old and new rules at once, so from about 1.75M
+  rules the update OOM-killed AdGuard inside its 1G limit every night
+  (2026-10-13 to 11-04, about 14 s without DNS each time).
 - **Safe Browsing config key is `safebrowsing_enabled`** (one word).
   `safe_browsing_enabled` is a silent no-op.
 - **`ratelimit_whitelist` does NOT accept CIDR**, only bare IPs. The

@@ -102,11 +102,13 @@ filters:
     url: https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/pro.plus.txt
     name: Hagezi Pro Plus
     id: 101
-  # Hagezi Threat Intelligence Feed: malware + phishing domains. Paired with
-  # AdGuard Safe Browsing for layered defence (reputation DB + static list).
+  # Hagezi Threat Intelligence Feed, medium: malware + phishing domains. Paired
+  # with AdGuard Safe Browsing for layered defence (reputation DB + static list).
+  # Not the full tif.txt: at 1.75M+ rules its daily update OOM-kills AdGuard
+  # inside the 1G limit while old and new rules are both in memory.
   - enabled: true
-    url: https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/tif.txt
-    name: Hagezi Threat Intelligence Feed
+    url: https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/tif.medium.txt
+    name: Hagezi Threat Intelligence Feed (medium)
     id: 102
 # Custom overrides — trackers that bypass the upstream lists.
 #   connect.facebook.net: Facebook Pixel (not covered by Hagezi Pro Plus).
