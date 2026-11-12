@@ -1,5 +1,8 @@
 # khe-homelab
 
+Workspace-wide rules (push, review, docs, estate ADRs) are in [khe-workspace
+`AGENTS.md`](https://github.com/khelias/khe-workspace/blob/main/AGENTS.md).
+
 Family homelab as code: one Proxmox host, one Debian 13 VM running Docker
 Compose stacks for core, media, home and app services, no Kubernetes
 ([estate ADR-010](https://github.com/khelias/khe-architecture/blob/main/decisions/010-one-host-docker-compose.md)).
@@ -151,8 +154,7 @@ base branch against the PR tree. The edge fallback's Worker tests
   Worker routes. The way back from a bad update is to revert its commit on `main`
   and push; for an image that keeps state, also restore its data from the
   backup taken before the update
-  ([runbook](docs/runbook.md#undoing-an-automerged-update)). A new automated
-  writer joins the estate's writer register in khe-meta in the same change.
+  ([runbook](docs/runbook.md#undoing-an-automerged-update)).
 - **A new app database** joins `POSTGRES_JOBS` in `scripts/backup.sh` and the
   weekly restore check (`restore-verify.yml`, Immich only today) in the
   change that creates it, and one passing restore of it comes before any
@@ -186,9 +188,10 @@ base branch against the PR tree. The edge fallback's Worker tests
   secret and any runbook step that deletes data (volumes, `/srv/data/`
   directories) stay the operator's. Where the session refuses ssh, hand the
   command over as `ssh -t khe@docker-vm "..."`.
-- **Fork PRs can reach the runner.** Fork PR approval stays at
-  `all_external_contributors`, and a fork run is approved only after reading
-  its `.github/workflows/` diff ([estate ADR-023](https://github.com/khelias/khe-architecture/blob/main/decisions/023-agent-pushes-where-its-session-allows.md)).
+- **Fork PRs can reach the runner**, since every deploy and operation runs
+  there: approve a fork run as the workspace `AGENTS.md` says
+  ([estate ADR-023](https://github.com/khelias/khe-architecture/blob/main/decisions/023-agent-pushes-where-its-session-allows.md)
+  point 5).
 
 ## Working on Home Assistant
 
