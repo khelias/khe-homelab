@@ -584,7 +584,11 @@ companion app login and webhooks, and this host will eventually control the
 ventilation and heat pump. Remote access is Tailscale.
 
 **Backup.** `backup.sh` copies the recorder DB via Python's `sqlite3` backup
-API inside the container (`homeassistant-recorder.db.gz`) and tars the config
+API in a throwaway container of the running HA image, streamed through gzip
+(`homeassistant-recorder.db.gz`). Not through `docker exec`: the page cache of
+copying the whole DB is charged to the cgroup the copy runs in, and inside HA's
+memory limit that OOM-killed HA at 02:00. The SQLite copy stays in the
+throwaway's `/tmp`, off the soft NFS `/srv/backups`. It also tars the config
 volume with the live DB, its journals and the log excluded
 (`homeassistant-config.tar.gz`). Restore: with HA stopped, untar into the
 volume through a throwaway alpine container

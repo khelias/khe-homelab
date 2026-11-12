@@ -13,7 +13,8 @@
 # guaranteed consistent. Acceptable for this homelab
 # — fixing it properly requires per-service quiesce or SQLite .backup API.
 # The Home Assistant recorder DB is the one exception: it is large, written
-# continuously, and dumped through the .backup API below instead of tarred.
+# continuously, and dumped through the .backup API below instead of tarred,
+# in a throwaway container so the copy is charged to its own memory cgroup.
 set -uo pipefail
 
 # Optional heartbeat ping — silently disabled if no URL configured.
@@ -180,28 +181,36 @@ done
 #     continuously, so it is copied through the .backup API (consistent
 #     point-in-time copy of a live DB) and excluded from the tar together
 #     with its -wal/-shm journals and the rotating log.
+#     It runs in a throwaway container of HA's image, not docker exec: the
+#     copy's page cache is charged to the cgroup it runs in, and inside HA's
+#     limit that OOM-killed HA. The copy stays in the throwaway's /tmp, off
+#     the soft NFS /srv/backups. The volume is mounted rw because a WAL DB
+#     needs its -shm writable; mode=ro keeps the dumper off the DB itself.
 HA_CONTAINER="homeassistant"
 HA_CONFIG="homeassistant_ha_config"
-HA_RECORDER_TMP="/tmp/recorder-backup.db"
 if container_running "$HA_CONTAINER"; then
   echo "-> sqlite: $HA_CONTAINER recorder"
-  dump_file="$BACKUP_DIR/homeassistant-recorder.db"
+  dump_file="$BACKUP_DIR/homeassistant-recorder.db.gz"
   err_file="$BACKUP_DIR/homeassistant-recorder.err"
-  if docker exec "$HA_CONTAINER" python3 -c "
-import sqlite3
-src = sqlite3.connect('/config/home-assistant_v2.db')
-dst = sqlite3.connect('$HA_RECORDER_TMP')
+  ha_image="$(docker inspect -f '{{.Image}}' "$HA_CONTAINER" 2>/dev/null)"
+  if [ -z "$ha_image" ]; then
+    fail "recorder backup failed: no image for $HA_CONTAINER from docker inspect"
+  elif { docker run --rm --network none --entrypoint python3 \
+           -v "$HA_CONFIG":/config "$ha_image" -c "
+import shutil, sqlite3, sys
+tmp = '/tmp/recorder-backup.db'
+src = sqlite3.connect('file:/config/home-assistant_v2.db?mode=ro', uri=True)
+dst = sqlite3.connect(tmp)
 src.backup(dst)
 dst.close(); src.close()
-" 2>"$err_file" \
-     && docker exec "$HA_CONTAINER" cat "$HA_RECORDER_TMP" > "$dump_file" 2>>"$err_file" \
-     && gzip -f "$dump_file" 2>>"$err_file"; then
+with open(tmp, 'rb') as f:
+    shutil.copyfileobj(f, sys.stdout.buffer)
+" | gzip -c > "$dump_file"; } 2>"$err_file"; then
     rm -f "$err_file"
   else
-    rm -f "$dump_file" "${dump_file}.gz"
+    rm -f "$dump_file"
     fail "recorder backup failed: $HA_CONTAINER (see $(basename "$err_file"))"
   fi
-  docker exec "$HA_CONTAINER" rm -f "$HA_RECORDER_TMP" >/dev/null 2>&1 || true
 else
   fail "container not running: $HA_CONTAINER"
 fi
