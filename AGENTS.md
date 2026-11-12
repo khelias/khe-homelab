@@ -164,12 +164,13 @@ base branch against the PR tree. The edge fallback's Worker tests
   deploy.
 - **Operations go through `workflow_dispatch`** on the homelab runner:
   `ops-status.yml` refreshes the status snapshot ([runbook](docs/runbook.md)),
-  `deploy.yml` deploys (the operator's call), `retire-stack.yml` removes what
-  a stack deleted from git leaves on the VM (the agent dispatches it only
-  with `apply=false`; `apply=true` is the operator's call). A workflow never
+  `deploy.yml` deploys, `retire-stack.yml` removes what a stack deleted from
+  git leaves on the VM (`apply=false` first to see the list). Dispatching
+  both is the agent's, `apply=true` included
+  ([estate ADR-023](https://github.com/khelias/khe-architecture/blob/main/decisions/023-agent-pushes-where-its-session-allows.md)). A workflow never
   takes a shell command as input; that would be SSH under another name.
   Narrow, pre-written actions only.
-- **The agent reads the VM through Loki**, with the official mcp-grafana
+- **The agent reads the VM through Loki first**, with the official mcp-grafana
   server (`scripts/mcp-grafana.sh`, read-only, Grafana Viewer token in
   `~/.config/khe/grafana-token`): container logs, and `{job="homelab-status"}`
   for the `homelab-status.sh` snapshot that the `khe-homelab-status` timer
@@ -177,9 +178,15 @@ base branch against the PR tree. The edge fallback's Worker tests
   prints only the summary. Loki has no per-stream access control, so
   Vaultwarden, Home Assistant, Immich and trips logs are reachable too: query
   only what the task needs, and never quote personal data or tokens from them.
+- **ssh where the session allows it** (estate ADR-023): `ssh khe@docker-vm
+  "..."` for read-only diagnosis that Loki does not show and for the
+  procedures written in the [runbook](docs/runbook.md). A change to the host
+  still goes through git and a deploy, never an edit on the VM; fetching a
+  secret stays the operator's. Where the session refuses ssh, hand the
+  command over as `ssh -t khe@docker-vm "..."`.
 - **Fork PRs can reach the runner.** Fork PR approval stays at
   `all_external_contributors`, and a fork run is approved only after reading
-  its `.github/workflows/` diff ([estate ADR-020](https://github.com/khelias/khe-architecture/blob/main/decisions/020-agent-work-through-pull-requests.md)).
+  its `.github/workflows/` diff ([estate ADR-023](https://github.com/khelias/khe-architecture/blob/main/decisions/023-agent-pushes-where-its-session-allows.md)).
 
 ## Working on Home Assistant
 
