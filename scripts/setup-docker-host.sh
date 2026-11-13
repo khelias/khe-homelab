@@ -22,7 +22,14 @@ sudo apt-get install -y \
   linux-image-amd64 \
   firmware-misc-nonfree \
   intel-media-va-driver-non-free
-# Ensure grub boots the new kernel (cloud kernel lacks i915 drivers)
+# The cloud kernel lacks i915. Remove it rather than pin a version in grub:
+# entry 0 is the newest kernel, and a pinned one never takes kernel updates.
+CLOUD_KERNELS="$(dpkg-query -W -f='${Package} ${db:Status-Status}\n' \
+  'linux-image-*cloud-amd64' 2>/dev/null | awk '$2 == "installed" {print $1}')"
+if [ -n "$CLOUD_KERNELS" ]; then
+  # shellcheck disable=SC2086
+  sudo apt-get purge -y $CLOUD_KERNELS
+fi
 if ! grep -q '^GRUB_DEFAULT=0$' /etc/default/grub 2>/dev/null; then
   sudo sed -i 's/^GRUB_DEFAULT=.*/GRUB_DEFAULT=0/' /etc/default/grub
   sudo update-grub

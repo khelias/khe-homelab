@@ -626,8 +626,9 @@ the private `khe-meta` repo under `house/house-hvac.md`.
 
 - Intel iGPU bound to `vfio-pci` on Proxmox host (`i915` blacklisted),
   passed through to Docker VM 100.
-- VM runs `linux-image-amd64` kernel (cloud kernel lacks i915), GRUB
-  default set.
+- VM runs `linux-image-amd64` kernel (cloud kernel lacks i915). The cloud
+  kernels are purged and `GRUB_DEFAULT=0`, so the newest installed kernel
+  boots; a version pinned in `/etc/default/grub` never takes kernel updates.
 - VM apt sources include `non-free-firmware` for Intel firmware packages.
 - `/dev/dri` mounted into the `immich-server` and `immich-machine-learning`
   containers.
