@@ -50,8 +50,9 @@ set +a
 : "${AWS_ACCESS_KEY_ID:?not set in $ENV_FILE}"
 : "${AWS_SECRET_ACCESS_KEY:?not set in $ENV_FILE}"
 
-if [ ! -d /srv/backups ]; then
-  echo "FATAL: /srv/backups missing — run scripts/backup.sh first" >&2
+TODAY_DIR="/srv/backups/$(date +%Y-%m-%d)"
+if [ ! -d "$TODAY_DIR" ]; then
+  echo "FATAL: $TODAY_DIR missing — run scripts/backup.sh first" >&2
   exit 2
 fi
 
@@ -68,7 +69,9 @@ if ! restic cat config >/dev/null 2>&1; then
 fi
 
 # Targets:
-# - /srv/backups   Etapp 1 daily output — primary payload
+# - $TODAY_DIR     Etapp 1 output of today only: older dated dirs are in
+#                  earlier snapshots already, and carrying them would make
+#                  every kept snapshot hold a week of distinct days.
 # - ~/homelab      VM-local .env files (not in git) needed for clean rebuild;
 #                  .git is redundant (history lives on GitHub);
 #                  service config dirs with root-owned files (adguard live
@@ -85,18 +88,21 @@ if ! restic backup \
        --exclude "${HOME}/homelab/services/core/adguard/config" \
        --exclude "${HOME}/homelab/services/home/mosquitto/config" \
        --exclude "${HOME}/homelab/services/home/mosquitto/data" \
-       "/srv/backups" \
+       "$TODAY_DIR" \
        "${HOME}/homelab"; then
   echo "FAIL: restic backup" >&2
   exit 1
 fi
 
+# Group by host and tags: the default host+paths grouping would make each day's
+# dated path its own group, and the policy would then keep every snapshot.
 echo "-> restic forget --prune"
 if ! restic forget \
        --prune \
+       --group-by host,tags \
        --keep-daily 7 \
        --keep-weekly 4 \
-       --keep-monthly 12; then
+       --keep-monthly 3; then
   echo "FAIL: restic forget/prune" >&2
   exit 1
 fi

@@ -56,8 +56,8 @@ case "$PG_IMAGE" in
 esac
 
 STAGE="restic-restore"
-# Restic snapshot path: /srv/backups/<date>/<dump-name>. Every
-# dated copy carries the embeddings, so restore only the newest.
+# Restic snapshot path: /srv/backups/<date>/<dump-name>. An older
+# snapshot may hold several dated copies, so take the newest.
 SNAPSHOT_LS="$(mktemp)"
 restic ls latest --tag cron-daily > "$SNAPSHOT_LS"
 SNAPSHOT_PATH="$(grep -E "^/srv/backups/[0-9]{4}-[0-9]{2}-[0-9]{2}/${DUMP_NAME}\$" "$SNAPSHOT_LS" \

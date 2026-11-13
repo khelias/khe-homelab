@@ -1,8 +1,8 @@
 # Offsite Backup (restic → Cloudflare R2)
 
 Third-tier backup. Local `scripts/backup.sh` at 02:00 produces
-`/srv/backups/<date>/`; `scripts/offsite-backup.sh` at 03:00 ships that plus
-VM-local `.env` files to an R2 bucket via restic. Client-side AES-256 +
+`/srv/backups/<date>/`; `scripts/offsite-backup.sh` at 03:00 ships that
+day's directory only, plus VM-local `.env` files to an R2 bucket via restic. Client-side AES-256 +
 dedup + retention. Why three tiers: [README](../README.md#automation), Backups.
 
 ## Cloudflare R2 (dashboard, one-time)
@@ -51,10 +51,12 @@ restic init
 ```
 
 Retention policy (enforced each run via `restic forget --prune`):
-`--keep-daily 7 --keep-weekly 4 --keep-monthly 12`. Each retained snapshot
+`--keep-daily 7 --keep-weekly 4 --keep-monthly 3`, grouped by host and tags because
+the dated path differs in every snapshot. Each retained snapshot
 is a point-in-time capture — the monthly one keeps a single `/srv/backups/<date>/`
-payload, not a rolling month. Longest cold-recovery window is ~12 months,
-granular only at the daily tier.
+payload, not a rolling month. Longest cold-recovery window is ~3 months,
+granular only at the daily tier. The policy keeps the repo near 7 GB, inside
+R2's free 10 GB-month.
 
 ## Restore
 
