@@ -68,6 +68,15 @@ jobs:
             --permission-mode default
             --allowedTools "Read,Glob,Grep,WebFetch,Edit(/digest.md),Bash(gh pr list *),Bash(gh pr view *),Bash(gh pr diff *),Bash(gh run list *),Bash(gh run view *)"
 
+      # The action's log leaves out the result text, so a failed run would
+      # not say why; this prints that text only, never the transcript.
+      - name: Why Claude failed
+        if: failure()
+        run: |
+          f="$RUNNER_TEMP/claude-execution-output.json"
+          [ -f "$f" ] || { echo "no execution file"; exit 0; }
+          jq -r '[.. | objects | select(.type? == "result")] | last | {subtype, result, api_error_status} | tostring' "$f" | head -c 2000
+
       - name: Upload the digest
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
