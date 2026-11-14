@@ -6,10 +6,49 @@
     "ask": [
       "Bash(ssh:*)",
       "Bash(scp:*)",
-      "Bash(sftp:*)"
+      "Bash(sftp:*)",
+      "Bash(*ha-ws.py*)",
+      "Bash(*ha-dashboard.py*)"
+    ],
+    "deny": [
+      "Read(~/.ssh/**)",
+      "Read(~/.config/khe/**)",
+      "Read(~/.claude/.credentials.json)"
     ],
     "defaultMode": "auto",
     "disableBypassPermissionsMode": "disable"
+  },
+  "sandbox": {
+    "enabled": true,
+    "failIfUnavailable": true,
+    "allowUnsandboxedCommands": false,
+    "excludedCommands": [
+      "ssh *",
+      "scp *",
+      "/home/khe/khe/repos/khe-home-assistant/.venv/bin/python scripts/ha-ws.py *",
+      "/home/khe/khe/repos/khe-home-assistant/.venv/bin/python scripts/ha-dashboard.py *"
+    ],
+    "filesystem": {
+      "denyRead": [
+        "~/.ssh",
+        "~/.config/khe",
+        "~/.claude/.credentials.json"
+      ]
+    },
+    "network": {
+      "strictAllowlist": true,
+      "allowedDomains": [
+        "github.com",
+        "*.github.com",
+        "*.githubusercontent.com",
+        "registry.npmjs.org",
+        "pypi.org",
+        "files.pythonhosted.org",
+        "*.anthropic.com",
+        "deb.debian.org",
+        "security.debian.org"
+      ]
+    }
   },
   "disableClaudeAiConnectors": true,
   "env": {

@@ -26,6 +26,8 @@ MCP_GRAFANA_VERSION=2.0.0
 MCP_GRAFANA_SHA256=0a0dde2c882c24fedcce79a07d97b232f71730c744b84a09b6b0735c2ca3d024
 # Matches the repos' @playwright/test range; only its install-deps is used here.
 PLAYWRIGHT_DEPS_VERSION=1.59.1
+# For khe-home-assistant's ha-ws.py and ha-dashboard.py; ruff comes from its ci.yml.
+WEBSOCKETS_VERSION=17.4
 LAN_CIDR="${LAN_CIDR:-192.168.0.0/24}"
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -57,7 +59,7 @@ step "Packages"
 sudo apt-get update
 sudo apt-get install -y git jq gawk curl ca-certificates gnupg xz-utils unzip \
   python3 python3-venv python3-pip python3-dev build-essential libffi-dev libssl-dev \
-  gh tmux ufw unattended-upgrades
+  gh tmux ufw unattended-upgrades bubblewrap socat
 
 step "Node $NODE_VERSION"
 if [ "$(node --version 2>/dev/null || true)" != "v$NODE_VERSION" ]; then
@@ -149,12 +151,13 @@ if [ "$(claude --version 2>/dev/null | awk '{print $1}')" != "$CLAUDE_VERSION" ]
 fi
 claude --version
 
-# The template owns the permission rules: a rule dropped from it is dropped
-# here too, and an "always allow" given in a session does not survive a rerun.
+# The template owns the permission rules and the sandbox: a rule dropped from
+# it is dropped here too, and an "always allow" given in a session does not
+# survive a rerun.
 step "Claude settings from the template"
 mkdir -p "$HOME/.claude"
 [ -f "$HOME/.claude/settings.json" ] && cp "$HOME/.claude/settings.json" "$TMP/current.json" || echo '{}' > "$TMP/current.json"
-jq -s '.[1] as $t | (.[0] * $t) | .permissions = $t.permissions' \
+jq -s '.[1] as $t | (.[0] * $t) | .permissions = $t.permissions | .sandbox = $t.sandbox' \
   "$TMP/current.json" "$INFRA/claude-settings.json" > "$TMP/settings.json"
 install -m 600 "$TMP/settings.json" "$HOME/.claude/settings.json"
 
@@ -246,6 +249,17 @@ if [ -f "$WORKSPACE/repos/ha-estfeed/pyproject.toml" ]; then
     rm -rf "$venv"
     echo "   skipped: ha-estfeed needs a newer Python than this VM's $(python3 -V 2>&1 | cut -d' ' -f2)"
   fi
+fi
+
+ha="$WORKSPACE/repos/khe-home-assistant"
+if [ -f "$ha/.github/workflows/ci.yml" ]; then
+  echo "-- khe-home-assistant: .venv"
+  # One venv for the check's ruff and the HA scripts' websockets. The sandbox
+  # template runs the HA scripts outside the sandbox only through this path.
+  ruff_pin="$(grep -m 1 -o 'ruff==[0-9.]*' "$ha/.github/workflows/ci.yml" || true)"
+  [ -n "$ruff_pin" ] || fail "no ruff pin in khe-home-assistant's ci.yml"
+  [ -d "$ha/.venv" ] || python3 -m venv "$ha/.venv"
+  "$ha/.venv/bin/pip" install --quiet "$ruff_pin" "websockets==$WEBSOCKETS_VERSION"
 fi
 
 # User scope, so sessions in a repo worktree see it too.

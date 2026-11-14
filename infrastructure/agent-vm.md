@@ -7,8 +7,10 @@ as `khe`. Sessions are reached from the Claude phone app, claude.ai and the
 laptop's desktop app (as an SSH host). Projects' local threads would run there
 too; Projects is not on the account yet (2026-11-14). The agent has the same rights as on the laptop
 ([estate ADR-023](https://github.com/khelias/khe-architecture/blob/main/decisions/023-agent-pushes-where-its-session-allows.md)):
-push, PR, auto-merge, and ssh to `khe@docker-vm` for read-only diagnosis and
-runbook steps. Why a VM and how it is used: [service-choices.md](../docs/service-choices.md#workspace-agent---agent-vm);
+push, PR, auto-merge, ssh to `khe@docker-vm` for read-only diagnosis and
+runbook steps, and Home Assistant control behind a tap per write: the
+attended tier of [estate ADR-027](https://github.com/khelias/khe-architecture/blob/main/decisions/027-attended-and-unattended-agent-tiers.md). Jobs that run without the
+operator are not run here but on GitHub-hosted Actions (ADR-027). Why a VM and how it is used: [service-choices.md](../docs/service-choices.md#workspace-agent---agent-vm);
 what it can reach: [SECURITY.md](../SECURITY.md#the-workspace-agent-agent-vm).
 Its VM ID and address are in the private khe-meta `house/` network document.
 
@@ -38,15 +40,18 @@ by VFIO, so the host needs 6 GB free before the VM is created.
 3. **Sign in.** `gh auth login` and `claude auth login` (the operator opens
    the links; 2FA on the claude.ai account). Rerun `setup-agent-vm.sh`: it now
    clones the workspace and every repo, runs `npm ci`, installs Playwright
-   browsers, builds ha-estfeed's `.venv` and registers the grafana MCP server
-   at user scope. ha-estfeed needs Home Assistant's Python (3.14 on
+   browsers, builds the `.venv` of ha-estfeed and of khe-home-assistant (ruff
+   and `websockets`, for `ha-ws.py` and `ha-dashboard.py`) and registers the
+   grafana MCP server at user scope. ha-estfeed needs Home Assistant's Python (3.14 on
    2026-11-14), newer than Debian 13's 3.13, so the script skips it and
    ha-estfeed commits stay with the laptop until the VM has that Python.
 4. **Authorise** the VM's docker-vm key (printed by the script) in
    `khe@docker-vm`'s `authorized_keys`, prefixed with
    `from="<agent-vm LAN address>,<agent-vm tailnet address>"` so the key works
    from nowhere else; put a Grafana Viewer service-account
-   token in `~/.config/khe/grafana-token` (mode 600). The first ssh to
+   token in `~/.config/khe/grafana-token` (mode 600), and copy the laptop's
+   `~/.config/khe/{ha-token,ha-house.json,ha-people.json}` there too (mode
+   600; fetching them is the operator's). The first ssh to
    docker-vm trusts the host key it sees (`accept-new`): compare its
    fingerprint with the one docker-vm shows for itself before relying on it.
 5. **Memory.** The agent's memory folder is keyed by the workspace path, so
@@ -82,12 +87,28 @@ by VFIO, so the host needs 6 GB free before the VM is created.
 - **When the VM is down,** work from the laptop's personal Claude instance;
   the workspace and its gate are the same.
 - **Permissions.** `claude-settings.json` is the VM's floor and replaces the
-  permission rules on every run of the setup script: sessions start in auto
-  mode, `ssh`, `scp` and `sftp`
-  ask on the phone, a push written as `git push ...` (after a `cd` into the
-  repo, not `git -C`) does not, bypass mode is off and claude.ai
-  connectors are not loaded ([SECURITY.md](../SECURITY.md#the-workspace-agent-agent-vm)).
-  An "always allow" given in a session lasts until the next run.
+  permission rules and the sandbox block on every run of the setup script:
+  sessions start in auto mode, `ssh`, `scp`, `sftp`, `ha-ws.py` and
+  `ha-dashboard.py` ask on the phone, a push written as `git push ...` (after
+  a `cd` into the repo, not `git -C`) does not, bypass mode is off and
+  claude.ai connectors are not loaded
+  ([SECURITY.md](../SECURITY.md#the-workspace-agent-agent-vm)). An "always
+  allow" given in a session lasts until the next run.
+- **Sandbox.** Bash runs in Claude Code's sandbox in strict mode
+  (bubblewrap and socat from the setup script): no unsandboxed retry,
+  outbound only to the template's `allowedDomains`, and `~/.ssh`,
+  `~/.config/khe` and Claude's credentials unreadable. Commands outside it
+  match `excludedCommands` only when written alone, with no `cd`, pipe or
+  redirect in the same call: `ssh docker-vm "..."`, and the HA scripts as
+  `/home/khe/khe/repos/khe-home-assistant/.venv/bin/python scripts/ha-ws.py '<json>'`
+  (or `scripts/ha-dashboard.py ...`) after a separate `cd` into the
+  checkout or worktree. A sandboxed command's `localhost` is its own, so a
+  screenshot starts the server and the browser in one call, from a repo
+  that has Playwright:
+  `python3 -m http.server 8765 --directory dist & pid=$!; sleep 2; npx playwright screenshot --viewport-size=375,812 http://localhost:8765/ "$TMPDIR/shot.png"; kill $pid`.
+  A legitimate command the sandbox blocks gets its host or exclusion added
+  to the template, not a session override. mcp-grafana runs outside the
+  sandbox as an MCP server and keeps its LAN reach.
 - **Cloud sessions.** A cloud session or Projects thread skips the commit
   gate, so the Claude GitHub App stays uninstalled; once Projects reaches the
   account, its threads are sent with Work locally.

@@ -610,11 +610,12 @@ session on agent-vm from the phone, it runs in the workspace with the commit
 gate, and the phone gets the permission prompts. The claude.ai Projects
 feature, which would start a thread per task and run each one sent with Work
 locally on agent-vm, was the plan; it is not on the account yet (2026-11-14).
-A cloud thread or session would skip the commit gate. Either replaces a
-self-built unattended worker, which two reviews found needs much plumbing (a
-pusher with no ssh key, a task broker, root-owned gate). It does not touch
-estate ADR-023's revisit trigger, since nothing is scheduled and the operator
-starts every session. Reversible; no estate ADR.
+A cloud thread or session would skip the commit gate. Work without the
+operator in the session does not run here at all but on GitHub-hosted
+Actions ([estate ADR-027](https://github.com/khelias/khe-architecture/blob/main/decisions/027-attended-and-unattended-agent-tiers.md), the weekly digest first); a self-built
+unattended worker on the VM was reviewed and dropped there. Sessions here
+also control Home Assistant, each write behind a tap, inside Claude Code's
+strict Bash sandbox (ADR-027).
 
 **Why ssh asks and pushes do not (2026-11-14):** the key on agent-vm is root
 on docker-vm, and the VM reads content others wrote (logs, PRs, release
@@ -636,14 +637,14 @@ every tailnet device, a family phone included. nodivert leaves inbound to
 ufw (ssh only) and gives up Taildrop and Tailscale's anti-spoof rule, which
 the VM does not need ([tailscale.md](../infrastructure/tailscale.md)).
 
-**Alternatives considered:** a worker with its own user and no LAN route
-(dropped for now, constraints kept in the plan), Claude Code on the cloud
-(no gate, no skills), a laptop that stays awake.
+**Alternatives considered:** an unattended worker on this VM (dropped for
+GitHub-hosted Actions in estate ADR-027), Claude Code on the cloud (no gate,
+no skills), a laptop that stays awake.
 
 **When we'd revisit:** Projects reaches the account (then its threads run
 locally or not at all), Remote Control is dropped, a session starts without
 the operator's confirmation, the ssh prompts get in the way of real work, or
-an unattended worker becomes necessary.
+an unattended job has to reach the homelab (ADR-027's revisit trigger).
 
 ---
 

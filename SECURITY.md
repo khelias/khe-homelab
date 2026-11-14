@@ -45,6 +45,20 @@ the required `validate.yml` check:
   public trees, fails on a symlink or an `apiSecret` value, and replaces the
   adventure `config.js` with a stub, so the private trips atlas and the API
   secret never reach Cloudflare.
+- **The weekly digest** (`weekly-digest.yml`, Friday night) opens one issue
+  labelled `agent-digest` and closes the previous one
+  ([estate ADR-027](https://github.com/khelias/khe-architecture/blob/main/decisions/027-attended-and-unattended-agent-tiers.md)).
+  It runs on a GitHub-hosted runner, never the homelab runner, and pushes no
+  code. Claude runs in a job whose `GITHUB_TOKEN` can only read and whose
+  tools are a fixed list of `gh` reads, file reads, WebFetch and writing
+  `digest.md`; a second job with `issues: write` and no model scans the file
+  for secrets and personal data, defuses mentions and cross-repo references,
+  and posts it (`scripts/agent-digest-post.sh`). The Claude subscription token
+  sits in the `agent` environment, which only `main` can use, and is
+  stripped from the commands Claude runs; outbound traffic from that job is
+  open, so an injected run could still send it out, which spends the
+  subscription until the token is revoked. Undone by disabling the workflow,
+  revoking the token in claude.ai and deleting the issue.
 
 ## Automated readers
 
@@ -76,13 +90,29 @@ for the blast radius:
   It is reachable only over the LAN and the tailnet, with keys-only sshd and a
   default-deny firewall that Tailscale does not bypass
   ([tailscale.md](infrastructure/tailscale.md)).
-- Its sessions run without the Bash sandbox the laptop has and start in auto
-  mode, so edits and most commands run on the classifier's judgement, not a
-  tap. Its settings template (`infrastructure/agent-vm/claude-settings.json`)
-  is the floor: every `ssh`, `scp` and `sftp` asks the operator, in auto mode
-  too; a push
-  runs without a prompt only as `git push ...`; bypass mode is disabled; claude.ai connectors (Drive
-  and the like) are not loaded. The commit gate also refuses a push that
+- It holds the Home Assistant long-lived token (`~/.config/khe/ha-token`)
+  and so controls the house: the attended tier of
+  [estate ADR-027](https://github.com/khelias/khe-architecture/blob/main/decisions/027-attended-and-unattended-agent-tiers.md),
+  a session the operator starts and steers. Every run of `ha-ws.py` or
+  `ha-dashboard.py` asks the operator, and it writes no heat pump or
+  ventilation setting. Undone by removing `ha-token` from the
+  VM and revoking it in Home Assistant.
+- Its sessions start in auto mode, so edits and most commands run on the
+  classifier's judgement, not a tap, and run in Claude Code's Bash sandbox in
+  strict mode: no unsandboxed retry, and outbound traffic only to the
+  template's hosts (GitHub, npm, PyPI, Anthropic, Debian), with no
+  per-command extra host. Sandboxed commands cannot read `~/.ssh`,
+  `~/.config/khe` (the HA and Grafana tokens) or Claude's credentials, and the
+  Read tool is denied the same paths. The gh token in `~/.config/gh/` stays
+  readable, because `gh` and git's credential helper need it. Of the commands
+  Claude runs, only `ssh`, `scp` and the two HA scripts run outside the
+  sandbox, and only when written alone on the command line. Claude Code's
+  hooks, the commit gate among them, and mcp-grafana, a local MCP server,
+  run outside it too; mcp-grafana keeps its LAN reach. Its settings template
+  (`infrastructure/agent-vm/claude-settings.json`) is the floor: every `ssh`,
+  `scp` and `sftp` asks the operator, in auto mode too; a push runs without a
+  prompt only as `git push ...`; bypass mode is disabled; claude.ai connectors
+  (Drive and the like) are not loaded. The commit gate also refuses a push that
   could run a command of its choosing (`--receive-pack`, `--exec`, any
   global option but `-C`, `GIT_SSH*`, an ASKPASS) or whose options it cannot
   read, the other road to docker-vm.
@@ -98,16 +128,23 @@ for the blast radius:
   (2026-11-14).
 - Its `vzdump` backup holds the GitHub, Claude and ssh credentials: it stays on
   a storage that is not exported to docker-vm and is not copied offsite.
-- Nothing is scheduled and no unattended worker exists; merges follow
-  estate ADR-023 as on the laptop. A worker that acts without the operator
-  in the session is a separate decision.
+- Nothing is scheduled here: work without the operator in the session runs
+  on GitHub-hosted Actions, never on this VM (estate ADR-027, the weekly
+  digest under Automated writers). Merges follow estate ADR-023 as on the
+  laptop.
 - Accepted, 2026-11-14: the permission rules and the commit gate guard
   against mistakes, not an adversary. A session the agent was talked into
   misusing has sudo on the VM and owns `~/khe`, Bash rules do not match every
   spelling of a command, a git hook or `core.sshCommand` written earlier runs
   on the next allowed push (khe-study's husky hooks live in the work tree,
-  so a new `.husky/pre-push` is an ordinary edit, silent in auto mode), and outbound traffic is open, so it could still send
-  out the GitHub token or the repos with `curl`. `npm ci` runs dependency
+  so a new `.husky/pre-push` is an ordinary edit, silent in auto mode), and
+  the sandbox lets traffic reach github.com, so a sandboxed command could
+  still send out the GitHub token or the repos there; an excluded command
+  and the HA scripts, which the agent can edit, run with full access after
+  the operator's tap; and the commit gate runs a repo's `check:` and git
+  with full access and no tap, so a check script, a dependency or a git
+  config that a sandboxed command changed runs outside the sandbox at the
+  next commit. `npm ci` runs dependency
   install scripts as the user that holds the keys, and `create-vm.sh` fetches
   the Debian image over https without a checksum. The next control, if the
   VM starts reading more untrusted content, is an egress allowlist in the

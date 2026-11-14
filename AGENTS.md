@@ -155,7 +155,11 @@ base branch against the PR tree. The edge fallback's Worker tests
   and scheduled jobs back up and prune, verify a restore and clean the
   runner. `edge-fallback.yml` deploys the edge copy hourly when a served tree
   changed; it is undone by disabling the workflow and deleting the two
-  Worker routes. The way back from a bad update is to revert its commit on `main`
+  Worker routes. `weekly-digest.yml` opens one `agent-digest` issue a week
+  from a Claude run on a GitHub-hosted runner, posted by a model-free job
+  ([estate ADR-027](https://github.com/khelias/khe-architecture/blob/main/decisions/027-attended-and-unattended-agent-tiers.md),
+  [SECURITY.md](SECURITY.md#automated-writers)); it is undone by disabling
+  the workflow. The way back from a bad update is to revert its commit on `main`
   and push; for an image that keeps state, also restore its data from the
   backup taken before the update
   ([runbook](docs/runbook.md#undoing-an-automerged-update)).
