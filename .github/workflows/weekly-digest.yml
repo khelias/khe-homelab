@@ -51,15 +51,13 @@ jobs:
           { echo "text<<$delim"; cat .github/agent/weekly-digest.md; echo "$delim"; } >> "$GITHUB_OUTPUT"
 
       # The sandbox needs bubblewrap and socat, and Ubuntu's AppArmor rule on
-      # user namespaces stops bwrap unless it has a profile of its own.
+      # user namespaces stops both bwrap and its seccomp helper. The rule is
+      # lifted for the whole machine, which is thrown away after the job.
       - name: Sandbox tools
         run: |
           sudo apt-get update -q
           sudo apt-get install -y --no-install-recommends bubblewrap socat
-          printf '%s\n' 'abi <abi/4.0>,' 'include <tunables/global>' \
-            'profile bwrap /usr/bin/bwrap flags=(unconfined) {' '  userns,' '}' \
-            | sudo tee /etc/apparmor.d/bwrap > /dev/null
-          sudo systemctl reload apparmor
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 
       # Default mode denies whatever the list below does not allow, since a
       # workflow has no one to ask; auto mode would let a review pass more.
