@@ -127,8 +127,13 @@ if ! command -v tailscale >/dev/null; then
 fi
 if ! tailscale status >/dev/null 2>&1; then
   echo "Open the login link below. The operator then disables this node's key expiry in the admin console."
-  sudo tailscale up --timeout=10m || fail "tailscale is not logged in; rerun this script"
+  sudo tailscale up --netfilter-mode=nodivert --timeout=10m || fail "tailscale is not logged in; rerun this script"
 fi
+# nodivert: tailscaled's own chain would accept every tailnet packet before
+# ufw, so a port a session opens would be open to the whole tailnet. Its
+# WireGuard port then needs its own ufw rule for direct, unrelayed paths.
+sudo tailscale set --netfilter-mode=nodivert
+sudo ufw allow 41641/udp comment 'tailscale direct' >/dev/null
 tailscale status | sed -n '1,3p'
 
 step "Linger, so the user units run without a login"
@@ -144,11 +149,12 @@ if [ "$(claude --version 2>/dev/null | awk '{print $1}')" != "$CLAUDE_VERSION" ]
 fi
 claude --version
 
-step "Claude settings from the template (allow rules are merged, nothing is removed)"
+# The template owns the permission rules: a rule dropped from it is dropped
+# here too, and an "always allow" given in a session does not survive a rerun.
+step "Claude settings from the template"
 mkdir -p "$HOME/.claude"
 [ -f "$HOME/.claude/settings.json" ] && cp "$HOME/.claude/settings.json" "$TMP/current.json" || echo '{}' > "$TMP/current.json"
-jq -s '.[0] as $a | .[1] as $b | ($a * $b)
-       | .permissions.allow = ((($a.permissions.allow // []) + ($b.permissions.allow // [])) | unique)' \
+jq -s '.[1] as $t | (.[0] * $t) | .permissions = $t.permissions' \
   "$TMP/current.json" "$INFRA/claude-settings.json" > "$TMP/settings.json"
 install -m 600 "$TMP/settings.json" "$HOME/.claude/settings.json"
 

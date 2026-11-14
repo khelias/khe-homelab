@@ -1,12 +1,17 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git push:*)",
-      "Bash(git -C * push:*)",
-      "Bash(ssh khe@docker-vm:*)",
-      "Bash(ssh -t khe@docker-vm:*)"
-    ]
+      "Bash(git push:*)"
+    ],
+    "ask": [
+      "Bash(ssh:*)",
+      "Bash(scp:*)",
+      "Bash(sftp:*)"
+    ],
+    "defaultMode": "auto",
+    "disableBypassPermissionsMode": "disable"
   },
+  "disableClaudeAiConnectors": true,
   "env": {
     "DISABLE_AUTOUPDATER": "1"
   },

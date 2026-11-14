@@ -52,13 +52,13 @@ Why NFS over virtual disk (zvol):
 | VM ID | Name       | Purpose              | vCPU | RAM   | OS | OS Disk |
 |-------|------------|----------------------|------|-------|----|---------|
 | 100   | docker-vm  | Main Docker host     | 8    | 16GB  | Debian 13 (cloud-init) | NVMe (local-lvm) 256GB |
-| 101   | playground | Testing/experiments  | 4    | 8GB   | Debian 13 (cloud-init) | NVMe (local-lvm) |
 | (private) | agent-vm | The workspace agent  | 2    | 6GB   | Debian 13 (cloud-init) | NVMe (local-lvm) 40GB |
 
 agent-vm runs the operator's Claude Code agent
 ([agent-vm.md](../agent-vm.md)). Its VM ID and address are in the private
 khe-meta `house/` network document, not here. It has no passthrough, so
-ballooning is fine, but it still needs 6 GB of free host memory before it is
+ballooning works: its floor is 4 GB, so the host can take back 2 GB before
+docker-vm feels short. It still needs 6 GB of free host memory before it is
 created.
 
 docker-vm has the iGPU passed through, so VFIO pins all of its memory on the

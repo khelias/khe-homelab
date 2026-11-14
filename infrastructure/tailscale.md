@@ -31,7 +31,12 @@ restart surfaced an expired key and the VM sat logged out for 13 hours until
 expiry is still disabled and the route still approved. Key expiry is disabled for agent-vm too, for
 the same reason. It advertises no route and accepts the tailnet DNS, so
 MagicDNS resolves `docker-vm`; its `ssh` is open on the LAN and the tailnet
-only.
+only. It runs with `--netfilter-mode=nodivert`: by default tailscaled's own
+chain accepts every tailnet packet before ufw, so any port a session opened
+(a dev server) would be open to every tailnet device. With nodivert, ufw's
+ssh-only rule decides (plus WireGuard's 41641/udp for direct paths); Taildrop
+and Tailscale's anti-spoof rule are given up.
+A plain `tailscale up` there must repeat the flag.
 
 ## Why host install, not Docker?
 

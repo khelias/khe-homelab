@@ -4,11 +4,11 @@ A Debian 13 VM that runs the operator's own Claude Code agent, always on, so
 the work does not depend on a laptop. `claude remote-control --spawn same-dir`
 runs in `~/khe` (a clone of the khe-workspace root) under a systemd user unit
 as `khe`. Sessions are reached from the Claude phone app, claude.ai and the
-laptop's desktop app (as an SSH host), and a claude.ai Project's tasks run
-there as local threads. The agent has the same rights as on the laptop
+laptop's desktop app (as an SSH host). Projects' local threads would run there
+too; Projects is not on the account yet (2026-11-14). The agent has the same rights as on the laptop
 ([estate ADR-023](https://github.com/khelias/khe-architecture/blob/main/decisions/023-agent-pushes-where-its-session-allows.md)):
 push, PR, auto-merge, and ssh to `khe@docker-vm` for read-only diagnosis and
-runbook steps. Why a VM and why Projects: [service-choices.md](../docs/service-choices.md#workspace-agent---agent-vm);
+runbook steps. Why a VM and how it is used: [service-choices.md](../docs/service-choices.md#workspace-agent---agent-vm);
 what it can reach: [SECURITY.md](../SECURITY.md#the-workspace-agent-agent-vm).
 Its VM ID and address are in the private khe-meta `house/` network document.
 
@@ -18,8 +18,7 @@ by VFIO, so the host needs 6 GB free before the VM is created.
 ## Build order
 
 1. **Proxmox UI shell, operator** (root on the host stays with the operator).
-   Check the host has 6 GB free and what VM 101 "playground" is for. Then,
-   with the values in place:
+   Check the host has 6 GB free. Then, with the values in place:
 
    ```bash
    VM_ID=<id> VM_NAME=agent-vm VM_IP=<address>/24 VM_SSH_PUBKEY='<public key>' \
@@ -33,7 +32,9 @@ by VFIO, so the host needs 6 GB free before the VM is created.
    there together, then `GIT_USER_NAME=... GIT_USER_EMAIL=... ./scripts/setup-agent-vm.sh`
    (the identity is the GitHub noreply one, passed at run time, never
    committed). It stops at `tailscale up` for its login link; afterwards the
-   operator disables the node's key expiry ([tailscale.md](tailscale.md)).
+   operator disables the node's key expiry. Tailscale runs with
+   `--netfilter-mode=nodivert` so ufw decides what the tailnet reaches
+   ([tailscale.md](tailscale.md)).
 3. **Sign in.** `gh auth login` and `claude auth login` (the operator opens
    the links; 2FA on the claude.ai account). Rerun `setup-agent-vm.sh`: it now
    clones the workspace and every repo, runs `npm ci`, installs Playwright
@@ -42,7 +43,9 @@ by VFIO, so the host needs 6 GB free before the VM is created.
    2026-11-14), newer than Debian 13's 3.13, so the script skips it and
    ha-estfeed commits stay with the laptop until the VM has that Python.
 4. **Authorise** the VM's docker-vm key (printed by the script) in
-   `khe@docker-vm`'s `authorized_keys`; put a Grafana Viewer service-account
+   `khe@docker-vm`'s `authorized_keys`, prefixed with
+   `from="<agent-vm LAN address>,<agent-vm tailnet address>"` so the key works
+   from nowhere else; put a Grafana Viewer service-account
    token in `~/.config/khe/grafana-token` (mode 600). The first ssh to
    docker-vm trusts the host key it sees (`accept-new`): compare its
    fingerprint with the one docker-vm shows for itself before relying on it.
@@ -72,10 +75,19 @@ by VFIO, so the host needs 6 GB free before the VM is created.
   `setup-agent-vm.sh`) with the autoupdater off. Stay at v2.1.280 or newer:
   local Projects threads need it. Rerun the script with the new version, then
   `systemctl --user restart remote-control`: a running server loses its
-  program file when the binary is replaced. Node, gitleaks and mcp-grafana
-  are pinned the same way, with checksums.
+  program file when the binary is replaced. The installer checks the binary
+  against the checksum in the release's manifest; the installer script itself
+  is fetched unpinned. Node, gitleaks and mcp-grafana are pinned with
+  checksums in the script.
 - **When the VM is down,** work from the laptop's personal Claude instance;
   the workspace and its gate are the same.
-- **Cloud threads.** A Projects thread must be sent with Work locally. A cloud
-  thread skips the commit gate; the Claude GitHub App is therefore kept off
-  the estate repos.
+- **Permissions.** `claude-settings.json` is the VM's floor and replaces the
+  permission rules on every run of the setup script: sessions start in auto
+  mode, `ssh`, `scp` and `sftp`
+  ask on the phone, a push written as `git push ...` (after a `cd` into the
+  repo, not `git -C`) does not, bypass mode is off and claude.ai
+  connectors are not loaded ([SECURITY.md](../SECURITY.md#the-workspace-agent-agent-vm)).
+  An "always allow" given in a session lasts until the next run.
+- **Cloud sessions.** A cloud session or Projects thread skips the commit
+  gate, so the Claude GitHub App stays suspended; once Projects reaches the
+  account, its threads are sent with Work locally.

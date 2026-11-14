@@ -54,7 +54,7 @@ comparable, the one that scores better on these wins.
 | Logs and log alerts   | Loki + Alloy + Grafana| Medium     | 2026-10-01    |
 | Dashboard             | Homepage              | High       | 2026-05-05    |
 | Hypervisor            | Proxmox VE            | High       | 2026-05-05    |
-| Workspace agent       | agent-vm + Projects   | Medium     | 2026-11-14    |
+| Workspace agent       | agent-vm + Remote Control | Medium     | 2026-11-14    |
 | Container auto-heal   | autoheal              | High       | 2026-05-05    |
 | Dependency updates    | Renovate              | High       | 2026-05-05    |
 | House automation      | Home Assistant (Container) | High  | 2026-09-13    |
@@ -605,22 +605,45 @@ service's secrets and the six Actions runners, and the agent builds, browses
 and runs untrusted dependencies' scripts. The OpenClaw removal (2026-09-25)
 is the precedent. It is reversible: stop the VM and use the laptop.
 
-**Why Projects threads for background work:** the claude.ai Projects feature
-starts a thread per task; each one sent with Work locally runs on agent-vm,
-inside the operator's Allow card, and a cloud thread would skip the commit
-gate. That replaces a self-built unattended worker, which two reviews found
-needs much plumbing (a pusher with no ssh key, a task broker, root-owned
-gate) that Projects may make unnecessary. It does not touch estate ADR-023's
-revisit trigger, since nothing is scheduled and the operator starts every
-thread. Reversible by not using the project; no estate ADR.
+**Why Remote Control sessions for background work:** the operator starts a
+session on agent-vm from the phone, it runs in the workspace with the commit
+gate, and the phone gets the permission prompts. The claude.ai Projects
+feature, which would start a thread per task and run each one sent with Work
+locally on agent-vm, was the plan; it is not on the account yet (2026-11-14).
+A cloud thread or session would skip the commit gate. Either replaces a
+self-built unattended worker, which two reviews found needs much plumbing (a
+pusher with no ssh key, a task broker, root-owned gate). It does not touch
+estate ADR-023's revisit trigger, since nothing is scheduled and the operator
+starts every session. Reversible; no estate ADR.
+
+**Why ssh asks and pushes do not (2026-11-14):** the key on agent-vm is root
+on docker-vm, and the VM reads content others wrote (logs, PRs, release
+notes), so every `ssh`, `scp` and `sftp` waits for the operator's tap
+(`ask` rules, which beat allows and hold in auto mode) and the commit gate
+refuses a push that could run a command or whose options it cannot read.
+Sessions start in auto mode, which the operator chose so that only those
+taps reach the phone. Pushes stay unprompted, but only as `git push ...`: a `git -C <dir> push`
+allow would let any global option ride along (`--exec-path`, `-c`). GitHub's
+branch rules, the gate and the missing `workflow` scope bound them. Loki
+through mcp-grafana stays the prompt-free way to read the VM. The settings
+template owns the permission rules, so a rerun of `setup-agent-vm.sh` drops
+a rule the template no longer has, and an "always allow" given in a session
+does not survive it. Reversible by one edit; ADR-023 stands.
+
+**Why Tailscale runs with nodivert there:** by default tailscaled accepts
+every tailnet packet before ufw, so a dev server a session starts is open to
+every tailnet device, a family phone included. nodivert leaves inbound to
+ufw (ssh only) and gives up Taildrop and Tailscale's anti-spoof rule, which
+the VM does not need ([tailscale.md](../infrastructure/tailscale.md)).
 
 **Alternatives considered:** a worker with its own user and no LAN route
 (dropped for now, constraints kept in the plan), Claude Code on the cloud
 (no gate, no skills), a laptop that stays awake.
 
-**When we'd revisit:** Projects stops running threads locally or drops
-Remote Control, a thread starts without the operator's confirmation, or an
-unattended worker becomes necessary.
+**When we'd revisit:** Projects reaches the account (then its threads run
+locally or not at all), Remote Control is dropped, a session starts without
+the operator's confirmation, the ssh prompts get in the way of real work, or
+an unattended worker becomes necessary.
 
 ---
 
