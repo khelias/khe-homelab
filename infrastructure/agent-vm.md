@@ -38,7 +38,9 @@ by VFIO, so the host needs 6 GB free before the VM is created.
    the links; 2FA on the claude.ai account). Rerun `setup-agent-vm.sh`: it now
    clones the workspace and every repo, runs `npm ci`, installs Playwright
    browsers, builds ha-estfeed's `.venv` and registers the grafana MCP server
-   at user scope.
+   at user scope. ha-estfeed needs Home Assistant's Python (3.14 on
+   2026-11-14), newer than Debian 13's 3.13, so the script skips it and
+   ha-estfeed commits stay with the laptop until the VM has that Python.
 4. **Authorise** the VM's docker-vm key (printed by the script) in
    `khe@docker-vm`'s `authorized_keys`; put a Grafana Viewer service-account
    token in `~/.config/khe/grafana-token` (mode 600). The first ssh to

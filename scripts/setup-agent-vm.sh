@@ -231,8 +231,15 @@ done
 
 if [ -f "$WORKSPACE/repos/ha-estfeed/pyproject.toml" ]; then
   echo "-- ha-estfeed: .venv"
-  [ -d "$WORKSPACE/repos/ha-estfeed/.venv" ] || python3 -m venv "$WORKSPACE/repos/ha-estfeed/.venv"
-  "$WORKSPACE/repos/ha-estfeed/.venv/bin/pip" install --quiet -e "$WORKSPACE/repos/ha-estfeed[dev]"
+  # ha-estfeed follows Home Assistant's Python, which can be newer than
+  # Debian's. When pip refuses, the repo is skipped and its commits stay with
+  # the laptop; the venv is removed so a later run starts clean.
+  venv="$WORKSPACE/repos/ha-estfeed/.venv"
+  [ -d "$venv" ] || python3 -m venv "$venv"
+  if ! "$venv/bin/pip" install --quiet -e "$WORKSPACE/repos/ha-estfeed[dev]"; then
+    rm -rf "$venv"
+    echo "   skipped: ha-estfeed needs a newer Python than this VM's $(python3 -V 2>&1 | cut -d' ' -f2)"
+  fi
 fi
 
 # User scope, so sessions in a repo worktree see it too.
