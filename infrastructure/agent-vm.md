@@ -89,5 +89,5 @@ by VFIO, so the host needs 6 GB free before the VM is created.
   connectors are not loaded ([SECURITY.md](../SECURITY.md#the-workspace-agent-agent-vm)).
   An "always allow" given in a session lasts until the next run.
 - **Cloud sessions.** A cloud session or Projects thread skips the commit
-  gate, so the Claude GitHub App stays suspended; once Projects reaches the
+  gate, so the Claude GitHub App stays uninstalled; once Projects reaches the
   account, its threads are sent with Work locally.

@@ -92,7 +92,8 @@ for the blast radius:
 - The gh token has no `workflow` scope, so GitHub itself refuses a push that
   changes `.github/workflows/`.
 - A Claude Code cloud session would skip the commit gate; the Claude GitHub
-  App, which gives those sessions write access, is to stay suspended.
+  App, which gives those sessions write access, was uninstalled on 2026-11-14
+  (with Google Labs Jules) and is not to come back without a decision.
   Projects, whose threads could run either way, is not on the account yet
   (2026-11-14).
 - Its `vzdump` backup holds the GitHub, Claude and ssh credentials: it stays on
