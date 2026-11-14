@@ -1,0 +1,18 @@
+# Use this form instead of remote-control.service only if server mode will not
+# run without a terminal. Installed under the same name, so the auth check and
+# the runbook need not know which one runs. tmux keeps the terminal and its
+# loop restarts claude; the unit stays up only while the tmux session exists,
+# so systemd restarts it, and the auth check sees it down, if the session dies.
+[Unit]
+Description=Claude Code Remote Control for the workspace agent (in tmux)
+
+[Service]
+WorkingDirectory=%h/khe
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/bin/sh -c "tmux new-session -d -s remote-control 'while true; do claude remote-control --spawn same-dir; sleep 30; done'; while tmux has-session -t remote-control 2>/dev/null; do sleep 10; done"
+ExecStop=/usr/bin/tmux kill-session -t remote-control
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=default.target

@@ -185,7 +185,7 @@ All external traffic goes through Cloudflare Tunnel — zero ports open on the r
 # On Proxmox host
 ./scripts/proxmox-post-install.sh     # 1. Disable enterprise repo, tools, security updates, IOMMU
 ./scripts/create-zfs-pool.sh          # 2. Create ZFS mirror from 2x 12TB HDDs
-./scripts/create-docker-vm.sh         # 3. Create Debian 13 VM (cloud-init, fully automated)
+./scripts/create-vm.sh                # 3. Create the docker-vm Debian 13 VM (cloud-init, fully automated)
 ./scripts/setup-igpu-passthrough.sh   # 4. Bind Intel iGPU to vfio-pci, attach it to the VM (reboot after)
 ./scripts/setup-nfs-share.sh          # 5. Export ZFS pool via NFS
 
@@ -226,7 +226,8 @@ When something is broken, follow [docs/runbook.md](docs/runbook.md).
 - [docs/runbook.md](docs/runbook.md) - what to do when something is broken
 - [docs/operational-notes.md](docs/operational-notes.md) - per-service quirks
 - [docs/service-choices.md](docs/service-choices.md) - why each service
-- [infrastructure/](infrastructure/) - Proxmox, network, Cloudflare, Tailscale, offsite backup
+- [infrastructure/](infrastructure/) - Proxmox, network, Cloudflare, Tailscale, offsite backup,
+  [agent-vm](infrastructure/agent-vm.md) (the workspace agent's VM)
 - [SECURITY.md](SECURITY.md), [ROADMAP.md](ROADMAP.md)
 - [AGENTS.md](AGENTS.md) - layout and conventions for working on the repo; the Home
   Assistant procedure is in [khe-home-assistant](https://github.com/khelias/khe-home-assistant/blob/main/AGENTS.md)

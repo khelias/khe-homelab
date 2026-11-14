@@ -62,11 +62,12 @@ changed_stacks() {
 # --- Heartbeats: optional Uptime Kuma push for a scheduled job ----------
 # Setup: docs/operational-notes.md#backup-heartbeats.
 
-# Sets HEARTBEAT_URL from the variable named $1 in ~/homelab/.env.heartbeat;
-# empty, and every heartbeat a no-op, when the file or the variable is absent.
+# Sets HEARTBEAT_URL from the variable named $1 in the env file $2, by default
+# ~/homelab/.env.heartbeat; empty, and every heartbeat a no-op, when the file
+# or the variable is absent.
 heartbeat_init() {
   local url_var="$1"
-  local heartbeat_env="${HOME}/homelab/.env.heartbeat"
+  local heartbeat_env="${2:-${HOME}/homelab/.env.heartbeat}"
 
   HEARTBEAT_URL=""
   if [ -f "$heartbeat_env" ]; then

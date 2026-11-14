@@ -54,6 +54,7 @@ comparable, the one that scores better on these wins.
 | Logs and log alerts   | Loki + Alloy + Grafana| Medium     | 2026-10-01    |
 | Dashboard             | Homepage              | High       | 2026-05-05    |
 | Hypervisor            | Proxmox VE            | High       | 2026-05-05    |
+| Workspace agent       | agent-vm + Projects   | Medium     | 2026-11-14    |
 | Container auto-heal   | autoheal              | High       | 2026-05-05    |
 | Dependency updates    | Renovate              | High       | 2026-05-05    |
 | House automation      | Home Assistant (Container) | High  | 2026-09-13    |
@@ -589,6 +590,37 @@ on community size, hardware support, and ZFS+LXC+QEMU combo.
 
 **When we'd revisit:** Proxmox commercialises in a way that bites home
 use; XCP-ng's community surpasses Proxmox's (no signal).
+
+---
+
+## Workspace agent - agent-vm
+
+The operator's Claude Code agent used to run on a laptop, so it stopped when
+the laptop did. It now runs in a VM of its own, `claude remote-control
+--spawn same-dir` under systemd in a clone of the workspace, reachable from
+the phone and the laptop ([infrastructure/agent-vm.md](../infrastructure/agent-vm.md)).
+
+**Why a VM, not docker-vm or a container there:** docker-vm holds every
+service's secrets and the six Actions runners, and the agent builds, browses
+and runs untrusted dependencies' scripts. The OpenClaw removal (2026-09-25)
+is the precedent. It is reversible: stop the VM and use the laptop.
+
+**Why Projects threads for background work:** the claude.ai Projects feature
+starts a thread per task; each one sent with Work locally runs on agent-vm,
+inside the operator's Allow card, and a cloud thread would skip the commit
+gate. That replaces a self-built unattended worker, which two reviews found
+needs much plumbing (a pusher with no ssh key, a task broker, root-owned
+gate) that Projects may make unnecessary. It does not touch estate ADR-023's
+revisit trigger, since nothing is scheduled and the operator starts every
+thread. Reversible by not using the project; no estate ADR.
+
+**Alternatives considered:** a worker with its own user and no LAN route
+(dropped for now, constraints kept in the plan), Claude Code on the cloud
+(no gate, no skills), a laptop that stays awake.
+
+**When we'd revisit:** Projects stops running threads locally or drops
+Remote Control, a thread starts without the operator's confirmation, or an
+unattended worker becomes necessary.
 
 ---
 

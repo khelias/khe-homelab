@@ -1,0 +1,8 @@
+[Unit]
+Description=Check the agent's logins and link, then push the Uptime Kuma heartbeat
+
+[Service]
+Type=oneshot
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+TimeoutStartSec=2min
+ExecStart=/usr/local/sbin/khe-agent-auth-check

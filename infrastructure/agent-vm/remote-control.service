@@ -1,0 +1,12 @@
+[Unit]
+Description=Claude Code Remote Control for the workspace agent
+
+[Service]
+WorkingDirectory=%h/khe
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=%h/.local/bin/claude remote-control --spawn same-dir
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=default.target

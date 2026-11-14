@@ -62,6 +62,32 @@ the required `validate.yml` check:
   there); the `/srv` share, with backups, runner credentials and service
   data, is not mounted.
 
+## The workspace agent (agent-vm)
+
+agent-vm runs the operator's Claude Code agent, always on
+([infrastructure/agent-vm.md](infrastructure/agent-vm.md)). What that means
+for the blast radius:
+
+- It holds an ssh key that is root on docker-vm (the `khe` user has sudo
+  there) and pushes to GitHub as the operator, under
+  [estate ADR-023](https://github.com/khelias/khe-architecture/blob/main/decisions/023-agent-pushes-where-its-session-allows.md).
+  It is reachable only over the LAN and the tailnet, with keys-only sshd and a
+  default-deny firewall.
+- Its sessions run without the Bash sandbox the laptop has, and Projects
+  threads run in auto mode.
+- The claude.ai account (2FA on) now drives an always-on agent with that
+  reach, through Remote Control and Projects. Trusted Devices stays off,
+  because local Projects threads need it off.
+- Only Projects threads sent with Work locally run there, each started by the
+  operator's own Allow card. A cloud thread skips the commit gate, so the
+  Claude GitHub App is kept off the estate repos and no claude.ai connector
+  that can write to GitHub is left on for threads.
+- Its `vzdump` backup holds the GitHub, Claude and ssh credentials: it stays on
+  a storage that is not exported to docker-vm and is not copied offsite.
+- Nothing is scheduled and no unattended worker exists; merges follow
+  estate ADR-023 as on the laptop. A worker that acts without the operator
+  in the session is a separate decision.
+
 ## Network exposure
 
 The router forwards no ports; the internet reaches the homelab only through

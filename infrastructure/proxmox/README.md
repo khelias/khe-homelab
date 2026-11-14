@@ -53,6 +53,13 @@ Why NFS over virtual disk (zvol):
 |-------|------------|----------------------|------|-------|----|---------|
 | 100   | docker-vm  | Main Docker host     | 8    | 16GB  | Debian 13 (cloud-init) | NVMe (local-lvm) 256GB |
 | 101   | playground | Testing/experiments  | 4    | 8GB   | Debian 13 (cloud-init) | NVMe (local-lvm) |
+| (private) | agent-vm | The workspace agent  | 2    | 6GB   | Debian 13 (cloud-init) | NVMe (local-lvm) 40GB |
+
+agent-vm runs the operator's Claude Code agent
+([agent-vm.md](../agent-vm.md)). Its VM ID and address are in the private
+khe-meta `house/` network document, not here. It has no passthrough, so
+ballooning is fine, but it still needs 6 GB of free host memory before it is
+created.
 
 docker-vm has the iGPU passed through, so VFIO pins all of its memory on the
 host from boot and ballooning cannot return any of it: on 2026-10-01 a balloon
@@ -61,6 +68,13 @@ floor shrank the guest to 14 GiB while the host stayed at 96%. Size the VM by
 available next to ARC (capped at 3.1 GiB) while the guest used 6.8 GiB, the
 rest file cache, after Ollama, Jellyfin, Nextcloud and Paperless were retired.
 The guest has no swap and Immich ML jobs are its peaks, so keep headroom.
+
+## Backups
+
+A weekly `vzdump` job covers agent-vm, to a storage that is not exported to
+docker-vm and is not copied offsite: the image holds the GitHub, Claude and
+ssh credentials of the agent
+([SECURITY.md](../../SECURITY.md#the-workspace-agent-agent-vm)).
 
 ## Security
 
@@ -101,4 +115,6 @@ Homepage token it held was replaced and removed on 2026-10-01
 ## VM Provisioning
 VMs are created using Debian 13 (Trixie) cloud images with cloud-init (no interactive installer).
 Cloud-init configures: hostname, static IP, SSH keys, user account.
-See `../../scripts/create-docker-vm.sh`
+See `../../scripts/create-vm.sh`: with no variables it builds docker-vm; any other VM
+gives its ID, name, address and ssh public key at run time (the script lists them),
+so addresses are never committed.

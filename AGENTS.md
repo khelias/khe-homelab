@@ -35,8 +35,9 @@ services/
   home/            Home Assistant (container only), Mosquitto, PAI (Paradox alarm)
   apps/            landing, games, pages, trips
   observability/   Loki, Grafana, Alloy, Alertmanager (one stack)
-infrastructure/    Proxmox, network, Cloudflare, Tailscale docs;
-                   edge-fallback/ holds the edge copy's Worker
+infrastructure/    Proxmox, network, Cloudflare, Tailscale docs; agent-vm.md and
+                   agent-vm/ (units and settings template) for the workspace
+                   agent's VM; edge-fallback/ holds the edge copy's Worker
 scripts/           setup, deploy, backup, hardening, validate-compose;
                    lib.sh holds the helpers they share
 ```
@@ -123,6 +124,9 @@ base branch against the PR tree. The edge fallback's Worker tests
   `192.168.0.11`, SSH `khe@docker-vm` over Tailscale MagicDNS, key auth
   only. Admin credentials live in the VM's `.env` files, except NPM's login
   (in its database) and AdGuard's (in its live `AdGuardHome.yaml`).
+- **Sessions on agent-vm** ([infrastructure/agent-vm.md](infrastructure/agent-vm.md))
+  are the interactive agent: it works in `~/khe` and reaches docker-vm by
+  `ssh khe@docker-vm`, with the same limits as everywhere (estate ADR-023).
 - On the VM: `./scripts/deploy.sh status|pull|up|down`, `./scripts/backup.sh`
   (Postgres dumps, config snapshots, HA's config volume and recorder). Per service:
   `cd services/<group>/<service> && docker compose up -d`.

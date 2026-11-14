@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git push:*)",
+      "Bash(git -C * push:*)",
+      "Bash(ssh khe@docker-vm:*)",
+      "Bash(ssh -t khe@docker-vm:*)"
+    ]
+  },
+  "env": {
+    "DISABLE_AUTOUPDATER": "1"
+  },
+  "agentPushNotifEnabled": true
+}

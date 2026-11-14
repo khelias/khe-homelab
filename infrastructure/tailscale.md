@@ -28,7 +28,10 @@ default 180-day expiry the node drops off the tailnet and waits for an
 interactive login, cutting all remote access; on 2026-10-12 the auto-update
 restart surfaced an expired key and the VM sat logged out for 13 hours until
 `sudo tailscale up` was run from the LAN. After any re-login, check that the
-expiry is still disabled and the route still approved.
+expiry is still disabled and the route still approved. Key expiry is disabled for agent-vm too, for
+the same reason. It advertises no route and accepts the tailnet DNS, so
+MagicDNS resolves `docker-vm`; its `ssh` is open on the LAN and the tailnet
+only.
 
 ## Why host install, not Docker?
 
@@ -42,6 +45,7 @@ expiry is still disabled and the route still approved.
 | Node      | OS    | Role                        |
 |-----------|-------|-----------------------------|
 | docker-vm | Linux | Server, subnet router       |
+| agent-vm  | Linux | Workspace agent, plain node |
 | mac       | macOS | Client                      |
 | iphone    | iOS   | Client                      |
 

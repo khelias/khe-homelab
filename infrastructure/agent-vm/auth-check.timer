@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily check of the agent's logins and link
+
+[Timer]
+OnBootSec=10min
+OnCalendar=daily
+Persistent=true
+
+[Install]
+WantedBy=timers.target

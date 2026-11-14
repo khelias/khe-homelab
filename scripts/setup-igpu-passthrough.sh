@@ -68,7 +68,7 @@ if qm status "$VM_ID" >/dev/null 2>&1; then
     echo "  VM $VM_ID already has hostpci0: $CURRENT_HOSTPCI"
   fi
 else
-  echo "  VM $VM_ID does not exist yet — run create-docker-vm.sh, then re-run this script."
+  echo "  VM $VM_ID does not exist yet — run create-vm.sh, then re-run this script."
 fi
 
 echo ""
