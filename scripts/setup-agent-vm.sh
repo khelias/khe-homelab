@@ -41,7 +41,9 @@ step() { echo; echo "== $*"; }
 [ "$(id -u)" -ne 0 ] || fail "run as khe, not root; the script uses sudo where it must"
 [ "$(whoami)" = khe ] || fail "run as the user khe"
 [ -d "$INFRA" ] || fail "$INFRA is missing; copy scripts/ and infrastructure/agent-vm/ together"
-sudo -v
+# Not `sudo -v`: with the sudo group's password rule also matching, -v asks
+# for a password even though cloud-init gave khe NOPASSWD.
+sudo -n true || fail "khe needs passwordless sudo (cloud-init sets it)"
 
 # Downloads $1 to $3 and fails unless its sha256 is $2.
 fetch_verified() {
