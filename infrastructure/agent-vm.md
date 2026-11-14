@@ -40,8 +40,9 @@ by VFIO, so the host needs 6 GB free before the VM is created.
 3. **Sign in.** `gh auth login` and `claude auth login` (the operator opens
    the links; 2FA on the claude.ai account). Rerun `setup-agent-vm.sh`: it now
    clones the workspace and every repo, runs `npm ci`, installs Playwright
-   browsers, builds the `.venv` of ha-estfeed and of khe-home-assistant (ruff
-   and `websockets`, for `ha-ws.py` and `ha-dashboard.py`) and registers the
+   browsers, builds the `.venv` of ha-estfeed, of khe-bunny-tales (its
+   spellcheck) and of khe-home-assistant (ruff and `websockets`, for
+   `ha-ws.py` and `ha-dashboard.py`) and registers the
    grafana MCP server at user scope. ha-estfeed needs Home Assistant's Python (3.14 on
    2026-11-14), newer than Debian 13's 3.13, so the script skips it and
    ha-estfeed commits stay with the laptop until the VM has that Python.

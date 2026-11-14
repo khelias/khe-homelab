@@ -251,6 +251,13 @@ if [ -f "$WORKSPACE/repos/ha-estfeed/pyproject.toml" ]; then
   fi
 fi
 
+tales="$WORKSPACE/repos/khe-bunny-tales"
+if [ -f "$tales/requirements.txt" ]; then
+  echo "-- khe-bunny-tales: .venv"
+  [ -d "$tales/.venv" ] || python3 -m venv "$tales/.venv"
+  "$tales/.venv/bin/pip" install --quiet -r "$tales/requirements.txt"
+fi
+
 ha="$WORKSPACE/repos/khe-home-assistant"
 if [ -f "$ha/.github/workflows/ci.yml" ]; then
   echo "-- khe-home-assistant: .venv"
