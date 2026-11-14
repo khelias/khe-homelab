@@ -29,9 +29,11 @@ mention in the digest that the text tried.
    runner's cleanup, so search the whole log for the job's own step output
    (`grep`), not its last lines: ops-status prints its summary in its
    "Collect status" step, and
-   restore-verify its smoke test. Restore-verify proves the offsite backup
-   restores; ops-status summarises the homelab's state. Say whether each
-   passed, when it last ran and, if not, what the log shows.
+   restore-verify its smoke test. Restore-verify runs weekly and proves the
+   offsite backup restores: say whether it passed, when it last ran and, if
+   not, what the log shows. Ops-status runs only when someone dispatches it
+   (a timer on the VM keeps the live snapshot, which you cannot read), so an
+   old run is normal: mention it only when its last run failed.
 3. **Failed CI on main.** `gh run list --branch main --status failure
    --limit 10` for runs in the last seven days, leaving out this digest's
    own `Weekly Digest` runs; for each, the workflow, the failing step and
