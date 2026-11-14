@@ -57,8 +57,11 @@ the required `validate.yml` check:
   sits in the `agent` environment, which only `main` can use, and is
   stripped from the commands Claude runs; outbound traffic from that job is
   open, so an injected run could still send it out, which spends the
-  subscription until the token is revoked. Undone by disabling the workflow,
-  revoking the token in claude.ai and deleting the issue.
+  subscription until the token is revoked. The token from `claude
+  setup-token` is valid for a year (created 2026-11-14): renew it in the
+  environment before it lapses, or the job fails at its first call. Undone
+  by disabling the workflow, revoking the token in claude.ai and deleting
+  the issue.
 
 ## Automated readers
 
