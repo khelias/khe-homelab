@@ -53,7 +53,9 @@ by VFIO, so the host needs 6 GB free before the VM is created.
 6. **First run of remote control**, once in a terminal: `cd ~/khe && claude
    remote-control --spawn same-dir`, answering the trust and "Enable Remote
    Control?" prompts. If it runs without a terminal, `systemctl --user enable
-   --now remote-control`. If it will not, install `remote-control-tmux.service`
+   --now remote-control` (it does, 2026-11-14). The unit discards stdout,
+   where server mode redraws its status screen every second; a lapsed login
+   shows up in the auth check, and the status screen in a terminal run. If it will not, install `remote-control-tmux.service`
    under the name `remote-control.service` instead and enable that. Turn
    push notifications on in `/config`.
 7. **Heartbeat.** An Uptime Kuma push monitor with a 2-day interval; its URL
