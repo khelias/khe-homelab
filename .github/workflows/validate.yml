@@ -123,3 +123,12 @@ jobs:
       - name: Validate all service configs
         if: github.event_name != 'pull_request'
         run: .base/scripts/validate-compose.sh all
+
+      # The weekly digest's post script (weekly-digest.yml) on its fixtures:
+      # the PR's own scripts, the one exception to the base-branch rule above,
+      # since the test is of the change itself and checks nothing else.
+      - name: Digest post script fixtures
+        run: |
+          bash scripts/agent-digest-tools.sh "$RUNNER_TEMP/tools"
+          PATH="$RUNNER_TEMP/tools:$PATH" PII_RULES="$RUNNER_TEMP/tools/pii-rules.toml" \
+            bash scripts/agent-digest-post-test.sh

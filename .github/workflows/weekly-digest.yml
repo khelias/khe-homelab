@@ -1,0 +1,110 @@
+name: Weekly Digest
+
+# The unattended agent tier (estate ADR-027): Claude reads the held Renovate
+# PRs, the scheduled jobs' last runs and failed CI on main, and writes one
+# digest. Two jobs, so the model never holds a write token: `digest` runs
+# Claude with read permissions only and uploads digest.md; `post` runs no
+# model, scans the file and opens the issue (scripts/agent-digest-post.sh).
+# GitHub-hosted runner only: a run must not reach the homelab.
+# Fallback: disable this workflow and revoke the token (claude.ai settings).
+
+on:
+  schedule:
+    - cron: '0 21 * * 5'   # Friday 21:00 UTC, read on Saturday morning
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: weekly-digest
+  cancel-in-progress: false
+
+jobs:
+  digest:
+    name: Claude writes the digest
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Holds CLAUDE_CODE_OAUTH_TOKEN and deploys from main only, so a dispatch
+    # from another branch cannot read the secret.
+    environment: agent
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+      actions: read
+    env:
+      # Strips the OAuth token from Bash children; gh keeps GH_TOKEN.
+      CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: '1'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      # The action takes the prompt as text, not a file.
+      - name: Read the prompt
+        id: prompt
+        run: |
+          delim="PROMPT_$(openssl rand -hex 16)"
+          { echo "text<<$delim"; cat .github/agent/weekly-digest.md; echo "$delim"; } >> "$GITHUB_OUTPUT"
+
+      # Default mode denies whatever the list below does not allow, since a
+      # workflow has no one to ask; auto mode would let a review pass more.
+      # Reads outside the checkout are blocked, so /proc and the runner's
+      # files stay out of reach of the built-in read-only commands.
+      - name: Claude
+        uses: anthropics/claude-code-action@f3b070c88125d33dbae5653df5f143101d4ea9dc # v1.0.276
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          prompt: ${{ steps.prompt.outputs.text }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          settings: '{"permissions": {"blockReadsOutsideWorkingDirectories": true}}'
+          claude_args: >-
+            --model sonnet
+            --max-turns 40
+            --permission-mode default
+            --allowedTools "Read,Glob,Grep,WebFetch,Edit(/digest.md),Bash(gh pr list *),Bash(gh pr view *),Bash(gh pr diff *),Bash(gh run list *),Bash(gh run view *)"
+
+      - name: Upload the digest
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: digest
+          path: digest.md
+          if-no-files-found: error
+          retention-days: 7
+
+  post:
+    name: Scan and post
+    needs: digest
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      # gitleaks and the workspace's personal-data rules, pinned there.
+      - name: Scan tools
+        run: |
+          bash scripts/agent-digest-tools.sh "$RUNNER_TEMP/tools"
+          echo "$RUNNER_TEMP/tools" >> "$GITHUB_PATH"
+
+      - name: Download the digest
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: digest
+          path: ${{ runner.temp }}/digest
+
+      - name: Post
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PII_RULES: ${{ runner.temp }}/tools/pii-rules.toml
+        run: bash scripts/agent-digest-post.sh "$RUNNER_TEMP/digest/digest.md"
