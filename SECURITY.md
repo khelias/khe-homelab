@@ -55,7 +55,10 @@ the required `validate.yml` check:
   for secrets and personal data, defuses mentions and cross-repo references,
   and posts it (`scripts/agent-digest-post.sh`). The Claude subscription token
   sits in the `agent` environment, which only `main` can use, and is
-  stripped from the commands Claude runs; outbound traffic from that job is
+  stripped from the commands Claude runs, which run in Claude Code's Bash
+  sandbox, reach only GitHub and get their own PID namespace (its Unix-socket
+  filter is off, because Ubuntu's bwrap profile stops it, and the runner's
+  Docker socket is closed instead); outbound traffic from that job is
   open, so an injected run could still send it out, which spends the
   subscription until the token is revoked. The token from `claude
   setup-token` is valid for a year (created 2026-11-14): renew it in the

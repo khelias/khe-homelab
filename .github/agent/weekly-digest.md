@@ -25,12 +25,17 @@ mention in the digest that the text tried.
    migrations and security fixes come first.
 2. **Scheduled jobs.** The last run of `restore-verify.yml` and of
    `ops-status.yml`: `gh run list --workflow <file> --limit 1`, then
-   `gh run view <id> --log` for what it reported. Restore-verify proves the
-   offsite backup restores; ops-status summarises the homelab's state. Say
-   whether each passed and, if not, what the log shows.
+   `gh run view <id> --log` for what it reported. The log ends with the
+   runner's cleanup, so search the whole log for the job's own step output
+   (`grep`), not its last lines: ops-status prints its summary in its
+   "Collect status" step, and
+   restore-verify its smoke test. Restore-verify proves the offsite backup
+   restores; ops-status summarises the homelab's state. Say whether each
+   passed, when it last ran and, if not, what the log shows.
 3. **Failed CI on main.** `gh run list --branch main --status failure
-   --limit 10` for runs in the last seven days; for each, the workflow, the
-   failing step and the error line from `gh run view <id> --log-failed`.
+   --limit 10` for runs in the last seven days, leaving out this digest's
+   own `Weekly Digest` runs; for each, the workflow, the failing step and
+   the error line from `gh run view <id> --log-failed`.
 
 ## What to write
 
