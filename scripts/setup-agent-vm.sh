@@ -111,7 +111,9 @@ APT::Periodic::Update-Package-Lists "1";
 APT::Periodic::Unattended-Upgrade "1";
 EOF
 echo 'Unattended-Upgrade::Automatic-Reboot "false";' | sudo tee /etc/apt/apt.conf.d/51auto-reboot >/dev/null
-apt-config dump | grep -q '^Unattended-Upgrade::Origins-Pattern:: ".*-security' ||
+# Not `| grep -q`: under pipefail, grep closing the pipe early can fail the
+# pipeline with SIGPIPE although the line is there.
+apt-config dump | grep '^Unattended-Upgrade::Origins-Pattern:: ".*-security' >/dev/null ||
   fail "unattended-upgrades allows no security origin"
 
 step "Tailscale (plain node, no routes; MagicDNS resolves docker-vm)"
@@ -127,7 +129,7 @@ if ! tailscale status >/dev/null 2>&1; then
   echo "Open the login link below. The operator then disables this node's key expiry in the admin console."
   sudo tailscale up --timeout=10m || fail "tailscale is not logged in; rerun this script"
 fi
-tailscale status | head -3
+tailscale status | sed -n '1,3p'
 
 step "Linger, so the user units run without a login"
 sudo loginctl enable-linger khe
