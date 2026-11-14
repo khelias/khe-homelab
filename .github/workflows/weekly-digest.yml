@@ -51,13 +51,17 @@ jobs:
           { echo "text<<$delim"; cat .github/agent/weekly-digest.md; echo "$delim"; } >> "$GITHUB_OUTPUT"
 
       # The sandbox needs bubblewrap and socat, and Ubuntu's AppArmor rule on
-      # user namespaces stops both bwrap and its seccomp helper. The rule is
-      # lifted for the whole machine, which is thrown away after the job.
+      # user namespaces stops bwrap; the rule is lifted for the whole machine,
+      # which is thrown away after the job. Ubuntu's bwrap profile still stops
+      # the sandbox's seccomp helper (anthropics/claude-code#93130), so the
+      # settings below skip that Unix-socket filter, and the Docker socket,
+      # the one that would matter on this runner, is closed to the job's user.
       - name: Sandbox tools
         run: |
           sudo apt-get update -q
           sudo apt-get install -y --no-install-recommends bubblewrap socat
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          sudo chmod 600 /var/run/docker.sock
 
       # Default mode denies whatever the list below does not allow, since a
       # workflow has no one to ask; auto mode would let a review pass more.
@@ -73,7 +77,7 @@ jobs:
           prompt: ${{ steps.prompt.outputs.text }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          settings: '{"permissions": {"blockReadsOutsideWorkingDirectories": true}, "sandbox": {"enabled": true, "failIfUnavailable": true, "network": {"allowedDomains": ["github.com", "*.github.com", "*.githubusercontent.com", "*.blob.core.windows.net"]}}}'
+          settings: '{"permissions": {"blockReadsOutsideWorkingDirectories": true}, "sandbox": {"enabled": true, "failIfUnavailable": true, "network": {"allowAllUnixSockets": true, "allowedDomains": ["github.com", "*.github.com", "*.githubusercontent.com", "*.blob.core.windows.net"]}}}'
           claude_args: >-
             --model sonnet
             --max-turns 40
