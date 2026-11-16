@@ -256,6 +256,10 @@ if [ -f "$tales/requirements.txt" ]; then
   echo "-- khe-bunny-tales: .venv"
   [ -d "$tales/.venv" ] || python3 -m venv "$tales/.venv"
   "$tales/.venv/bin/pip" install --quiet -r "$tales/requirements.txt"
+  # The stories app at app.ref with its node_modules in .app/, so the
+  # commit gate's check runs the leak check's build test instead of skipping it.
+  echo "-- khe-bunny-tales: the stories app"
+  (cd "$tales" && scripts/build_app.sh output)
 fi
 
 ha="$WORKSPACE/repos/khe-home-assistant"
