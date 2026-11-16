@@ -1,106 +1,22 @@
 # KHE Homelab
 
-Personal family homelab — self-hosted photos, passwords, family apps and home automation on a single machine. Infrastructure as Code with Docker Compose on Proxmox VE.
+The family homelab as code: self-hosted photos, passwords, family apps and
+home automation on one machine, with Docker Compose on Proxmox VE.
 
-## Architecture
+## How it fits together
 
-```mermaid
-graph TB
-    Internet((Internet))
-    VPN((Tailscale<br/>VPN))
-    LAN((LAN<br/>devices))
+One Proxmox VE host runs one Debian VM, and every service on it is a Docker
+Compose stack under [`services/`](services/): core (proxy, DNS, tunnel,
+passwords, monitoring, dashboard), media (Immich), home (Home Assistant with
+its MQTT broker and alarm bridge), apps (the family's web apps) and
+observability (logs and alerts). The internet reaches the containers through
+Cloudflare Tunnel, with Cloudflare Access in front of the private apps; at
+home and over Tailscale the same names go through Nginx Proxy Manager, which
+AdGuard's split-horizon DNS points them at. The router forwards no ports.
 
-    Internet --> CF[Cloudflare Tunnel]
-    VPN -->|subnet route<br/>192.168.0.0/24| LAN
-    AG[AdGuard Home<br/>split-horizon DNS] -.->|per-host rewrites<br/>→ 192.168.0.11| LAN
-    LAN --> NPM[Nginx Proxy Manager<br/>wildcard *.khe.ee · LAN-only]
-
-    CF -->|public hostnames<br/>CF Access OTP on<br/>the private apps| DVM
-    NPM --> DVM
-
-    subgraph DVM[Docker VM · 192.168.0.11]
-        direction LR
-        Core["<b>Core</b><br/>Homepage · Vaultwarden<br/>Uptime Kuma"]
-        Media["<b>Media</b><br/>Immich"]
-        Apps["<b>Apps</b><br/>Landing Page · games hub<br/>pages · trips · stories"]
-        Obs["<b>Observability</b><br/>Loki · Grafana<br/>Alloy · Alertmanager"]
-        Home["<b>Home</b><br/>Home Assistant<br/>Mosquitto · PAI"]
-    end
-
-    DVM --> HDD[(ZFS Mirror · 2× 12TB<br/>NFS /srv)]
-    DVM -.-> NVMe[(NVMe 2TB<br/>OS + DB volumes)]
-```
-
-> NPM, AdGuard, and Cloudflare Tunnel also run on the same Docker VM (shown above in the ingress tier, not listed again inside Core).
-
-Two independent paths to the same containers:
-- **External** — Cloudflare Tunnel goes directly to each container. CF Access OTP gates the private apps. Subject to Cloudflare's 100MB upload limit.
-- **LAN / Tailscale** — AdGuard rewrites the LAN-served hostnames to `192.168.0.11`, so devices hit NPM with the wildcard cert and no upload limit. `draft`, games and pages have no LAN shortcut and always go through Cloudflare; `dash`, `trips` and `stories` are Access-gated only from outside.
-
-Which hostname goes where, and which ones Access gates, is in [infrastructure/cloudflare.md](infrastructure/cloudflare.md).
-
-Proxmox VE (192.168.0.10) is the hypervisor; the Docker VM (192.168.0.11) runs every service. Fast storage (NVMe) holds the VM root + DB volumes; bulk storage (ZFS mirror, NFS-mounted at `/srv`) holds photos and backups.
-
-## Hardware
-
-| Component | Spec |
-|-----------|------|
-| CPU | Intel i7-12700K (12C/20T, Quick Sync iGPU) |
-| RAM | 32GB DDR5 |
-| Boot | 2TB Kingston KC3000 NVMe |
-| Storage | 2x 12TB WD Ultrastar (ZFS Mirror) |
-| PSU | Seasonic 850W Gold |
-| Network | Intel 2.5G LAN → UniFi Cloud Gateway Ultra, U6-LR access point |
-
-Intel iGPU is passed through to the Docker VM via `vfio-pci` for hardware transcoding —
-immich-server and Immich machine-learning both use `/dev/dri` for Quick Sync acceleration.
-
-## Services
-
-| | Service | Domain | What it does |
-|---|---------|--------|-------------|
-| 🌐 | **Landing Page** | `khe.ee` | Public family landing page; shared trips under `/r/`, the trip atlas demo under `/trips/`, the published bedtime stories under `/stories/` |
-| 🏠 | **Homepage** | `dash.khe.ee` | Service dashboard with live widgets (CF Access protected) |
-| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/immich.svg" width="22" /> | **Immich** | `photos.khe.ee` | Photo library with ML tagging (Google Photos replacement) |
-| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/vaultwarden.svg" width="22" /> | **Vaultwarden** | `vault.khe.ee` | Password manager with Passkey support |
-| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/uptime-kuma.svg" width="22" /> | **Uptime Kuma** | `status.khe.ee` | Service monitoring and alerts |
-| 🎮 | **games hub** | `games.khe.ee` | Launcher, khe-study (`/study/`) and khe-ai-adventure (`/adventure/`), auto-deployed from GitHub |
-| 🗺️ | **trips** | `trips.khe.ee` | Private family trip atlas, CF Access protected, own GitHub runner |
-| 🌙 | **stories** | `stories.khe.ee` | Unejänku, the family's bedtime stories app, CF Access protected; khe-bunny-tales' runner deploys it, audio in `/srv/data/stories/audio` |
-| 📝 | **pages** | `pages.khe.ee` | Quick-publish HTML pages; edited at `draft.khe.ee` (CF Access protected) |
-| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/home-assistant.svg" width="22" /> | Home Assistant | `home.khe.ee` (LAN + Tailscale) | House automation: HVAC, grid metering and cameras over local protocols. Deliberately not on the tunnel; the house detail is in the private khe-meta repo |
-| | Mosquitto | internal only | MQTT broker for Home Assistant and PAI; publishes no host port |
-| | PAI | internal only | Bridges the Paradox alarm panel to MQTT |
-| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/adguard-home.svg" width="22" /> | AdGuard Home | LAN + Tailscale | DNS ad-blocking on the LAN + split-horizon DNS; over Tailscale it answers only the `khe.ee` zone |
-| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/nginx-proxy-manager.svg" width="22" /> | Nginx Proxy Manager | LAN only | Reverse proxy + wildcard SSL for LAN traffic |
-| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/cloudflare.svg" width="22" /> | Cloudflare Tunnel | — | Secure external access (no open ports) |
-| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/grafana.svg" width="22" /> | Grafana + Loki + Alloy + Alertmanager | LAN only | Log aggregation for every container, Telegram alerting via Loki ruler |
-| | autoheal | — | Restarts any container whose healthcheck turns unhealthy |
-
-## Security & Access
-
-Multiple independent layers — nothing on the router is exposed to the internet.
-
-**External access — Cloudflare Tunnel**
-Zero inbound ports. Cloudflare terminates TLS and forwards to containers over an outbound-only tunnel.
-Private apps (the dashboard, trips, stories, the pages editor) sit behind **Cloudflare Access** with email OTP.
-
-**Remote admin — Tailscale VPN**
-Docker VM runs Tailscale as a **subnet router** (`192.168.0.0/24`), so any Tailscale-connected
-device gets full LAN access: Proxmox UI, AdGuard, NPM admin, and SSH to the VM.
-Lets mobile devices bypass the Cloudflare 100MB upload limit — large Immich
-uploads go directly to NPM over VPN.
-
-**LAN access — Wildcard SSL**
-A `*.khe.ee` Let's Encrypt certificate (Cloudflare DNS-01 challenge, auto-renewing) on NPM means
-every LAN service gets HTTPS without per-service certs. AdGuard does split-horizon DNS, so
-`photos.khe.ee` at home resolves to `192.168.0.11` — fast, unlimited uploads, never touches the internet.
-
-**Host hardening**
-- SSH key-only auth on Docker VM (password login disabled)
-- UFW firewall + fail2ban on the VM (UFW does not filter Docker-published ports; see [SECURITY.md](SECURITY.md#network-exposure))
-- Homepage, autoheal and Alloy route Docker access through `docker-socket-proxy` instead of mounting `docker.sock` directly
-- All secrets in `.env` files on the VM, never committed
+The diagram, the services with their domains, and the automation are in
+[docs/architecture.md](docs/architecture.md); the access model is in
+[SECURITY.md](SECURITY.md#access-model).
 
 ## Resilience
 
@@ -136,94 +52,24 @@ Six layers, each catching what the others miss:
    pages; the APIs and `/healthz` fail as they should, so layer 5 still
    alerts.
 
-## Automation
+## Running it
 
-Operational work is kept to a minimum by pushing everything into code and cron.
-
-- **GitOps** — every `docker-compose.yml`, Homepage config and AdGuard config
-  is version-controlled here. Rebuilding any service is `git pull && docker compose up -d`.
-- **Renovate** — watches every pinned image tag except the estate's own and opens PRs for updates (digests + changelogs).
-- **GitHub Actions self-hosted runners** — repo-specific runners on the Docker VM deploy
-  `khe-sites` (`khe.ee` and the games launcher), `khe-study`, `khe-trips` and
-  `khe-bunny-tales` (the stories app) into `/srv/data/...` directories served by nginx, and `khe-home-assistant` into Home
-  Assistant's config volume.
-- **Estate images**: `khe-ai-adventure` is built in GitHub-hosted CI and published to
-  GHCR; this repo pins the digests and the app's CI moves them in an automerged pin PR,
-  so its deploy is a merge here, minutes after the push.
-- **OS update reminders** — `scripts/os-status.sh` pushes the Proxmox host's and
-  the VM's update state to Uptime Kuma daily, which pages Telegram when a reboot is
-  due or an update has waited 30 days.
-- **Certificate renewal** — NPM auto-renews the wildcard cert via Cloudflare DNS API. No manual steps.
-- **Backups** — `scripts/backup.sh` dumps every Postgres DB, the Home Assistant
-  recorder and the service configs on a schedule; `scripts/offsite-backup.sh` then
-  pushes the set to Cloudflare R2 with `restic` (client-side AES-256), which is what
-  makes this 3-2-1. See [infrastructure/offsite-backup.md](infrastructure/offsite-backup.md).
-
-## Network
-
-```
-192.168.0.1       UniFi Cloud Gateway Ultra (gateway, DHCP .100-.254)
-192.168.0.10      Proxmox host (pve.khe.ee)
-192.168.0.11      Docker VM (+ Tailscale subnet router)
-192.168.0.2-99    Static block: infrastructure and the cameras
-192.168.0.100+    DHCP, including the house devices HA addresses by IP
-```
-
-The house devices HA addresses by IP have fixed IPs (DHCP reservations) in UniFi Network.
-
-Router DHCP hands out `192.168.0.11` (AdGuard) as the **only** DNS — no secondary.
-A fallback server gets raced in parallel and Cloudflare usually wins, so filtering
-would silently stop applying. Better to fail loudly if AdGuard is down.
-Tailscale carries only the `khe.ee` zone to remote devices (split-DNS route, no
-global override), so since 2026-09-12 it coexists with FortiClient and UniFi VPNs
-on the same laptop. The cost: AdGuard no longer filters general mobile traffic.
-
-All external traffic goes through Cloudflare Tunnel — zero ports open on the router.
-
-## Setup
-
-```bash
-# On Proxmox host
-./scripts/proxmox-post-install.sh     # 1. Disable enterprise repo, tools, security updates, IOMMU
-./scripts/create-zfs-pool.sh          # 2. Create ZFS mirror from 2x 12TB HDDs
-./scripts/create-vm.sh                # 3. Create the docker-vm Debian 13 VM (cloud-init, fully automated)
-./scripts/setup-igpu-passthrough.sh   # 4. Bind Intel iGPU to vfio-pci, attach it to the VM (reboot after)
-./scripts/setup-nfs-share.sh          # 5. Export ZFS pool via NFS
-
-# Inside Docker VM (ssh khe@192.168.0.11)
-./scripts/setup-docker-host.sh        # 6. Install Docker + real kernel + firmware (reboot after)
-./scripts/mount-nfs-in-vm.sh          # 7. Mount NFS shares at /srv, Docker waits for them
-./scripts/harden-docker-vm.sh         # 8. UFW firewall, fail2ban, SSH hardening
-./scripts/setup-tailscale.sh          # 9. Install Tailscale as subnet router
-./scripts/deploy.sh up                # 10. Start the stacks
-sudo ./scripts/setup-status-timer.sh  # 11. 5-min status snapshot into Loki
-```
-
-## Day-to-day
+A push to `main` is the deploy: the homelab's own runner pulls the repo on
+the VM and deploys the stacks that changed. By hand, on the VM:
 
 ```bash
 ./scripts/deploy.sh status   # What's running?
-./scripts/deploy.sh pull     # Pull latest images
 ./scripts/deploy.sh up       # (Re)start everything
-./scripts/deploy.sh down     # Stop everything
 ./scripts/backup.sh          # Backup databases + configs
 ```
 
-The Home Assistant configuration and its dashboard generator are in
-[khe-home-assistant](https://github.com/khelias/khe-home-assistant).
-
-Health snapshot without touching the VM: a timer writes it every 5 min into
-Loki (`{job="homelab-status"}` in Grafana Explore), and this refreshes it now,
-printing only the summary since Actions logs here are public:
-
-```bash
-gh workflow run ops-status.yml --repo khelias/khe-homelab
-```
-
-When something is broken, follow [docs/runbook.md](docs/runbook.md).
+When something is broken, start at [docs/runbook.md](docs/runbook.md).
+Building the host and the VM from scratch is in
+[infrastructure/proxmox/](infrastructure/proxmox/README.md#building-it-from-scratch).
 
 ## More
 
+- [docs/architecture.md](docs/architecture.md) - the diagram, services and automation
 - [docs/runbook.md](docs/runbook.md) - what to do when something is broken
 - [docs/operational-notes.md](docs/operational-notes.md) - per-service quirks
 - [docs/service-choices.md](docs/service-choices.md) - why each service
@@ -231,7 +77,7 @@ When something is broken, follow [docs/runbook.md](docs/runbook.md).
   [agent-vm](infrastructure/agent-vm.md) (the workspace agent's VM)
 - [SECURITY.md](SECURITY.md), [ROADMAP.md](ROADMAP.md)
 - [AGENTS.md](AGENTS.md) - layout and conventions for working on the repo; the Home
-  Assistant procedure is in [khe-home-assistant](https://github.com/khelias/khe-home-assistant/blob/main/AGENTS.md)
+  Assistant configuration is in [khe-home-assistant](https://github.com/khelias/khe-home-assistant)
 
 ---
 

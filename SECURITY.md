@@ -156,6 +156,29 @@ for the blast radius:
   VM starts reading more untrusted content, is an egress allowlist in the
   Proxmox firewall on the VM's NIC, out of the agent's reach.
 
+## Access model
+
+Independent layers, each a way in with its own control:
+
+- **External access, Cloudflare Tunnel.** Cloudflare terminates TLS and
+  forwards to the containers over an outbound-only tunnel. The private apps
+  (the dashboard, trips, stories, the pages editor) sit behind Cloudflare
+  Access with email OTP.
+- **Remote admin, Tailscale.** The Docker VM is a Tailscale subnet router
+  for the LAN, so a Tailscale device reaches the Proxmox UI, AdGuard, NPM
+  admin and SSH to the VM. It also lets phones pass Cloudflare's 100MB upload
+  limit: large Immich uploads go straight to NPM over the VPN.
+- **LAN access, wildcard certificate.** A `*.khe.ee` Let's Encrypt
+  certificate on NPM (Cloudflare DNS-01, auto-renewing) gives every LAN
+  service HTTPS without per-service certificates. AdGuard's split-horizon DNS
+  sends the LAN-served names to the VM at home, so a photo upload never
+  leaves the house.
+- **Host hardening.** SSH on the VM takes keys only. UFW and fail2ban run on
+  the VM, though UFW does not filter Docker-published ports (below).
+  Homepage, autoheal and Alloy reach Docker through `docker-socket-proxy`
+  instead of mounting `docker.sock`. Every secret is in a `.env` file on the
+  VM and never committed.
+
 ## Network exposure
 
 The router forwards no ports; the internet reaches the homelab only through

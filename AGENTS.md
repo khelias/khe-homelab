@@ -10,15 +10,19 @@ Every compose file,
 AdGuard and Homepage config lives here. This file holds rules and
 pointers; the reference lives in:
 
-- [README.md](README.md) - architecture, services table, security model,
-  resilience, network, setup, day-to-day ops
+- [README.md](README.md) - what the homelab is, the resilience layers
+  (khe-sites builds the khe.ee architecture page from its numbered
+  `## Resilience` list), day-to-day ops
+- [docs/architecture.md](docs/architecture.md) - the diagram, the services
+  table and the automation
 - [docs/runbook.md](docs/runbook.md) - what to do when something is broken
 - [docs/operational-notes.md](docs/operational-notes.md) - per-service quirks
   and measured integration behaviour
 - [docs/service-choices.md](docs/service-choices.md) - why each service, and
   what would force a re-evaluation
-- [SECURITY.md](SECURITY.md), [ROADMAP.md](ROADMAP.md),
-  [infrastructure/](infrastructure/) (Proxmox, network, Cloudflare, Tailscale)
+- [SECURITY.md](SECURITY.md) (the access model), [ROADMAP.md](ROADMAP.md),
+  [infrastructure/](infrastructure/) (Proxmox with the from-scratch setup,
+  network, Cloudflare, Tailscale)
 
 Home Assistant's configuration, dashboard generator and 3D house view are in
 [khe-home-assistant](https://github.com/khelias/khe-home-assistant), whose
@@ -96,7 +100,8 @@ base branch against the PR tree. The edge fallback's Worker tests
    wipes admin credentials and sessions
    ([notes](docs/operational-notes.md#adguard-home)).
 7. **Deployment surface changes update their doc in the same commit:** a
-   service or domain goes into the README services table and diagram, a
+   service or domain goes into the services table and diagram in
+   `docs/architecture.md`, a
    service quirk into `docs/operational-notes.md`, a network, DNS,
    Cloudflare or Tailscale change into `infrastructure/*.md`, a security
    model change into `SECURITY.md`.

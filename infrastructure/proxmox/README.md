@@ -61,8 +61,10 @@ ballooning works: its floor is 4 GB, so the host can take back 2 GB before
 docker-vm feels short. It still needs 6 GB of free host memory before it is
 created.
 
-docker-vm has the iGPU passed through, so VFIO pins all of its memory on the
-host from boot and ballooning cannot return any of it: on 2026-10-01 a balloon
+docker-vm has the iGPU passed through (`vfio-pci`) for Quick Sync: Immich's
+server and machine-learning containers use it through `/dev/dri`. VFIO pins
+all of its memory on the host from boot and ballooning cannot return any of
+it: on 2026-10-01 a balloon
 floor shrank the guest to 14 GiB while the host stayed at 96%. Size the VM by
 `memory` alone, which needs a VM reboot. At 24GB the host had about 1 GiB
 available next to ARC (capped at 3.1 GiB) while the guest used 6.8 GiB, the
@@ -118,3 +120,24 @@ Cloud-init configures: hostname, static IP, SSH keys, user account.
 See `../../scripts/create-vm.sh`: with no variables it builds docker-vm; any other VM
 gives its ID, name, address and ssh public key at run time (the script lists them),
 so addresses are never committed.
+
+## Building it from scratch
+
+The order the setup scripts run in, from a fresh Proxmox install to running stacks:
+
+```bash
+# On Proxmox host
+./scripts/proxmox-post-install.sh     # 1. Disable enterprise repo, tools, security updates, IOMMU
+./scripts/create-zfs-pool.sh          # 2. Create ZFS mirror from 2x 12TB HDDs
+./scripts/create-vm.sh                # 3. Create the docker-vm Debian 13 VM (cloud-init, fully automated)
+./scripts/setup-igpu-passthrough.sh   # 4. Bind Intel iGPU to vfio-pci, attach it to the VM (reboot after)
+./scripts/setup-nfs-share.sh          # 5. Export ZFS pool via NFS
+
+# Inside Docker VM (ssh khe@192.168.0.11)
+./scripts/setup-docker-host.sh        # 6. Install Docker + real kernel + firmware (reboot after)
+./scripts/mount-nfs-in-vm.sh          # 7. Mount NFS shares at /srv, Docker waits for them
+./scripts/harden-docker-vm.sh         # 8. UFW firewall, fail2ban, SSH hardening
+./scripts/setup-tailscale.sh          # 9. Install Tailscale as subnet router
+./scripts/deploy.sh up                # 10. Start the stacks
+sudo ./scripts/setup-status-timer.sh  # 11. 5-min status snapshot into Loki
+```

@@ -367,4 +367,5 @@ Backups and their verification are described in
 - **Why we run this software at all** -> [service-choices.md](service-choices.md)
 - **Tunnel routes, Access policies, WAF rules** -> [infrastructure/cloudflare.md](../infrastructure/cloudflare.md)
 - **LAN, DNS, AdGuard** -> [infrastructure/network/](../infrastructure/network/)
-- **Architecture, resilience layers, day-to-day ops** -> [README.md](../README.md)
+- **Architecture, services, automation** -> [architecture.md](architecture.md)
+- **Resilience layers, day-to-day ops** -> [README.md](../README.md)
