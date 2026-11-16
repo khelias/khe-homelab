@@ -283,7 +283,8 @@ PR run on the same commit.
 - `stories.khe.ee` -> `stories:80` via CF Tunnel from outside, and via an
   AdGuard rewrite and an NPM proxy host on the LAN and over Tailscale, like
   trips. CF Access from outside with its own application and policy for both
-  parents (infrastructure/cloudflare.md).
+  parents, with the same Country=EE rule (infrastructure/cloudflare.md);
+  abroad, the stories saved on the phone still play.
 - `/srv/data/stories/app` is the build, at `/`; `/srv/data/stories/audio`,
   the audio store by sha256 (`<sha>.m4a`), at `/audio/`. Both read-only.
   The store is filled from the laptop by khe-bunny-tales'

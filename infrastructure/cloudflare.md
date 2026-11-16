@@ -70,7 +70,7 @@ Identity: One-time PIN via email (no OAuth setup needed).
 | KHE Dashboard | dash.khe.ee | Email allowlist + Require Country=EE |
 | KHE Trips    | trips.khe.ee | Email allowlist + Require Country=EE |
 | KHE Pages    | draft.khe.ee | Email allowlist + Require Country=EE |
-| Unejänku     | stories.khe.ee | Its own policy: both parents' e-mails, session about 30 days |
+| Unejänku     | stories.khe.ee | Its own policy: both parents' e-mails + Require Country=EE, session about 30 days |
 
 Dashboard, Trips and Pages share a single reusable policy (edit once → applies to all);
 Unejänku has its own, since both parents sign in there.
