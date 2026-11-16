@@ -23,6 +23,7 @@ const BLOCKS = [
   ["landing", "server {", "khe"],
   ["landing", "location ^~ /r/ {", "share"],
   ["landing", "location ^~ /trips/ {", "trips"],
+  ["landing", "location ^~ /stories/ {", "stories"],
   ["games", "server {", "games"],
 ];
 

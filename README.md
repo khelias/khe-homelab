@@ -22,7 +22,7 @@ graph TB
         direction LR
         Core["<b>Core</b><br/>Homepage · Vaultwarden<br/>Uptime Kuma"]
         Media["<b>Media</b><br/>Immich"]
-        Apps["<b>Apps</b><br/>Landing Page · games hub<br/>pages · trips"]
+        Apps["<b>Apps</b><br/>Landing Page · games hub<br/>pages · trips · stories"]
         Obs["<b>Observability</b><br/>Loki · Grafana<br/>Alloy · Alertmanager"]
         Home["<b>Home</b><br/>Home Assistant<br/>Mosquitto · PAI"]
     end
@@ -35,7 +35,7 @@ graph TB
 
 Two independent paths to the same containers:
 - **External** — Cloudflare Tunnel goes directly to each container. CF Access OTP gates the private apps. Subject to Cloudflare's 100MB upload limit.
-- **LAN / Tailscale** — AdGuard rewrites the LAN-served hostnames to `192.168.0.11`, so devices hit NPM with the wildcard cert and no upload limit. `draft`, games and pages have no LAN shortcut and always go through Cloudflare; `dash` and `trips` are Access-gated only from outside.
+- **LAN / Tailscale** — AdGuard rewrites the LAN-served hostnames to `192.168.0.11`, so devices hit NPM with the wildcard cert and no upload limit. `draft`, games and pages have no LAN shortcut and always go through Cloudflare; `dash`, `trips` and `stories` are Access-gated only from outside.
 
 Which hostname goes where, and which ones Access gates, is in [infrastructure/cloudflare.md](infrastructure/cloudflare.md).
 
@@ -59,13 +59,14 @@ immich-server and Immich machine-learning both use `/dev/dri` for Quick Sync acc
 
 | | Service | Domain | What it does |
 |---|---------|--------|-------------|
-| 🌐 | **Landing Page** | `khe.ee` | Public family landing page; shared trips under `/r/`, the trip atlas demo under `/trips/` |
+| 🌐 | **Landing Page** | `khe.ee` | Public family landing page; shared trips under `/r/`, the trip atlas demo under `/trips/`, the published bedtime stories under `/stories/` |
 | 🏠 | **Homepage** | `dash.khe.ee` | Service dashboard with live widgets (CF Access protected) |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/immich.svg" width="22" /> | **Immich** | `photos.khe.ee` | Photo library with ML tagging (Google Photos replacement) |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/vaultwarden.svg" width="22" /> | **Vaultwarden** | `vault.khe.ee` | Password manager with Passkey support |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/uptime-kuma.svg" width="22" /> | **Uptime Kuma** | `status.khe.ee` | Service monitoring and alerts |
 | 🎮 | **games hub** | `games.khe.ee` | Launcher, khe-study (`/study/`) and khe-ai-adventure (`/adventure/`), auto-deployed from GitHub |
 | 🗺️ | **trips** | `trips.khe.ee` | Private family trip atlas, CF Access protected, own GitHub runner |
+| 🌙 | **stories** | `stories.khe.ee` | Unejänku, the family's bedtime stories app, CF Access protected; khe-bunny-tales' runner deploys it, audio in `/srv/data/stories/audio` |
 | 📝 | **pages** | `pages.khe.ee` | Quick-publish HTML pages; edited at `draft.khe.ee` (CF Access protected) |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/home-assistant.svg" width="22" /> | Home Assistant | `home.khe.ee` (LAN + Tailscale) | House automation: HVAC, grid metering and cameras over local protocols. Deliberately not on the tunnel; the house detail is in the private khe-meta repo |
 | | Mosquitto | internal only | MQTT broker for Home Assistant and PAI; publishes no host port |
@@ -82,7 +83,7 @@ Multiple independent layers — nothing on the router is exposed to the internet
 
 **External access — Cloudflare Tunnel**
 Zero inbound ports. Cloudflare terminates TLS and forwards to containers over an outbound-only tunnel.
-Private apps (the dashboard, trips, the pages editor) sit behind **Cloudflare Access** with email OTP.
+Private apps (the dashboard, trips, stories, the pages editor) sit behind **Cloudflare Access** with email OTP.
 
 **Remote admin — Tailscale VPN**
 Docker VM runs Tailscale as a **subnet router** (`192.168.0.0/24`), so any Tailscale-connected
@@ -143,8 +144,8 @@ Operational work is kept to a minimum by pushing everything into code and cron.
   is version-controlled here. Rebuilding any service is `git pull && docker compose up -d`.
 - **Renovate** — watches every pinned image tag except the estate's own and opens PRs for updates (digests + changelogs).
 - **GitHub Actions self-hosted runners** — repo-specific runners on the Docker VM deploy
-  `khe-sites` (`khe.ee` and the games launcher), `khe-study` and `khe-trips` into
-  `/srv/data/...` directories served by nginx, and `khe-home-assistant` into Home
+  `khe-sites` (`khe.ee` and the games launcher), `khe-study`, `khe-trips` and
+  `khe-bunny-tales` (the stories app) into `/srv/data/...` directories served by nginx, and `khe-home-assistant` into Home
   Assistant's config volume.
 - **Estate images**: `khe-ai-adventure` is built in GitHub-hosted CI and published to
   GHCR; this repo pins the digests and the app's CI moves them in an automerged pin PR,

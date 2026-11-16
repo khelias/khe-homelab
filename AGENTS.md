@@ -33,7 +33,7 @@ services/
                    Uptime Kuma, Homepage, autoheal
   media/           Immich
   home/            Home Assistant (container only), Mosquitto, PAI (Paradox alarm)
-  apps/            landing, games, pages, trips
+  apps/            landing, games, pages, trips, stories
   observability/   Loki, Grafana, Alloy, Alertmanager (one stack)
 infrastructure/    Proxmox, network, Cloudflare, Tailscale docs; agent-vm.md and
                    agent-vm/ (units and settings template) for the workspace
@@ -109,7 +109,8 @@ base branch against the PR tree. The edge fallback's Worker tests
    `infrastructure/edge-fallback/src/rules.mjs` in the same commit; the
    Worker tests catch header drift. The allowlist in
    `scripts/edge-fallback-stage.sh` is the only way a tree reaches the copy:
-   `trips.khe.ee` and secrets never do, and the adventure `config.js` is a
+   `trips.khe.ee`, `stories.khe.ee` (`/srv/data/stories/app`), the stories'
+   audio and secrets never do, and the adventure `config.js` is a
    stub without `API_SECRET`. The Worker routes live in the dashboard, fail
    open, and are not in `wrangler.jsonc`. games.khe.ee's root is khe-sites'
    launcher build, and /study and /adventure load the consent banner from

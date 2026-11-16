@@ -73,6 +73,7 @@ describe("SPA fallbacks", () => {
     ["khe", "/", /khe landing/],
     ["khe", "/architecture/", /khe architecture/],
     ["khe", "/r/abc123/", /share abc123/],
+    ["khe", "/stories/", /Stories fixture/],
     ["games", "/", /games hub/],
   ];
   for (const [site, path, content] of cases) {
@@ -114,6 +115,8 @@ describe("hard 404s", () => {
     "/architecture/decisions/999/",
     "/r/abc123/assets/missing.js",
     "/trips/assets/missing.js",
+    "/stories/x",
+    "/stories/assets/missing.js",
     "/assets/missing.js",
   ];
   for (const path of cases) {
@@ -162,6 +165,7 @@ describe("redirects", () => {
     ["khe", "/house3d/a?b=1", "/ha/a?b=1"],
     ["khe", "/trips", "/trips/"],
     ["khe", "/trips?x=1", "/trips/?x=1"],
+    ["khe", "/stories?lang=en", "/stories/?lang=en"],
     ["khe", "/architecture", "/architecture/"],
     ["khe", "/ha", "/ha/"],
     ["khe", "/privacy?a=b", "/privacy/?a=b"],
@@ -220,6 +224,25 @@ describe("headers", () => {
   test("/r/ carries no HSTS, as in nginx", async () => {
     const { response } = await request("khe", "/r/abc123/");
     assert.equal(response.headers.get("Strict-Transport-Security"), null);
+  });
+
+  test("/stories/ is private, no-cache, and allows its own media", async () => {
+    const { response } = await request("khe", "/stories/");
+    assert.equal(response.headers.get("Cache-Control"), "private, no-cache");
+    assert.match(response.headers.get("Content-Security-Policy"), /media-src 'self'/);
+    assert.equal(response.headers.get("Strict-Transport-Security"), "max-age=31536000");
+  });
+
+  test("a stories asset is cached a week", async () => {
+    const { response } = await request("khe", "/stories/assets/index-0a1b2c3d.js");
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("Cache-Control"), "private, max-age=604800, immutable");
+  });
+
+  test("the copy holds no stories audio, and the miss is not cached", async () => {
+    const { response } = await request("khe", `/stories/audio/${"0".repeat(64)}.m4a`);
+    assert.equal(response.status, 404);
+    assert.equal(response.headers.get("Cache-Control"), "private, no-cache");
   });
 
   test("the landing carries its CSP", async () => {

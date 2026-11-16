@@ -276,6 +276,31 @@ PR run on the same commit.
 - GH Actions runner: `/home/khe/actions-runner-trips`,
   systemd unit `actions.runner.khelias-khe-trips.trips-runner.service`.
 
+## Stories
+
+- `services/apps/stories/` stack: Unejänku's family build at
+  `stories.khe.ee` ([estate ADR-031](https://github.com/khelias/khe-architecture/blob/main/decisions/031-stories-public-app-private-stories-audio-outside-git.md)), nginx alpine pinned as trips.
+- `stories.khe.ee` -> `stories:80` via CF Tunnel from outside, and via an
+  AdGuard rewrite and an NPM proxy host on the LAN and over Tailscale, like
+  trips. CF Access from outside with its own application and policy for both
+  parents (infrastructure/cloudflare.md).
+- `/srv/data/stories/app` is the build, at `/`; `/srv/data/stories/audio`,
+  the audio store by sha256 (`<sha>.m4a`), at `/audio/`. Both read-only.
+  The store is filled from the laptop by khe-bunny-tales'
+  `scripts/upload_audio.sh`, is outside git and is in the offsite restic run.
+- The page, `sw.js`, the manifest and `catalog.json` are `no-cache`;
+  `/assets/` and `/audio/` are `private, max-age=31536000, immutable`, named
+  by hash. A miss there, `/saved/` (answered only by the service worker) and
+  `/cdn-cgi/` are 404, never the page. The headers are in `headers.conf`,
+  included in each location, with a CSP that has no inline script.
+- Deployed by khe-bunny-tales' `deploy.yml`: it builds on a GitHub-hosted
+  runner and its runner here (`/home/khe/actions-runner-bunny-tales`)
+  replaces the contents of `/srv/data/stories/app` and
+  `/srv/data/stories/public`, which landing serves at `khe.ee/stories/`.
+  It fails when an audio sha in the catalog is not in the store.
+- `nginx.conf` and `headers.conf` are single-file bind mounts: a change to
+  them alone needs a deploy with `force_recreate`, as landing.
+
 ## Immich
 
 - **`immich-server` needs 6G RAM.** Since v3 the job workers (thumbnails,
@@ -403,6 +428,14 @@ PR run on the same commit.
   disallow, so a crawler can read the noindex. The khe-trips deploy creates
   `/srv/data/trips/demo` first, so it must deploy before landing gets the
   mount; the same root-owned trap applies.
+- `/stories/` serves Unejänku's public build ([estate ADR-031](https://github.com/khelias/khe-architecture/blob/main/decisions/031-stories-public-app-private-stories-audio-outside-git.md)) from
+  `/srv/data/stories/public`, mounted at `/srv/demo/stories`, which shadows
+  khe-sites' old `stories/`. It routes by hash, so a missing file is a 404,
+  and `/stories` answers 301 to `/stories/` with the query kept. The khe
+  headers with `media-src 'self'` and `private, no-cache`; `/stories/assets/`
+  a week as on `/r/`, `/stories/audio/` (hard links into the audio store, the
+  published stories only) a year, a miss uncached. The khe-bunny-tales deploy
+  creates the directory first; the same root-owned trap applies.
 - `/healthz` answers `ok` with `no-store`; UptimeRobot and
   `homelab-status.sh`'s edge probe watch it. The edge fallback passes it
   through, so it fails when the homelab is down even while the copy serves

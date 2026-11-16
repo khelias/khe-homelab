@@ -7,8 +7,8 @@
 #
 #   edge-fallback-stage.sh [--fixtures] <out-dir>
 #
-# EF_SITES_ROOT, EF_SHARE_ROOT, EF_DEMO_ROOT, EF_LAUNCHER_ROOT, EF_STUDY_ROOT
-# and EF_ADVENTURE_ROOT replace one source each; EF_ADVENTURE_ROOT also skips
+# EF_SITES_ROOT, EF_SHARE_ROOT, EF_DEMO_ROOT, EF_STORIES_ROOT, EF_LAUNCHER_ROOT,
+# EF_STUDY_ROOT and EF_ADVENTURE_ROOT replace one source each; EF_ADVENTURE_ROOT also skips
 # copying the adventure build out of its image. --fixtures stages the test
 # tree in infrastructure/edge-fallback/test/fixtures/ instead.
 # Prints "<site> <tree hash>" per site. Runs on the homelab runner and, for
@@ -35,12 +35,15 @@ out="$1"
 
 if $fixtures; then
   fx="$repo/infrastructure/edge-fallback/test/fixtures"
-  EF_SITES_ROOT="$fx/sites" EF_SHARE_ROOT="$fx/share" EF_DEMO_ROOT="$fx/demo"
+  EF_SITES_ROOT="$fx/sites" EF_SHARE_ROOT="$fx/share" EF_DEMO_ROOT="$fx/demo" EF_STORIES_ROOT="$fx/stories"
   EF_LAUNCHER_ROOT="$fx/launcher" EF_STUDY_ROOT="$fx/study" EF_ADVENTURE_ROOT="$fx/adventure"
 fi
 sites_root="${EF_SITES_ROOT:-/srv/data/sites/khe}"
 share_root="${EF_SHARE_ROOT:-/srv/data/trips/share}"
 demo_root="${EF_DEMO_ROOT:-/srv/data/trips/demo}"
+# The public stories build only (estate ADR-031): the family build in
+# /srv/data/stories/app and the audio store never reach the copy.
+stories_root="${EF_STORIES_ROOT:-/srv/data/stories/public}"
 launcher_root="${EF_LAUNCHER_ROOT:-/srv/data/games/launcher}"
 study_root="${EF_STUDY_ROOT:-/srv/data/games/study}"
 adventure_root="${EF_ADVENTURE_ROOT:-}"
@@ -82,6 +85,12 @@ no_overlap "$sites_root" r trips
 copy_tree "$sites_root" "$out/khe"
 copy_tree "$share_root" "$out/khe/r"
 copy_tree "$demo_root" "$out/khe/trips"
+# Landing serves /stories/ from the stories mount, which shadows a stories/
+# left in the sites tree. Workers Static Assets ignore Range, so the audio
+# stays out: offline at the edge, the page shows the text without the reading.
+rm -rf "$out/khe/stories"
+copy_tree "$stories_root" "$out/khe/stories"
+rm -rf "$out/khe/stories/audio"
 
 no_overlap "$launcher_root" study adventure
 copy_tree "$launcher_root" "$out/games"

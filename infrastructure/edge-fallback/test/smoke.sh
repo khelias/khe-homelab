@@ -92,6 +92,7 @@ case "$site" in
     page /ha/ "<html"
     page /trips/ "/trips/assets/"
     page /trips/some/deep/link "/trips/assets/"
+    page /stories/ "/stories/assets/"
     if [ -n "${SHARE_SLUG:-}" ]; then
       page "/r/$SHARE_SLUG/" "/r/$SHARE_SLUG/assets/"
       asset "/r/$SHARE_SLUG/"
@@ -101,6 +102,7 @@ case "$site" in
     fi
     asset /
     asset /trips/
+    asset /stories/
     fetch /r/nope/
     [ "$status" = 404 ] && echo "ok   /r/nope/ 404" || fail "/r/nope/: status $status, want 404"
     expect_header /r/nope/ X-Robots-Tag "noindex, nofollow, noarchive"

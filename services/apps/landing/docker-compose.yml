@@ -10,6 +10,8 @@ services:
       # Created and filled by the khe-trips deploy; it must exist before this
       # container starts, or Docker creates it root-owned.
       - /srv/data/trips/demo:/srv/demo/trips:ro
+      # Filled by the khe-bunny-tales deploy (estate ADR-031); the same rule.
+      - /srv/data/stories/public:/srv/demo/stories:ro
     networks:
       - proxy
     healthcheck:

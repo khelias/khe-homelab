@@ -11,13 +11,14 @@ Tunnel routes directly to Docker containers. LAN traffic goes via NPM (split-hor
 
 | Domain              | CF Tunnel → (external)      | NPM → (LAN)                | Notes |
 |---------------------|-----------------------------|-----------------------------|-------|
-| khe.ee              | landing:80                  | landing:80                  | public; `/r/` = khe-trips share sites and `/trips/` = the khe-trips demo ([estate ADR-013](https://github.com/khelias/khe-architecture/blob/main/decisions/013-trips-public-demo.md)), public by design (no Access, no dashboard change); edge fallback Worker on `khe.ee/*` ([Workers routes](#workers-routes)) |
+| khe.ee              | landing:80                  | landing:80                  | public; `/r/` = khe-trips share sites and `/trips/` = the khe-trips demo ([estate ADR-013](https://github.com/khelias/khe-architecture/blob/main/decisions/013-trips-public-demo.md)), public by design (no Access, no dashboard change); `/stories/` = the public build of the stories app ([estate ADR-031](https://github.com/khelias/khe-architecture/blob/main/decisions/031-stories-public-app-private-stories-audio-outside-git.md)), from `/srv/data/stories/public`; edge fallback Worker on `khe.ee/*` ([Workers routes](#workers-routes)) |
 | dash.khe.ee         | homepage:3000               | homepage:3000               | CF Access (external only) |
 | vault.khe.ee        | vaultwarden:80              | vaultwarden:80              | |
 | photos.khe.ee       | immich-server:2283          | immich-server:2283          | NPM: unlimited upload, 600s timeout |
 | status.khe.ee       | uptime-kuma:3001            | uptime-kuma:3001            | |
 | games.khe.ee        | games:80                    | — (CF only)                 | no AdGuard rewrite; edge fallback Worker on `games.khe.ee/*` ([Workers routes](#workers-routes)) |
 | trips.khe.ee        | trips:80                    | trips:80                    | CF Access (external only), like dash |
+| stories.khe.ee      | stories:80                  | stories:80                  | CF Access (external only), its own application; never in the edge copy |
 | draft.khe.ee        | draft:8080                  | — (CF Access)               | dufs editor; CF Access OTP on all networks; **sole auth layer** (dufs runs without `--auth`, see service-choices.md); only on `draft-tunnel`; no AdGuard rewrite |
 | pages.khe.ee        | pages:80                    | — (CF only)                 | public; serves published pages read-only; no AdGuard rewrite |
 
@@ -47,7 +48,10 @@ the failure mode.
   go straight to the origin, as if no Worker existed.
 - `workers.dev` and Preview URLs are off for both Workers, so the copy is
   reachable only through these routes.
-- `trips.khe.ee` and the other hostnames have no route and no copy.
+- `trips.khe.ee`, `stories.khe.ee` and the other hostnames have no route and
+  no copy. `khe.ee/stories/` is copied without its audio, since Workers
+  Static Assets ignore `Range`: with the homelab down the page shows the
+  texts and says the reading is not available.
 - LAN and Tailscale visitors to `khe.ee` never reach it: AdGuard resolves
   `khe.ee` to NPM. `games.khe.ee` has no rewrite, so they do go through its
   Worker, which passes the origin's answer through. With the VM down
@@ -66,12 +70,18 @@ Identity: One-time PIN via email (no OAuth setup needed).
 | KHE Dashboard | dash.khe.ee | Email allowlist + Require Country=EE |
 | KHE Trips    | trips.khe.ee | Email allowlist + Require Country=EE |
 | KHE Pages    | draft.khe.ee | Email allowlist + Require Country=EE |
+| Unejänku     | stories.khe.ee | Its own policy: both parents' e-mails, session about 30 days |
 
-All three apps share a single reusable policy (edit once → applies to all).
+Dashboard, Trips and Pages share a single reusable policy (edit once → applies to all);
+Unejänku has its own, since both parents sign in there.
+Its Access application is created before the tunnel route to `stories:80`,
+or the family build and the whole audio store are public in between; an
+unauthenticated `curl -sI https://stories.khe.ee/` must then answer 302 to
+the Access login.
 Policy combines `Include: Email = owner` AND `Require: Countries = Estonia`.
 The VM is not a Tailscale exit node (it advertises only the `192.168.0.0/24`
 subnet route), so Tailscale does not carry the owner past the country rule
-when abroad. Over Tailscale, `dash.khe.ee` and `trips.khe.ee` resolve through AdGuard to
+when abroad. Over Tailscale, `dash.khe.ee`, `trips.khe.ee` and `stories.khe.ee` resolve through AdGuard to
 `192.168.0.11` and go through NPM, so Access never sees them, abroad
 included. `draft.khe.ee` has no AdGuard rewrite: it reaches Cloudflare from
 the device's own connection, and the country rule blocks it outside Estonia.
@@ -83,7 +93,7 @@ editor outright.
 ## Custom Login Page
 
 Zero Trust → Reusable components → Custom pages → Access login page.
-Applies to all Access-protected apps (dash, trips, draft).
+Applies to all Access-protected apps (dash, trips, stories, draft).
 
 | Field | Value |
 |-------|-------|

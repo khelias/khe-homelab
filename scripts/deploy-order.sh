@@ -21,6 +21,7 @@ DEPLOY_ORDER=(
   "apps/games"
   "apps/pages"
   "apps/trips"
+  "apps/stories"
   "observability/alertmanager"
   "observability/grafana"
   "observability/alloy"

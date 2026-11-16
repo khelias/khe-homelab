@@ -12,6 +12,8 @@ const HSTS_KHE = "max-age=31536000";
 
 export const CSP_KHE =
   "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: https:; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; upgrade-insecure-requests";
+// The khe CSP with media-src for the stories' audio.
+export const CSP_STORIES = CSP_KHE.replace("img-src 'self' data: https:; ", "img-src 'self' data: https:; media-src 'self'; ");
 export const CSP_GAMES =
   "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: https:; font-src 'self' data: https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; upgrade-insecure-requests";
 
@@ -40,6 +42,14 @@ export const HEADER_SETS = {
     "X-Content-Type-Options": "nosniff",
     "Content-Security-Policy": "frame-ancestors 'none'",
   },
+  stories: {
+    "Strict-Transport-Security": HSTS_KHE,
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": REFERRER,
+    "Permissions-Policy": PERMISSIONS_POLICY,
+    "Content-Security-Policy": CSP_STORIES,
+    "Cache-Control": "private, no-cache",
+  },
   games: {
     "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
     "X-Content-Type-Options": "nosniff",
@@ -53,6 +63,13 @@ export const HEADER_SETS = {
 export function shareAssetCache(status) {
   return status === 200 || status === 206 || status === 304
     ? "private, max-age=604800, immutable"
+    : "private, no-cache";
+}
+
+// landing's $stories_audio_cache map.
+export function storiesAudioCache(status) {
+  return status === 200 || status === 206 || status === 304
+    ? "private, max-age=31536000, immutable"
     : "private, no-cache";
 }
 
@@ -94,6 +111,10 @@ const kheLocations = [
   [(p) => p === "/trips", { redirect: "/trips/", keepQuery: true }],
   [(p) => p.startsWith("/trips/assets/"), { file: true, headers: "trips", cache: shareAssetCache }],
   [(p) => p.startsWith("/trips/"), { file: true, dir: true, fallback: "/trips/index.html", headers: "trips" }],
+  [(p) => p === "/stories", { redirect: "/stories/", keepQuery: true }],
+  [(p) => p.startsWith("/stories/assets/"), { file: true, headers: "stories", cache: shareAssetCache }],
+  [(p) => p.startsWith("/stories/audio/"), { file: true, headers: "stories", cache: storiesAudioCache }],
+  [(p) => p.startsWith("/stories/"), { file: true, dir: true, headers: "stories" }],
   [(p) => LANDING_ASSET.test(p), { file: true, cache: onSuccess("public, max-age=2592000") }],
   [() => true, { file: true, dir: true, fallback: "/index.html" }],
 ];
