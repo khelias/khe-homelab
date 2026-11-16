@@ -15,7 +15,7 @@ export const CSP_KHE =
 // The khe CSP with media-src for the stories' audio.
 export const CSP_STORIES = CSP_KHE.replace("img-src 'self' data: https:; ", "img-src 'self' data: https:; media-src 'self'; ");
 export const CSP_GAMES =
-  "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: https:; font-src 'self' data: https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; upgrade-insecure-requests";
+  "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; upgrade-insecure-requests";
 
 // One set per nginx block that has its own add_header list.
 export const HEADER_SETS = {
