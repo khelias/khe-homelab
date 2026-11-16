@@ -88,7 +88,11 @@ base branch against the PR tree. The edge fallback's Worker tests
    tunnel stack owns that network because it deploys first. Public traffic
    enters only through the Cloudflare Tunnel, never a forwarded port, and an
    app without a login of its own sits behind Cloudflare Access
-   ([estate ADR-011](https://github.com/khelias/khe-architecture/blob/main/decisions/011-cloudflare-tunnel-and-access-edge.md)).
+   ([estate ADR-022](https://github.com/khelias/khe-architecture/blob/main/decisions/022-home-route-for-access-only-apps.md)).
+   Such an app gets a home route (an AdGuard rewrite and an NPM host) only
+   while it has no backend that reads the Access identity; today `dash`,
+   `trips` and `stories`, and trips' route goes, with a move to an Access
+   application of its own, when its backend lands.
    The one exception for the private khe-trips atlas is its public demo at
    `khe.ee/trips/`, which shows only trips that are over, and only their
    short title, place and start date for trips that do not open

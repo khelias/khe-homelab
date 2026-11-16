@@ -83,7 +83,8 @@ The VM is not a Tailscale exit node (it advertises only the `192.168.0.0/24`
 subnet route), so Tailscale does not carry the owner past the country rule
 when abroad. Over Tailscale, `dash.khe.ee`, `trips.khe.ee` and `stories.khe.ee` resolve through AdGuard to
 `192.168.0.11` and go through NPM, so Access never sees them, abroad
-included. `draft.khe.ee` has no AdGuard rewrite: it reaches Cloudflare from
+included: the home route of
+[estate ADR-022](https://github.com/khelias/khe-architecture/blob/main/decisions/022-home-route-for-access-only-apps.md) point 4. `draft.khe.ee` has no AdGuard rewrite: it reaches Cloudflare from
 the device's own connection, and the country rule blocks it outside Estonia.
 
 `draft.khe.ee` has no application-level login behind Access (dufs runs

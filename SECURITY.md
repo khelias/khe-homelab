@@ -187,4 +187,6 @@ Cloudflare Tunnel. The edge fallback Workers sit in front of the tunnel on
 forward the request as it came and, on failure, answer from their own copy. Docker-published ports bypass UFW, because Docker's
 iptables rules come before UFW's, so every published port (Grafana's 3030
 included) is reachable from the LAN and over the Tailscale subnet route,
-whatever the UFW port list says.
+whatever the UFW port list says. `dash`, `trips` and `stories` open without a login from the LAN and the
+tailnet, through AdGuard rewrites and NPM
+([estate ADR-022](https://github.com/khelias/khe-architecture/blob/main/decisions/022-home-route-for-access-only-apps.md)).
