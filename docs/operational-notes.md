@@ -180,9 +180,19 @@ Stack: `services/apps/games/` (nginx + adventure-web + adventure-proxy).
 - `/home/khe/actions-runner-trips` - khe-trips
 - `/home/khe/actions-runner-homelab` - khe-homelab
 - `/home/khe/actions-runner-home-assistant` - khe-home-assistant
+- `/home/khe/actions-runner-bunny-tales` - khe-bunny-tales (copies the
+  stories app's builds into `/srv/data/stories/`; estate ADR-031)
 
 `backup.sh` saves the identity of every `actions-runner*` directory that has
 a `.runner` file.
+
+A new runner, by the operator since the registration token is a secret: on
+the Mac `gh api -X POST repos/khelias/<repo>/actions/runners/registration-token --jq .token`;
+on the VM, in a new `/home/khe/actions-runner-<name>`, unpack the current
+`actions-runner-linux-x64` release, then `./config.sh --unattended --url
+https://github.com/khelias/<repo> --token <token> --name <name>-runner
+--labels homelab`, `sudo ./svc.sh install khe` and `sudo ./svc.sh start`,
+and add it to the list above.
 
 **nginx mount nesting**: study is bind-mounted **outside** the launcher root
 and served via a per-location `root`. Do NOT nest it under

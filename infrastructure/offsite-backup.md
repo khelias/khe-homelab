@@ -2,7 +2,9 @@
 
 Third-tier backup. Local `scripts/backup.sh` at 02:00 produces
 `/srv/backups/<date>/`; `scripts/offsite-backup.sh` at 03:00 ships that
-day's directory only, plus VM-local `.env` files to an R2 bucket via restic. Client-side AES-256 +
+day's directory only, plus VM-local `.env` files and the bedtime stories'
+audio store `/srv/data/stories/audio` (outside git, so this is its only copy
+off the VM; [estate ADR-031](https://github.com/khelias/khe-architecture/blob/main/decisions/031-stories-public-app-private-stories-audio-outside-git.md)) to an R2 bucket via restic. Client-side AES-256 +
 dedup + retention. Why three tiers: [README](../README.md#automation), Backups.
 
 ## Cloudflare R2 (dashboard, one-time)

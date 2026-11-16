@@ -80,6 +80,8 @@ fi
 #                  as khe, and one unreadable file makes restic exit 3, which
 #                  skips forget and check below. mosquitto/data is only the
 #                  broker's retained-message cache, rebuilt by its clients.
+# - /srv/data/stories/audio  the bedtime stories' audio store (estate ADR-031),
+#                  kept outside git, so this is its only copy off the VM.
 echo "-> restic backup"
 if ! restic backup \
        --compression auto \
@@ -89,7 +91,8 @@ if ! restic backup \
        --exclude "${HOME}/homelab/services/home/mosquitto/config" \
        --exclude "${HOME}/homelab/services/home/mosquitto/data" \
        "$TODAY_DIR" \
-       "${HOME}/homelab"; then
+       "${HOME}/homelab" \
+       /srv/data/stories/audio; then
   echo "FAIL: restic backup" >&2
   exit 1
 fi
