@@ -4,8 +4,8 @@ A Debian 13 VM that runs the operator's own Claude Code agent, always on, so
 the work does not depend on a laptop. `claude remote-control --spawn same-dir`
 runs in `~/khe` (a clone of the khe-workspace root) under a systemd user unit
 as `khe`. Sessions are reached from the Claude phone app, claude.ai and the
-laptop's desktop app (as an SSH host). Projects' local threads would run there
-too; Projects is not on the account yet (2026-11-14). The agent has the same rights as on the laptop
+laptop's desktop app (as an SSH host). Projects' local threads run there too:
+the claude.ai project "KHE" has been on the account since 2026-11-16. The agent has the same rights as on the laptop
 ([estate ADR-023](https://github.com/khelias/khe-architecture/blob/main/decisions/023-agent-pushes-where-its-session-allows.md)):
 push, PR, auto-merge, ssh to `khe@docker-vm` for read-only diagnosis and
 runbook steps, and Home Assistant control behind a tap per write: the
@@ -111,5 +111,5 @@ by VFIO, so the host needs 6 GB free before the VM is created.
   to the template, not a session override. mcp-grafana runs outside the
   sandbox as an MCP server and keeps its LAN reach.
 - **Cloud sessions.** A cloud session or Projects thread skips the commit
-  gate, so the Claude GitHub App stays uninstalled; once Projects reaches the
-  account, its threads are sent with Work locally.
+  gate, so the Claude GitHub App stays uninstalled; Projects threads are
+  sent with Work locally, to `~/khe` here.
