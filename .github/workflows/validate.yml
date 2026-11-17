@@ -46,6 +46,7 @@ jobs:
         env:
           PIN_APPS: |
             khe-adventure-pins[bot] services/apps/games/docker-compose.yml ghcr\.io/khelias/khe-ai-adventure-(web|proxy)
+            khe-stories-pins[bot] services/apps/stories/docker-compose.yml ghcr\.io/khelias/khe-stories-server
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           EVENT: ${{ github.event_name }}
