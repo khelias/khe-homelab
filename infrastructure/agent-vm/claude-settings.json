@@ -54,7 +54,8 @@
   },
   "disableClaudeAiConnectors": false,
   "env": {
-    "DISABLE_AUTOUPDATER": "1"
+    "DISABLE_AUTOUPDATER": "1",
+    "CLAUDE_CODE_ARTIFACT": "1"
   },
   "agentPushNotifEnabled": true
 }

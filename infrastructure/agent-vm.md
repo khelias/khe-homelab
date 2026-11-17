@@ -87,6 +87,11 @@ by VFIO, so the host needs 6 GB free before the VM is created.
   checksums in the script.
 - **When the VM is down,** work from the laptop's personal Claude instance;
   the workspace and its gate are the same.
+- **Artifacts.** The template sets `CLAUDE_CODE_ARTIFACT=1`: a session
+  that `claude remote-control` spawns for the phone app otherwise has no
+  Artifact tool, so no Claude Design canvas or artifact page
+  ([anthropics/claude-code#88731](https://github.com/anthropics/claude-code/issues/88731),
+  open on v2.1.325). Drop it once that issue is fixed.
 - **Permissions.** `claude-settings.json` is the VM's floor and replaces the
   permission rules and the sandbox block on every run of the setup script:
   sessions start in auto mode, `ssh`, `scp`, `sftp`, `ha-ws.py` and
