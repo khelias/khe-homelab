@@ -301,6 +301,30 @@ PR run on the same commit.
   It fails when an audio sha in the catalog is not in the store.
 - `nginx.conf` and `headers.conf` are single-file bind mounts: a change to
   them alone needs a deploy with `force_recreate`, as landing.
+- `stories-api` (khe-stories `server/`, its docs/decisions/002) answers
+  `/api/`: pairing a child's phone with the family phrase (estate ADR-038),
+  the children's story requests, which it dispatches one at a time to
+  khe-bunny-tales' `kids-story.yml` (estate ADR-037), and the Web Push that
+  says a story is on the shelf. It sits on `stories-internal` with the
+  stories nginx only; that network is not `internal`, as the service calls
+  GitHub, Gemini and the push services. Pinned by the `khe-stories-pins`
+  App like adventure's images. Its SQLite file is in the local volume
+  `stories-api-data`, not NFS and not backed up: losing it means pairing the
+  phones again. Read-only root, all capabilities dropped.
+- The `.env` keys are in `.env.example`, entered by the `read -rs` pattern;
+  the children's names and the phrase's hash live only there. The
+  stories job's `report` reaches the service with `docker compose exec -T
+  stories-api node notify.ts ...` from this stack's directory; the operator
+  lists and revokes phones the same way (`--devices`, `--unpair <id>`). The
+  service reads `/srv/data/stories/app/catalog.json`, mounted read-only, to
+  see when a committed story is deployed.
+- nginx takes the client address from `X-Forwarded-For`, trusting only the
+  `proxy` network (`172.18.0.0/16`, where cloudflared and NPM sit), so the
+  `/api/` rate limit keys on the visitor through Cloudflare. Through NPM a
+  LAN client can name its own address (NPM trusts `X-Real-IP` from private
+  ranges), so the service also caps pairing at twenty tries an hour in all. `/api/` allows 3 MB bodies (a recorded idea is at most
+  2 MB, sent as base64) and the microphone is allowed for the page itself.
+  Uptime Kuma watches `https://stories.khe.ee/api/healthz` from the LAN.
 
 ## Immich
 

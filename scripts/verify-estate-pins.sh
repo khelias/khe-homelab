@@ -11,6 +11,7 @@ set -euo pipefail
 source_repo() {
   case "$1" in
     khe-ai-adventure-web | khe-ai-adventure-proxy) echo khelias/khe-ai-adventure ;;
+    khe-stories-server) echo khelias/khe-stories ;;
     *) return 1 ;;
   esac
 }
