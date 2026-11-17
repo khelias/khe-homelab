@@ -609,7 +609,7 @@ is the precedent. It is reversible: stop the VM and use the laptop.
 session on agent-vm from the phone, it runs in the workspace with the commit
 gate, and the phone gets the permission prompts. The claude.ai Projects
 feature, which would start a thread per task and run each one sent with Work
-locally on agent-vm, was the plan; it is not on the account yet (2026-11-14).
+locally on agent-vm, reached the account on 2026-11-16.
 A cloud thread or session would skip the commit gate. Work without the
 operator in the session does not run here at all but on GitHub-hosted
 Actions ([estate ADR-027](https://github.com/khelias/khe-architecture/blob/main/decisions/027-attended-and-unattended-agent-tiers.md), the weekly digest first); a self-built

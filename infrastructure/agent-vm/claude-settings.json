@@ -50,7 +50,7 @@
       ]
     }
   },
-  "disableClaudeAiConnectors": true,
+  "disableClaudeAiConnectors": false,
   "env": {
     "DISABLE_AUTOUPDATER": "1"
   },

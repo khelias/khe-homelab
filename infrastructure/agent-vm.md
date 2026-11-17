@@ -91,9 +91,11 @@ by VFIO, so the host needs 6 GB free before the VM is created.
   permission rules and the sandbox block on every run of the setup script:
   sessions start in auto mode, `ssh`, `scp`, `sftp`, `ha-ws.py` and
   `ha-dashboard.py` ask on the phone, a push written as `git push ...` (after
-  a `cd` into the repo, not `git -C`) does not, bypass mode is off and
-  claude.ai connectors are not loaded
-  ([SECURITY.md](../SECURITY.md#the-workspace-agent-agent-vm)). An "always
+  a `cd` into the repo, not `git -C`) does not, bypass mode is off
+  ([SECURITY.md](../SECURITY.md#the-workspace-agent-agent-vm)), and the
+  claude.ai connectors load as on the laptop, Claude Docs among them. The
+  setup merges the template over the VM's settings, so the template sets
+  `disableClaudeAiConnectors` to `false` rather than leaving it out. An "always
   allow" given in a session lasts until the next run.
 - **Sandbox.** Bash runs in Claude Code's sandbox in strict mode
   (bubblewrap and socat from the setup script): no unsandboxed retry,

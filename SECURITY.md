@@ -105,9 +105,10 @@ for the blast radius:
   VM and revoking it in Home Assistant.
 - Its sessions start in auto mode, so edits and most commands run on the
   classifier's judgement, not a tap, and run in Claude Code's Bash sandbox in
-  strict mode: no unsandboxed retry, and outbound traffic only to the
+  strict mode: no unsandboxed retry, and Bash's outbound traffic only to the
   template's hosts (GitHub, npm, PyPI, Anthropic, Debian), with no
-  per-command extra host. Sandboxed commands cannot read `~/.ssh`,
+  per-command extra host. Connector calls do not pass through the sandbox
+  (below). Sandboxed commands cannot read `~/.ssh`,
   `~/.config/khe` (the HA and Grafana tokens) or Claude's credentials, and the
   Read tool is denied the same paths. The gh token in `~/.config/gh/` stays
   readable, because `gh` and git's credential helper need it. Of the commands
@@ -117,8 +118,16 @@ for the blast radius:
   run outside it too; mcp-grafana keeps its LAN reach. Its settings template
   (`infrastructure/agent-vm/claude-settings.json`) is the floor: every `ssh`,
   `scp` and `sftp` asks the operator, in auto mode too; a push runs without a
-  prompt only as `git push ...`; bypass mode is disabled; claude.ai connectors
-  (Drive and the like) are not loaded. The commit gate also refuses a push that
+  prompt only as `git push ...`; bypass mode is disabled. The claude.ai
+  connectors (Claude Docs, Drive, Gmail and the like) load as they do on the
+  laptop, chosen on 2026-11-17 so that the VM does what the laptop does. The
+  risk accepted with it: connector calls run outside the Bash sandbox and
+  reach Google and claude.ai as the operator, and a session in auto mode,
+  steered from the phone, can read and write there on the classifier's
+  judgement, with no tap, so something it reads could lead it to send data
+  out that way. Undone by setting `disableClaudeAiConnectors` back to `true`
+  in the template, rerunning `setup-agent-vm.sh` and restarting
+  `remote-control`. The commit gate also refuses a push that
   could run a command of its choosing (`--receive-pack`, `--exec`, any
   global option but `-C`, `GIT_SSH*`, an ASKPASS) or whose options it cannot
   read, the other road to docker-vm.
@@ -130,8 +139,8 @@ for the blast radius:
 - A Claude Code cloud session would skip the commit gate; the Claude GitHub
   App, which gives those sessions write access, was uninstalled on 2026-11-14
   (with Google Labs Jules) and is not to come back without a decision.
-  Projects, whose threads could run either way, is not on the account yet
-  (2026-11-14).
+  Projects, whose threads could run either way, reached the account on
+  2026-11-16; its threads are sent with Work locally, to agent-vm.
 - Its `vzdump` backup holds the GitHub, Claude and ssh credentials: it stays on
   a storage that is not exported to docker-vm and is not copied offsite.
 - Nothing is scheduled here: work without the operator in the session runs
