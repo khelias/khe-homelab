@@ -204,6 +204,11 @@ and served via a per-location `root`. Do NOT nest it under
 
 **API keys**: `GEMINI_API_KEY` + `ANTHROPIC_API_KEY` in
 `services/apps/games/.env` on VM (never committed).
+The Gemini key bills a prepaid AI Studio account that the stories
+service's key shares, with auto-reload off and a monthly spend cap per
+project. When the balance runs out, Gemini answers 402 "prepayment credits
+are depleted" and the game stops; the proxy logs it, so check
+`{container_name="adventure-proxy"}` in Loki first.
 
 ### Image pins
 
