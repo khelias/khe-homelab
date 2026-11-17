@@ -174,7 +174,10 @@ Currently: i7-12700K, 32GB DDR5, 2× 12TB ZFS mirror, 2TB NVMe. No discrete GPU.
   IOMMU is already on, iGPU is already passed through for
   Quick Sync — a discrete card would pass through the same way.
 - **+32GB DDR5 → 64GB total** — unblocks Authentik SSO, more concurrent services,
-  larger local LLMs, parallel ML workloads.
+  larger local LLMs, parallel ML workloads. On hold: a 32GB kit cost about
+  €1000 in November 2026, twice what the whole server cost, so it waits for
+  DRAM prices to fall. Until then the stories reading runs on GitHub's runner,
+  not here.
 - **UPS** — not yet; power cut is unclean shutdown for the whole homelab. Worth
   considering once critical family usage grows.
 - **10GbE upgrade** — only relevant if Immich transfers
