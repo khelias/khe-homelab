@@ -324,7 +324,8 @@ PR run on the same commit.
   LAN client can name its own address (NPM trusts `X-Real-IP` from private
   ranges), so the service also caps pairing at twenty tries an hour in all. `/api/` allows 3 MB bodies (a recorded idea is at most
   2 MB, sent as base64) and the microphone is allowed for the page itself.
-  Uptime Kuma watches `https://stories.khe.ee/api/healthz` from the LAN.
+  Uptime Kuma watches `http://stories/api/healthz` over the `proxy` network
+  ("Unejänku request service", so a down nginx or service both show).
 
 ## Immich
 
