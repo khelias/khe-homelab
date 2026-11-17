@@ -202,11 +202,12 @@ and served via a per-location `root`. Do NOT nest it under
 **Networks**: `games-internal` (nginx <-> adventure-web, adventure-proxy) + `proxy`
 (CF tunnel -> nginx).
 
-**API keys**: `GEMINI_API_KEY` + `ANTHROPIC_API_KEY` in
-`services/apps/games/.env` on VM (never committed).
+**API keys**: `GEMINI_API_KEY` in `services/apps/games/.env` on VM (never
+committed). `ANTHROPIC_API_KEY` is unset since 2026-11-17, so the proxy's
+Claude mode answers 503; setting it again turns the mode back on.
 The Gemini key bills a prepaid AI Studio account that the stories
 service's key shares, with auto-reload off and a monthly spend cap per
-project. When the balance runs out, Gemini answers 402 "prepayment credits
+project (the game's: €1). When the balance runs out, Gemini answers 402 "prepayment credits
 are depleted" and the game stops; the proxy logs it, so check
 `{container_name="adventure-proxy"}` in Loki first.
 
