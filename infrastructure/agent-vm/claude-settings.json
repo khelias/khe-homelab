@@ -46,7 +46,9 @@
         "files.pythonhosted.org",
         "*.anthropic.com",
         "deb.debian.org",
-        "security.debian.org"
+        "security.debian.org",
+        "foorum.hinnavaatlus.ee",
+        "www.hinnavaatlus.ee"
       ]
     }
   },

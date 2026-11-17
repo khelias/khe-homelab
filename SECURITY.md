@@ -106,7 +106,8 @@ for the blast radius:
 - Its sessions start in auto mode, so edits and most commands run on the
   classifier's judgement, not a tap, and run in Claude Code's Bash sandbox in
   strict mode: no unsandboxed retry, and Bash's outbound traffic only to the
-  template's hosts (GitHub, npm, PyPI, Anthropic, Debian), with no
+  template's hosts (GitHub, npm, PyPI, Anthropic, Debian, and the
+  Hinnavaatlus forum and site for khe-deals), with no
   per-command extra host. Connector calls do not pass through the sandbox
   (below). Sandboxed commands cannot read `~/.ssh`,
   `~/.config/khe` (the HA and Grafana tokens) or Claude's credentials, and the
