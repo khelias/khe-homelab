@@ -27,7 +27,8 @@ the required `validate.yml` check:
   updates outside the critical-infrastructure group, except Home Assistant
   minor releases, which wait for review. It is disabled for the
   estate's own images (`ghcr.io/khelias/*`).
-- **Per-repo pin Apps** (`khe-adventure-pins` for `khe-ai-adventure`) open the
+- **Per-repo pin Apps** (`khe-adventure-pins` for `khe-ai-adventure`,
+  `khe-stories-pins` for `khe-stories`) open the
   estate image pin PRs with auto-merge. An App has Contents and Pull requests
   write here and nothing else, so it cannot change workflow files. The guard
   in `validate.yml` fails any PR the App wrote or pushed to that changes more
@@ -200,3 +201,8 @@ included) is reachable from the LAN and over the Tailscale subnet route,
 whatever the UFW port list says. `dash`, `trips` and `stories` open without a login from the LAN and the
 tailnet, through AdGuard rewrites and NPM
 ([estate ADR-022](https://github.com/khelias/khe-architecture/blob/main/decisions/022-home-route-for-access-only-apps.md)).
+Behind both routes, `stories.khe.ee/api/` asks for a paired phone of its own:
+a parent pairs it once with the family phrase, four random words, which is
+tried at most five times an hour per client address and twenty in all (a LAN
+client can make NPM forward an address of its choosing)
+([estate ADR-038](https://github.com/khelias/khe-architecture/blob/main/decisions/038-a-childs-device-is-paired-once-by-a-parent.md)).

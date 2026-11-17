@@ -1,7 +1,9 @@
 # Unejänku's family build at stories.khe.ee, behind Cloudflare Access
 # (estate ADR-031). khe-bunny-tales' deploy fills /srv/data/stories/app; the
-# audio store is filled from the laptop. Both must exist before this starts,
-# or Docker creates them root-owned.
+# audio store is filled from the laptop and by the children's stories job.
+# Both must exist before this starts, or Docker creates them root-owned.
+# stories-api takes the children's story requests under /api/ (estate
+# ADR-037, ADR-038; khe-stories docs/decisions/002).
 services:
   stories:
     image: nginx:1.31-alpine@sha256:fed7e14be83cbd2661a75cdc5b872d936cf155d46c327084d30b8df19ae88d72
@@ -14,6 +16,7 @@ services:
       - /srv/data/stories/audio:/srv/audio:ro
     networks:
       - proxy
+      - stories-internal
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:80"]
       interval: 30s
@@ -25,6 +28,55 @@ services:
           memory: 128M
           cpus: '0.25'
 
+  # Pinned by khe-stories' CI through the khe-stories-pins App (estate
+  # ADR-008). Its state (paired devices, the queue) is in a local volume, not
+  # NFS and not backed up: losing it means pairing the phones again.
+  stories-api:
+    image: ghcr.io/khelias/khe-stories-server:main@sha256:82515399bf619ed43bf298396d83fd14a0556c4f5cba3796c2df3a15738dc19f
+    container_name: stories-api
+    restart: unless-stopped
+    environment:
+      - CHILDREN=${CHILDREN:-}
+      - FAMILY_PHRASE_HASH=${FAMILY_PHRASE_HASH:-}
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY:-}
+      - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY:-}
+      - VAPID_SUBJECT=${VAPID_SUBJECT:-}
+      - CAP_PER_CHILD_PER_DAY=${CAP_PER_CHILD_PER_DAY:-}
+      - CAP_PER_MONTH=${CAP_PER_MONTH:-}
+      - CAP_QUEUED=${CAP_QUEUED:-}
+    volumes:
+      - stories-api-data:/data
+      # A committed story is ready once the deployed catalog lists it. The
+      # directory, not the file: the deploy replaces the file.
+      - /srv/data/stories/app:/app-build:ro
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - stories-internal
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:3000/api/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.50'
+
 networks:
   proxy:
     external: true
+  # Not internal: the service calls GitHub, Gemini and the push services.
+  stories-internal:
+
+volumes:
+  stories-api-data:
