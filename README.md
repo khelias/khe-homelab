@@ -78,3 +78,5 @@ Building the host and the VM from scratch is in
 - [SECURITY.md](SECURITY.md), [ROADMAP.md](ROADMAP.md)
 - [AGENTS.md](AGENTS.md) - layout and conventions for working on the repo; the Home
   Assistant configuration is in [khe-home-assistant](https://github.com/khelias/khe-home-assistant)
+
+MIT licensed.
