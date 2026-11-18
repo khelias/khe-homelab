@@ -22,26 +22,26 @@ The diagram, the services with their domains, and the automation are in
 
 Six layers, each catching what the others miss:
 
-1. **Kernel hang — hardware watchdog.** The Docker VM runs the `watchdog` daemon
+1. **Kernel hang: hardware watchdog.** The Docker VM runs the `watchdog` daemon
    pinging `/dev/watchdog` (Proxmox-emulated iTCO, 30s hardware timeout). If the
-   kernel wedges — OOM, I/O lock, driver bug — the hypervisor force-resets the
+   kernel wedges (OOM, I/O lock, driver bug), the hypervisor force-resets the
    VM and Proxmox boots it back up. Conservative config: only pings the device,
    no load/memory/network checks (those cause false-positive reboots on blips).
-2. **Unhealthy container — autoheal sidecar.** `willfarrell/autoheal` talks to a
+2. **Unhealthy container: autoheal sidecar.** `willfarrell/autoheal` talks to a
    narrow-scope `docker-socket-proxy` and restarts
    any container whose Docker healthcheck reports `unhealthy`. Fills the gap
    left by `restart: unless-stopped`, which only reacts to full crashes. This
    caught a stuck immich-ml worker the day it was deployed.
-3. **Runaway service — Compose resource limits.** Every long-running container
+3. **Runaway service: Compose resource limits.** Every long-running container
    has conservative memory and CPU limits in its `docker-compose.yml`; media
    and database workloads get larger caps than static web services. This
    keeps one bad process from consuming the whole VM.
-4. **Service down — Uptime Kuma + Telegram push.** Kuma watches the services
+4. **Service down: Uptime Kuma + Telegram push.** Kuma watches the services
    with HTTP/DNS monitors and takes push heartbeats from the backups and the OS
    update reports; all notify the same Telegram bot (`@khe_homelab_bot`).
    Alert lands on the owner's phone within ~90s. Kuma
    DB is in `backup.sh`, so monitor + notification config survives a VM rebuild.
-5. **Whole homelab down — external UptimeRobot.** Pings `khe.ee/healthz`
+5. **Whole homelab down: external UptimeRobot.** Pings `khe.ee/healthz`
    every 5 min from outside the home network, pushes to the UptimeRobot iOS
    app. The only layer that can notify when the VM, Proxmox, or the home
    internet itself is unreachable (when layers 1–4 can't reach any network).

@@ -439,8 +439,9 @@ PR run on the same commit.
   `add_header` inherits none. HSTS has no `includeSubDomains`:
   the apex policy must not pin LAN-only names. `/r/` keeps its own set.
   `absolute_redirect off`, so `/privacy` -> `/privacy/` stays on https.
-- `/reports` and `/reports/`, retired in 2026-10, answer 404 rather than the
-  landing fallback, so an old link does not get the home page with a 200.
+- An address with no page answers 404 with khe-sites' `404.html`, on
+  games.khe.ee too. The bare `/study` and `/adventure` there answer 301 to the
+  app.
 - `/lab` and `/lab/`, the Lab Atlas retired in 2026-10, answer 301 to
   `/architecture/` with the query string kept (`?lang=et` survives).
 - `/house3d` and everything under `/house3d/`, the Home Assistant demo's old
@@ -448,11 +449,11 @@ PR run on the same commit.
   since 2026-10, query string kept.
 - `/architecture/decisions/` is the decisions page with the register, and
   `/architecture/decisions/<NNN>/` are the ADR pages, all built by
-  khe-sites; an unknown id answers 404 rather than the landing fallback.
+  khe-sites.
 - `/r/<slug>/` serves khe-trips share sites from `/srv/data/trips/share`,
   written by the khe-trips runner and mounted outside the html root
-  (`/srv/share/r`). An unknown slug, `/r` and `/r/` answer 404, not the
-  landing fallback. Everything under `/r/` is `Cache-Control: private` (assets
+  (`/srv/share/r`). An unknown slug, `/r` and `/r/` answer a bare 404.
+  Everything under `/r/` is `Cache-Control: private` (assets
   a week in the browser only), so Cloudflare never holds a copy and an
   un-shared trip is gone at once. `/srv/data/trips/share` must exist, owned by
   the runner user, before landing starts, or Docker creates it root-owned and
