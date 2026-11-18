@@ -127,9 +127,10 @@ token in [cloudflare.md](../infrastructure/cloudflare.md#workers-routes)).
   `games.khe.ee` reaches the copy only through the staging script's
   allowlist.
 - **Installed apps** ([estate ADR-041](https://github.com/khelias/khe-architecture/blob/main/decisions/041-installed-apps-stay-on-their-paths-with-a-worker-each.md)):
-  each app's `sw.js`, manifest and HTML are served `no-cache`, a missing `sw.js`
-  is a 404 and never the page, and the copy passes `sw.js` through to the
-  origin. The manifest type comes from an exact-match location, since
+  each app's manifest and HTML are served `no-cache` and its `sw.js` `private,
+  no-cache`, because Cloudflare rewrites a plain `no-cache` on a `.js` file to
+  its four-hour browser cache. A missing `sw.js` is a 404 and never the page,
+  and the copy passes `sw.js` through to the origin. The manifest type comes from an exact-match location, since
   `mime.types` has no `webmanifest` entry. The trips bundle holds the private
   atlas, so `/assets/` there is `private`.
 
