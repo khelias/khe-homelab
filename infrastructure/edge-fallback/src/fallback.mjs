@@ -82,6 +82,15 @@ async function serveCopy(request, url, site, assets) {
     const response = await fetchAsset(location.fallback);
     if (response) return finish(response, location);
   }
+  if (location.missPage) {
+    // Without the request's headers: a conditional request would get a 304
+    // with no page to show.
+    const page = await assets.fetch(new Request(url.origin + location.missPage, { method: request.method }));
+    if (page.status === 200) {
+      return finish(new Response(page.body, { status: 404, headers: { "Content-Type": "text/html; charset=utf-8" } }), location);
+    }
+    await page.body?.cancel();
+  }
   return finish(notFound(), location);
 }
 

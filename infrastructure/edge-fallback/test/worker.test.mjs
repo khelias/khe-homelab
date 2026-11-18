@@ -84,10 +84,6 @@ describe("SPA fallbacks", () => {
     ["games", "/study/x", /<title>study</],
     ["khe", "/trips/x", /trips demo/],
     ["games", "/adventure/x", /<title>adventure</],
-    ["games", "/x", /games hub/],
-    ["games", "/adventure", /games hub/],
-    ["games", "/study", /games hub/],
-    ["khe", "/x", /khe landing/],
     ["khe", "/", /khe landing/],
     ["khe", "/architecture/", /khe architecture/],
     ["khe", "/r/abc123/", /share abc123/],
@@ -123,14 +119,32 @@ describe("SPA fallbacks", () => {
   });
 });
 
+describe("an address with no page", () => {
+  const cases = [
+    ["khe", "/x", /khe not found/],
+    ["khe", "/x/y/", /khe not found/],
+    ["khe", "/reports", /khe not found/],
+    ["khe", "/reports/", /khe not found/],
+    ["khe", "/architecture/decisions/999/", /khe not found/],
+    ["games", "/x", /games not found/],
+    ["games", "/studyx", /games not found/],
+  ];
+  for (const [site, path, content] of cases) {
+    test(`${site} ${path} is the 404 page`, async () => {
+      const { response, body } = await request(site, path);
+      assert.equal(response.status, 404);
+      assert.match(response.headers.get("Content-Type"), /text\/html/);
+      assert.match(body, content);
+      assert.ok(fallback(response));
+    });
+  }
+});
+
 describe("hard 404s", () => {
   const cases = [
     "/r/unknown/",
     "/r/",
     "/r",
-    "/reports",
-    "/reports/",
-    "/architecture/decisions/999/",
     "/r/abc123/assets/missing.js",
     "/trips/assets/missing.js",
     "/stories/x",
@@ -189,6 +203,8 @@ describe("redirects", () => {
     ["khe", "/privacy?a=b", "/privacy/?a=b"],
     ["khe", "/r/abc123", "/r/abc123/"],
     ["khe", "/architecture/decisions/001", "/architecture/decisions/001/"],
+    ["games", "/study", "/study/"],
+    ["games", "/adventure?lang=et", "/adventure/?lang=et"],
   ];
   for (const [site, path, location] of cases) {
     test(`${site} ${path} is a 301 to ${location}`, async () => {

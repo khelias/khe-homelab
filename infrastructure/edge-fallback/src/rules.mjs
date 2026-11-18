@@ -99,6 +99,7 @@ const LANDING_ASSET = /\.(css|js|woff2?|ttf|eot|png|jpg|jpeg|gif|ico|svg|webp)$/
 //   file       try the path as a file
 //   dir        try path/index.html, with nginx's slash 301 for a bare path
 //   fallback   the file served when both miss; none means 404
+//   missPage   the file served with a 404 when all of those miss
 //   headers    the HEADER_SETS entry, the site's own when unset
 //   cache      Cache-Control to set, a string or a function of the status
 //   type       Content-Type to set
@@ -106,11 +107,9 @@ const LANDING_ASSET = /\.(css|js|woff2?|ttf|eot|png|jpg|jpeg|gif|ico|svg|webp)$/
 // $is_args$args and rewrite do. A location is an object, or a function of
 // the path where the answer depends on it.
 const kheLocations = [
-  [(p) => p === "/reports" || p.startsWith("/reports/"), { notFound: true }],
   [(p) => p === "/lab" || p.startsWith("/lab/"), { redirect: "/architecture/", keepQuery: true }],
   [(p) => p === "/house3d", { redirect: "/ha/", keepQuery: true }],
   [(p) => p.startsWith("/house3d/"), (p) => ({ redirect: `/ha/${p.slice("/house3d/".length)}`, keepQuery: true })],
-  [(p) => p.startsWith("/architecture/decisions/"), { file: true, dir: true }],
   [(p) => p === "/r" || p === "/r/", { notFound: true }],
   [(p) => /^\/r\/[a-z0-9]+\/assets\//.test(p), { file: true, headers: "share", cache: shareAssetCache }],
   [(p) => p.startsWith("/r/"), { file: true, dir: true, headers: "share" }],
@@ -123,14 +122,12 @@ const kheLocations = [
   [(p) => p.startsWith("/stories/audio/"), { file: true, headers: "stories", cache: storiesAudioCache }],
   [(p) => p.startsWith("/stories/"), { file: true, dir: true, headers: "stories" }],
   [(p) => LANDING_ASSET.test(p), { file: true, cache: onSuccess("public, max-age=2592000") }],
-  [() => true, { file: true, dir: true, fallback: "/index.html" }],
+  [() => true, { file: true, dir: true, missPage: "/404.html" }],
 ];
 
-// study/ and adventure/ are mounted beside the launcher root, not in it, so
-// games' "/" location never finds them as files or directories.
-const OUTSIDE_LAUNCHER = /^\/(study|adventure)(\/|$)/;
-
 const gamesLocations = [
+  [(p) => p === "/study", { redirect: "/study/", keepQuery: true }],
+  [(p) => p === "/adventure", { redirect: "/adventure/", keepQuery: true }],
   [(p) => p === "/adventure/config.js", { file: true, cache: "no-store" }],
   [(p) => p === "/adventure/manifest.webmanifest", { file: true, cache: "no-cache, must-revalidate", type: MANIFEST_TYPE }],
   [(p) => p.startsWith("/adventure/assets/"), { file: true, cache: "public, max-age=31536000, immutable" }],
@@ -138,8 +135,7 @@ const gamesLocations = [
   [(p) => p === "/study/manifest.webmanifest", { file: true, cache: "no-cache", type: MANIFEST_TYPE }],
   [(p) => p.startsWith("/study/assets/"), { file: true, cache: onSuccess("public, max-age=31536000, immutable", "public, immutable") }],
   [(p) => p.startsWith("/study/"), { file: true, dir: true, fallback: "/study/index.html", cache: "no-cache" }],
-  [(p) => OUTSIDE_LAUNCHER.test(p), { fallback: "/index.html" }],
-  [() => true, { file: true, dir: true, fallback: "/index.html" }],
+  [() => true, { file: true, dir: true, missPage: "/404.html" }],
 ];
 
 const LOCATIONS = { khe: kheLocations, games: gamesLocations };
