@@ -117,6 +117,9 @@ fi
 # The container writes config.js from API_SECRET at start; the copy gets a
 # stub without it (estate ADR-016 point 4).
 printf '%s\n' 'window.__ADVENTURE_CONFIG__ = { "apiSecret": "" };' > "$out/games/adventure/config.js"
+# No service worker reaches the copy, under any spelling of its URL (estate
+# ADR-041 point 5).
+find "$out" -type f -name sw.js -delete
 # grep exits 1 only when nothing matched; a read error must fail too.
 found=0
 grep -rlE "apiSecret[\"']? *: *[\"'][^\"']" "$out" >&2 || found=$?

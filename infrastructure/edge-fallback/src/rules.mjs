@@ -80,11 +80,16 @@ function onSuccess(value, ifMissed) {
 }
 
 // Requests the copy never answers: the origin's reply, failure included,
-// reaches the client (estate ADR-016 point 5).
+// reaches the client (estate ADR-016 point 5). A service worker is among them,
+// so an outage cannot install or roll back one (estate ADR-041 point 5).
+const isServiceWorker = (path) => path.endsWith("/sw.js");
+
 export const PASS_THROUGH = {
-  khe: (path) => path === "/healthz",
-  games: (path) => path.startsWith("/adventure/api/"),
+  khe: (path) => path === "/healthz" || isServiceWorker(path),
+  games: (path) => path.startsWith("/adventure/api/") || isServiceWorker(path),
 };
+
+const MANIFEST_TYPE = "application/manifest+json";
 
 const LANDING_ASSET = /\.(css|js|woff2?|ttf|eot|png|jpg|jpeg|gif|ico|svg|webp)$/i;
 
@@ -96,6 +101,7 @@ const LANDING_ASSET = /\.(css|js|woff2?|ttf|eot|png|jpg|jpeg|gif|ico|svg|webp)$/
 //   fallback   the file served when both miss; none means 404
 //   headers    the HEADER_SETS entry, the site's own when unset
 //   cache      Cache-Control to set, a string or a function of the status
+//   type       Content-Type to set
 // keepQuery appends the request's query to a redirect, as nginx's
 // $is_args$args and rewrite do. A location is an object, or a function of
 // the path where the answer depends on it.
@@ -112,6 +118,7 @@ const kheLocations = [
   [(p) => p.startsWith("/trips/assets/"), { file: true, headers: "trips", cache: shareAssetCache }],
   [(p) => p.startsWith("/trips/"), { file: true, dir: true, fallback: "/trips/index.html", headers: "trips" }],
   [(p) => p === "/stories", { redirect: "/stories/", keepQuery: true }],
+  [(p) => p === "/stories/manifest.webmanifest", { file: true, headers: "stories", type: MANIFEST_TYPE }],
   [(p) => p.startsWith("/stories/assets/"), { file: true, headers: "stories", cache: shareAssetCache }],
   [(p) => p.startsWith("/stories/audio/"), { file: true, headers: "stories", cache: storiesAudioCache }],
   [(p) => p.startsWith("/stories/"), { file: true, dir: true, headers: "stories" }],
@@ -125,10 +132,12 @@ const OUTSIDE_LAUNCHER = /^\/(study|adventure)(\/|$)/;
 
 const gamesLocations = [
   [(p) => p === "/adventure/config.js", { file: true, cache: "no-store" }],
+  [(p) => p === "/adventure/manifest.webmanifest", { file: true, cache: "no-cache, must-revalidate", type: MANIFEST_TYPE }],
   [(p) => p.startsWith("/adventure/assets/"), { file: true, cache: "public, max-age=31536000, immutable" }],
   [(p) => p.startsWith("/adventure/"), { file: true, dir: true, fallback: "/adventure/index.html", cache: "no-cache, must-revalidate" }],
+  [(p) => p === "/study/manifest.webmanifest", { file: true, cache: "no-cache", type: MANIFEST_TYPE }],
   [(p) => p.startsWith("/study/assets/"), { file: true, cache: onSuccess("public, max-age=31536000, immutable", "public, immutable") }],
-  [(p) => p.startsWith("/study/"), { file: true, dir: true, fallback: "/study/index.html" }],
+  [(p) => p.startsWith("/study/"), { file: true, dir: true, fallback: "/study/index.html", cache: "no-cache" }],
   [(p) => OUTSIDE_LAUNCHER.test(p), { fallback: "/index.html" }],
   [() => true, { file: true, dir: true, fallback: "/index.html" }],
 ];

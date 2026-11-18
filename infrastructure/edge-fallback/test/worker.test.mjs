@@ -42,6 +42,24 @@ describe("origin fails", () => {
 });
 
 describe("never falls back", () => {
+  for (const [site, path] of [
+    ["games", "/study/sw.js"],
+    ["games", "/adventure/sw.js"],
+    ["khe", "/stories/sw.js"],
+  ]) {
+    test(`${path} gets the origin's 530, so an outage cannot change a worker`, async () => {
+      const { response } = await request(site, path);
+      assert.equal(response.status, 530);
+      assert.ok(!fallback(response));
+    });
+  }
+
+  test("an encoded worker path finds no worker in the copy", async () => {
+    const { response, body } = await request("khe", "/stories/sw%2Ejs");
+    assert.equal(response.status, 404);
+    assert.doesNotMatch(body, /addEventListener/);
+  });
+
   test("POST gets the origin's 530", async () => {
     const { response } = await request("games", "/study/", { method: "POST" });
     assert.equal(response.status, 530);
@@ -244,6 +262,24 @@ describe("headers", () => {
     assert.equal(response.status, 404);
     assert.equal(response.headers.get("Cache-Control"), "private, no-cache");
   });
+
+  test("the study page is asked again on every visit", async () => {
+    const { response } = await request("games", "/study/");
+    assert.equal(response.headers.get("Cache-Control"), "no-cache");
+  });
+
+  for (const [site, path, cache] of [
+    ["games", "/study/manifest.webmanifest", "no-cache"],
+    ["games", "/adventure/manifest.webmanifest", "no-cache, must-revalidate"],
+    ["khe", "/stories/manifest.webmanifest", "private, no-cache"],
+  ]) {
+    test(`${path} is a manifest, asked again on every visit`, async () => {
+      const { response } = await request(site, path);
+      assert.equal(response.status, 200);
+      assert.equal(response.headers.get("Content-Type"), "application/manifest+json");
+      assert.equal(response.headers.get("Cache-Control"), cache);
+    });
+  }
 
   test("the landing carries its CSP", async () => {
     const { response } = await request("khe", "/");

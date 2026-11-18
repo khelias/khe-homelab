@@ -24,6 +24,7 @@ const BLOCKS = [
   ["landing", "location ^~ /r/ {", "share"],
   ["landing", "location ^~ /trips/ {", "trips"],
   ["landing", "location ^~ /stories/ {", "stories"],
+  ["landing", "location = /stories/manifest.webmanifest {", "stories"],
   ["games", "server {", "games"],
 ];
 
@@ -32,3 +33,14 @@ for (const [conf, opening, set] of BLOCKS) {
     assert.deepEqual(blockHeaders(conf, opening), HEADER_SETS[set]);
   });
 }
+
+// A location with an add_header of its own repeats the server's security
+// headers, so every copy in the games nginx has to say the same.
+test("every games location repeats the same security headers", () => {
+  const text = readFileSync(join(APPS, "games", "nginx.conf"), "utf8");
+  for (const [name, value] of Object.entries(HEADER_SETS.games)) {
+    const sent = [...text.matchAll(new RegExp(`add_header ${name} "([^"]*)" always;`, "g"))].map((m) => m[1]);
+    assert.ok(sent.length > 1, name);
+    assert.deepEqual([...new Set(sent)], [value], name);
+  }
+});

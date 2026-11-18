@@ -98,6 +98,7 @@ function finish(response, location) {
     const cache = typeof location.cache === "function" ? location.cache(out.status) : location.cache;
     if (cache) out.headers.set("Cache-Control", cache);
   }
+  if (location.type && out.status === 200) out.headers.set("Content-Type", location.type);
   out.headers.set("X-KHE-Fallback", "1");
   return out;
 }
