@@ -57,8 +57,10 @@ by VFIO, so the host needs 6 GB free before the VM is created.
    fingerprint with the one docker-vm shows for itself before relying on it.
 5. **Memory.** The agent's memory folder is keyed by the workspace path, so
    the laptop's `~/.claude-isiklik/projects/<path>/memory/` is copied into
-   `~/.claude/projects/-home-khe-khe/memory/`. The VM's copy is primary from
-   then on; the two diverge.
+   `~/.claude/projects/-home-khe-khe/memory/`. From then on the laptop's
+   session-start hook keeps the two the same (`scripts/memory-sync.py` in
+   khe-workspace): the newer of two edited copies wins, and the laptop keeps
+   backups in `~/.local/state/khe/memory-backups/`.
 6. **First run of remote control**, once in a terminal: `cd ~/khe && claude
    remote-control --spawn same-dir`, answering the trust and "Enable Remote
    Control?" prompts. If it runs without a terminal, `systemctl --user enable
@@ -117,6 +119,18 @@ by VFIO, so the host needs 6 GB free before the VM is created.
   A legitimate command the sandbox blocks gets its host or exclusion added
   to the template, not a session override. mcp-grafana runs outside the
   sandbox as an MCP server and keeps its LAN reach.
+- **Session start.** The workspace's `SessionStart` hook
+  (`.claude/hooks/session-start.sh` in khe-workspace) fast-forwards the repos
+  that are on a clean `main`. Hooks run outside the Bash sandbox, so the hook
+  and the scripts it runs do too, its git calls with repo hooks and fsmonitor
+  turned off. It never fast-forwards the workspace root, so a push cannot
+  change the hook that runs it; a `behind` line asks the operator to pull
+  the root. That fits
+  [estate ADR-027](https://github.com/khelias/khe-architecture/blob/main/decisions/027-attended-and-unattended-agent-tiers.md):
+  its point 3 governs the session's Bash, no boundary inside the VM holds
+  against a misused session, and the commit gate already runs each repo's
+  `check:` outside the sandbox. The accepted risk is in
+  [SECURITY.md](../SECURITY.md#the-workspace-agent-agent-vm).
 - **Cloud sessions.** A cloud session or Projects thread skips the commit
   gate, so the Claude GitHub App stays uninstalled; Projects threads are
   sent with Work locally, to `~/khe` here.

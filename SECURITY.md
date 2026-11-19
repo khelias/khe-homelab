@@ -161,11 +161,20 @@ for the blast radius:
   the operator's tap; and the commit gate runs a repo's `check:` and git
   with full access and no tap, so a check script, a dependency or a git
   config that a sandboxed command changed runs outside the sandbox at the
-  next commit. `npm ci` runs dependency
+  next commit; the session-start hook does the same with the workspace
+  scripts and git at every session start, with no commit. `npm ci` runs dependency
   install scripts as the user that holds the keys, and `create-vm.sh` fetches
   the Debian image over https without a checksum. The next control, if the
   VM starts reading more untrusted content, is an egress allowlist in the
   Proxmox firewall on the VM's NIC, out of the agent's reach.
+- Accepted, 2026-11-19: what an agent-vm session pushes or saves reaches the
+  laptop at its next session start. The laptop's hook fast-forwards the
+  repos under `repos/`, so a pushed commit is there without a pull and its
+  `check:` runs at the laptop's next commit in that repo, and the memory sync
+  copies the notes agent-vm sessions saved into the memory the laptop's
+  sessions load, naming each one in the session's opening lines. The
+  workspace root, which holds the hooks and the commit gate, is only
+  reported, never fast-forwarded, on either machine.
 
 ## Access model
 
