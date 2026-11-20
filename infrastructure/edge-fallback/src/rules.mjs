@@ -140,9 +140,29 @@ const gamesLocations = [
 
 const LOCATIONS = { khe: kheLocations, games: gamesLocations };
 
-export function locate(site, path) {
+// landing's $lang_page map (estate ADR-048): "<path>:<lang>" to the page in
+// that language, for a ?lang that differs from the page's.
+export const LANG_PAGES = {
+  "/:en": "/en/",
+  "/architecture/:en": "/en/architecture/",
+  "/architecture/decisions/:en": "/en/architecture/decisions/",
+  "/agents/:en": "/en/agents/",
+  "/privacy:en": "/en/privacy/",
+  "/privacy/:en": "/en/privacy/",
+  "/en/:et": "/",
+  "/en/architecture/:et": "/architecture/",
+  "/en/architecture/decisions/:et": "/architecture/decisions/",
+  "/en/agents/:et": "/agents/",
+  "/en/privacy:et": "/privacy/",
+  "/en/privacy/:et": "/privacy/",
+};
+
+// search is the request's query; its first lowercase lang is nginx's $lang_arg.
+export function locate(site, path, search = "") {
   const locations = LOCATIONS[site];
   if (!locations) throw new Error(`unknown SITE ${site}`);
+  const langPage = site === "khe" && LANG_PAGES[`${path}:${new URLSearchParams(search).get("lang")}`];
+  if (langPage) return { headers: site, redirect: langPage, keepQuery: true };
   for (const [matches, location] of locations) {
     if (!matches(path)) continue;
     const found = typeof location === "function" ? location(path) : location;

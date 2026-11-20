@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
-import { HEADER_SETS } from "../src/rules.mjs";
+import { HEADER_SETS, LANG_PAGES } from "../src/rules.mjs";
 
 const APPS = join(import.meta.dirname, "../../../services/apps");
 
@@ -43,4 +43,12 @@ test("every games location repeats the same security headers", () => {
     assert.ok(sent.length > 1, name);
     assert.deepEqual([...new Set(sent)], [value], name);
   }
+});
+
+// landing's $lang_page map and LANG_PAGES name the same pairs (estate ADR-048).
+test("landing's $lang_page map is LANG_PAGES", () => {
+  const text = readFileSync(join(APPS, "landing", "nginx.conf"), "utf8");
+  const map = text.slice(text.indexOf('map "$uri:$lang_arg" $lang_page {'), text.indexOf("\n}\n", text.indexOf("$lang_page {")));
+  const pairs = Object.fromEntries([...map.matchAll(/^\s+"([^"]+)" (\S+);$/gm)].map((m) => [m[1], m[2]]));
+  assert.deepEqual(pairs, LANG_PAGES);
 });

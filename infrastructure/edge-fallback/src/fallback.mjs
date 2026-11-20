@@ -47,7 +47,7 @@ async function serveCopy(request, url, site, assets) {
   // nginx's merge_slashes. Without it "//evil.com" would resolve as a
   // scheme-relative URL and the slash 301 would point off-site.
   const path = url.pathname.replace(/\/{2,}/g, "/");
-  const location = locate(site, path);
+  const location = locate(site, path, url.search);
 
   if (location.redirect) {
     const target = location.redirect + (location.keepQuery ? url.search : "");

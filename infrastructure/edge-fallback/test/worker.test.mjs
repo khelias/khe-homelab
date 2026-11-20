@@ -205,6 +205,18 @@ describe("redirects", () => {
     ["khe", "/architecture/decisions/001", "/architecture/decisions/001/"],
     ["games", "/study", "/study/"],
     ["games", "/adventure?lang=et", "/adventure/?lang=et"],
+    ["khe", "/?lang=en", "/en/?lang=en"],
+    ["khe", "/architecture/?lang=en#x", "/en/architecture/?lang=en"],
+    ["khe", "/architecture/decisions/?lang=en", "/en/architecture/decisions/?lang=en"],
+    ["khe", "/agents/?lang=en&a=b", "/en/agents/?lang=en&a=b"],
+    ["khe", "/privacy?lang=en", "/en/privacy/?lang=en"],
+    ["khe", "/privacy/?lang=en", "/en/privacy/?lang=en"],
+    ["khe", "/en/?lang=et", "/?lang=et"],
+    ["khe", "/en/architecture/?lang=et", "/architecture/?lang=et"],
+    ["khe", "/en/architecture/decisions/?lang=et", "/architecture/decisions/?lang=et"],
+    ["khe", "/en/agents/?lang=et", "/agents/?lang=et"],
+    ["khe", "/en/privacy?lang=et", "/privacy/?lang=et"],
+    ["khe", "/en/privacy/?lang=et", "/privacy/?lang=et"],
   ];
   for (const [site, path, location] of cases) {
     test(`${site} ${path} is a 301 to ${location}`, async () => {
@@ -212,6 +224,15 @@ describe("redirects", () => {
       assert.equal(response.status, 301);
       assert.equal(response.headers.get("Location"), location);
       assert.ok(fallback(response));
+    });
+  }
+});
+
+describe("a ?lang the page already has", () => {
+  for (const path of ["/?lang=et", "/en/?lang=en", "/architecture/?lang=et", "/en/privacy/?lang=en", "/?LANG=en&lang=et", "/?LANG=en"]) {
+    test(`${path} is not redirected`, async () => {
+      const { response } = await request("khe", path);
+      assert.notEqual(response.status, 301);
     });
   }
 });

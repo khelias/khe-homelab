@@ -447,6 +447,12 @@ PR run on the same commit.
 - `/house3d` and everything under `/house3d/`, the Home Assistant demo's old
   path, answer 301 to the same path under `/ha/`, where khe-sites builds it
   since 2026-10, query string kept.
+- khe-sites builds the landing, privacy and architecture pages once per
+  language, Estonian at the path and English under `/en/` ([estate
+  ADR-048](https://github.com/khelias/khe-architecture/blob/main/decisions/048-khe-ee-pages-are-one-static-page-per-language-estonian-at-the-root.md)).
+  The `$lang_page` map answers a `?lang` that differs from the page's
+  language with 301 to the other page, query string kept (`/?lang=en` ->
+  `/en/?lang=en`), and leaves a matching one alone so nothing loops.
 - `/architecture/decisions/` is the decisions page with the register, and
   `/architecture/decisions/<NNN>/` are the ADR pages, all built by
   khe-sites.
