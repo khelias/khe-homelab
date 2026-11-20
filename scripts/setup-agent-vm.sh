@@ -72,6 +72,8 @@ install_appimage() {
     sudo rm -rf "$dir"
     sudo mv "$TMP/squashfs-root" "$dir"
     sudo chown -R root:root "$dir"
+    # The image's own modes can leave folders 700, and khe runs the tools.
+    sudo chmod -R a+rX "$dir"
   fi
   printf '#!/bin/sh\nexec %s/AppRun "$@"\n' "$dir" | sudo tee "/usr/local/bin/$4" >/dev/null
   sudo chmod 755 "/usr/local/bin/$4"
@@ -116,6 +118,7 @@ step "OrcaSlicer $ORCA_VERSION"
 install_appimage "orca-slicer-$ORCA_VERSION" \
   "https://github.com/OrcaSlicer/OrcaSlicer/releases/download/v$ORCA_VERSION/OrcaSlicer_Linux_AppImage_Ubuntu2404_V$ORCA_VERSION.AppImage" \
   "$ORCA_SHA256" orca-slicer
+orca-slicer --help >/dev/null || echo "WARN: orca-slicer does not start here"
 
 step "OpenSCAD $OPENSCAD_VERSION"
 # Snapshots are pruned in time: a failed fetch warns and the setup goes on.

@@ -6,12 +6,13 @@
 # other VM_ID builds a further VM and must say who it is and who may log in:
 #
 #   VM_ID=102 VM_NAME=agent-vm VM_IP=<address>/24 VM_SSH_PUBKEY='<public key>' \
-#     VM_CORES=2 VM_MEMORY=6144 VM_DISK_SIZE=40G ./scripts/create-vm.sh
+#     VM_CORES=2 VM_MEMORY=8192 VM_DISK_SIZE=40G ./scripts/create-vm.sh
 #
 # VM_SSH_PUBKEY is the key itself or a file holding it. The address is given
 # at run time and never committed. VM_CORES, VM_MEMORY and VM_DISK_SIZE
 # override docker-vm's sizes (8 cores, 16 GB, 256G); size by memory carefully,
-# because docker-vm's RAM is pinned on the host by VFIO.
+# because docker-vm's RAM is pinned on the host by VFIO. Ballooning is off, so
+# a guest keeps all of VM_MEMORY when the host is busy.
 set -euo pipefail
 
 VM_ID="${VM_ID:-100}"
@@ -91,6 +92,7 @@ qm create "$VM_ID" \
   --ostype l26 \
   --cores "$VM_CORES" \
   --memory "$VM_MEMORY" \
+  --balloon 0 \
   --cpu host \
   --machine q35 \
   --net0 virtio,bridge=vmbr0 \

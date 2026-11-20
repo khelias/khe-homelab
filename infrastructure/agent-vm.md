@@ -14,17 +14,19 @@ operator are not run here but on GitHub-hosted Actions (ADR-027). Why a VM and h
 what it can reach: [SECURITY.md](../SECURITY.md#the-workspace-agent-agent-vm).
 Its VM ID and address are in the private khe-meta `house/` network document.
 
-2 vCPU, 6 GB, 40 GB, no passthrough. docker-vm's 16 GB is pinned on the host
-by VFIO, so the host needs 6 GB free before the VM is created.
+2 vCPU, 8 GB with ballooning off, 40 GB, no passthrough. docker-vm's 16 GB is
+pinned on the host by VFIO, so the host needs 8 GB free before the VM is
+created. With a balloon minimum of 4 GB, Proxmox shrank the VM to it above 80%
+host use and the VM locked up under `npm ci`.
 
 ## Build order
 
 1. **Proxmox UI shell, operator** (root on the host stays with the operator).
-   Check the host has 6 GB free. Then, with the values in place:
+   Check the host has 8 GB free. Then, with the values in place:
 
    ```bash
    VM_ID=<id> VM_NAME=agent-vm VM_IP=<address>/24 VM_SSH_PUBKEY='<public key>' \
-     VM_CORES=2 VM_MEMORY=6144 VM_DISK_SIZE=40G ./scripts/create-vm.sh
+     VM_CORES=2 VM_MEMORY=8192 VM_DISK_SIZE=40G ./scripts/create-vm.sh
    ```
 
    The script prints the key's fingerprint: compare it with the key's owner.
