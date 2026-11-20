@@ -5,7 +5,8 @@
 #
 #   claude mcp add grafana --scope local -- <path>/scripts/mcp-grafana.sh
 #
-# (agent-vm registers it with --scope user so worktree sessions see it.)
+# agent-vm runs a root-owned copy in /usr/local/lib/khe/, listed in
+# /etc/claude-code/managed-mcp.json by setup-agent-vm.sh (estate ADR-051).
 #
 # Needs mcp-grafana v2.0.0 on PATH and a Viewer service account token in
 # ~/.config/khe/grafana-token, mode 600. The server reads the token from the

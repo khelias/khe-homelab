@@ -4,16 +4,19 @@
       "Bash(git push:*)",
       "Bash(orca-slicer:*)",
       "Bash(openscad:*)",
-      "Bash(python3 -I /home/khe/khe/repos/khe-meta/house/k2-printer/k2_slice.py:*)"
+      "Bash(python3 -I /home/khe/khe/repos/khe-meta/house/k2-printer/k2_slice.py:*)",
+      "mcp__k2__status",
+      "mcp__k2__files",
+      "mcp__k2__light",
+      "mcp__k2__camera",
+      "mcp__k2__upload"
     ],
     "ask": [
       "Bash(ssh:*)",
       "Bash(scp:*)",
       "Bash(sftp:*)",
       "Bash(*ha-ws.py*)",
-      "Bash(*ha-dashboard.py*)",
-      "Bash(*k2.py*)",
-      "Bash(*k2_camera.py*)"
+      "Bash(*ha-dashboard.py*)"
     ],
     "deny": [
       "Read(~/.ssh/**)",
@@ -31,9 +34,7 @@
       "ssh *",
       "scp *",
       "/home/khe/khe/repos/khe-home-assistant/.venv/bin/python scripts/ha-ws.py *",
-      "/home/khe/khe/repos/khe-home-assistant/.venv/bin/python scripts/ha-dashboard.py *",
-      "/usr/bin/python3 -I /usr/local/lib/khe/k2/k2.py *",
-      "/usr/bin/python3 -I /usr/local/lib/khe/k2/k2_camera.py *"
+      "/home/khe/khe/repos/khe-home-assistant/.venv/bin/python scripts/ha-dashboard.py *"
     ],
     "filesystem": {
       "denyRead": [

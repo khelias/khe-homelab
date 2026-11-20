@@ -105,25 +105,37 @@ for the blast radius:
   ventilation setting. Undone by removing `ha-token` from the
   VM and revoking it in Home Assistant.
 - It can start prints on the house's 3D printer
-  ([estate ADR-050](https://github.com/khelias/khe-architecture/blob/main/decisions/050-the-attended-agent-slices-and-starts-k2-prints.md)):
-  two scripts read the printer's state, files and camera, switch its chamber
-  light and upload or start a sliced file, and every run asks the operator. The print script refuses
-  unless the printer is idle and the file's side fan stays at or below S38;
-  neither script writes the printer's configuration or restarts Klipper.
-  Because they run outside the sandbox with the VM's LAN reach, the
-  sandbox runs root-owned copies in `/usr/local/lib/khe/k2/` that a session
-  cannot change, through `/usr/bin/python3` rather than the one `PATH`
-  finds first. The setup script takes them from khe-meta's `origin/main`,
-  which a session can push to, so it shows the diff against the installed
-  copies and installs only on the operator's yes: reading that diff is the
-  review. The copies hold against sessions, not against a setup rerun: the
-  setup runs repo build code (`npm ci`, the stories app build, `pip install
-  -e`, `workspace.sh`) as `khe` with passwordless sudo, and that code is
-  session-editable, so a rerun after a session was misused could replace
-  them. Accepted with the rest of the VM's sudo (estate ADR-027). The camera runs Debian's root-owned `chromium`. The printer's address is in
-  `~/.config/khe/k2-printer.json`. Slicing and OpenSCAD run inside the
-  sandbox with no network. Undone by removing the printer entries from the
-  template, rerunning `setup-agent-vm.sh` and deleting the address file.
+  ([estate ADR-051](https://github.com/khelias/khe-architecture/blob/main/decisions/051-the-agent-reaches-the-k2-through-a-root-registered-mcp-server.md)):
+  the `k2` MCP server reads the printer's state, files and camera, switches
+  its chamber light and uploads a sliced file without a tap, since none of
+  that starts anything, and starts a print only after a prompt that the
+  server's own code forces on every call, which no permission rule lifts.
+  Print and light refuse unless the printer is idle, print and upload refuse
+  a file whose side fan goes above S38 and read only an absolute path to a
+  plain file under `~/khe` or the session's temp folder, opened without
+  following a link, so an untapped upload sends nothing but the file named.
+  The server writes no printer configuration and restarts no Klipper.
+- Its MCP servers (`grafana` and `k2`) run outside the sandbox with the VM's
+  LAN reach, so the VM has only those listed in the root-owned
+  `/etc/claude-code/managed-mcp.json`, whose exclusive control keeps a
+  session from adding a server of its own, and each runs a root-owned copy
+  in `/usr/local/lib/khe/` that a session cannot change, `k2` through
+  `/usr/bin/python3 -I` rather than the `python3` that `PATH` finds first.
+  The setup script takes the K2 files from khe-meta's `origin/main`, which a
+  session can push to, so it shows the diff against the installed copies and
+  installs only on the operator's yes: reading that diff is the review.
+  mcp-grafana's wrapper comes from the setup's own checkout, which already
+  runs as root. The copies hold against sessions, not against a setup
+  rerun: the setup runs repo build code (`npm ci`, the stories app build,
+  `pip install -e`, `workspace.sh`) as `khe` with passwordless sudo, and
+  that code is session-editable, so a rerun after a session was misused
+  could replace them. Accepted with the rest of the VM's sudo (estate
+  ADR-027). The camera runs Debian's root-owned `chromium`. The printer's
+  address is in `~/.config/khe/k2-printer.json`. Slicing and OpenSCAD run
+  inside the sandbox with no network, from pins that live with the repos
+  that use them. Undone by deleting `/etc/claude-code/managed-mcp.json`,
+  reverting the setup and template commits, rerunning `setup-agent-vm.sh`
+  and deleting the address file.
 - Its sessions start in auto mode, so edits and most commands run on the
   classifier's judgement, not a tap, and run in Claude Code's Bash sandbox in
   strict mode: no unsandboxed retry, and Bash's outbound traffic only to the
@@ -134,11 +146,10 @@ for the blast radius:
   `~/.config/khe` (the HA and Grafana tokens) or Claude's credentials, and the
   Read tool is denied the same paths. The gh token in `~/.config/gh/` stays
   readable, because `gh` and git's credential helper need it. Of the commands
-  Claude runs, only `ssh`, `scp`, the two HA scripts and the two printer
-  scripts run outside the sandbox, and only when written alone on the
-  command line. Claude Code's
-  hooks, the commit gate among them, and mcp-grafana, a local MCP server,
-  run outside it too; mcp-grafana keeps its LAN reach. Its settings template
+  Claude runs, only `ssh`, `scp` and the two HA scripts run outside the
+  sandbox, and only when written alone on the command line. Claude Code's
+  hooks, the commit gate among them, and the MCP servers of the managed list
+  (above) run outside it too. Its settings template
   (`infrastructure/agent-vm/claude-settings.json`) is the floor: every `ssh`,
   `scp` and `sftp` asks the operator, in auto mode too; a push runs without a
   prompt only as `git push ...`; bypass mode is disabled. The claude.ai

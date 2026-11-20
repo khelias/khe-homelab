@@ -44,12 +44,12 @@ host use and the VM locked up under `npm ci`.
    clones the workspace and every repo, runs `npm ci`, installs Playwright
    browsers, builds the `.venv` of ha-estfeed, of khe-bunny-tales (its
    spellcheck, then the stories app in `.app/` through `scripts/build_app.sh`) and of khe-home-assistant (ruff and `websockets`, for
-   `ha-ws.py` and `ha-dashboard.py`), copies the K2 printer scripts from
-   khe-meta into `/usr/local/lib/khe/k2/` (below) and registers the
-   grafana MCP server at user scope. The system part also unpacks the pinned
+   `ha-ws.py` and `ha-dashboard.py`), copies the K2 printer server from
+   khe-meta into `/usr/local/lib/khe/k2/` (below), unpacks the pinned
    OrcaSlicer and OpenSCAD AppImages into `/usr/local/lib/` behind the
-   `orca-slicer` and `openscad` commands
-   ([estate ADR-050](https://github.com/khelias/khe-architecture/blob/main/decisions/050-the-attended-agent-slices-and-starts-k2-prints.md)). ha-estfeed needs Home Assistant's Python (3.14 on
+   `orca-slicer` and `openscad` commands, and writes the MCP servers into
+   `/etc/claude-code/managed-mcp.json`
+   ([estate ADR-051](https://github.com/khelias/khe-architecture/blob/main/decisions/051-the-agent-reaches-the-k2-through-a-root-registered-mcp-server.md)). ha-estfeed needs Home Assistant's Python (3.14 on
    2026-11-14), newer than Debian 13's 3.13, so the script skips it and
    ha-estfeed commits stay with the laptop until the VM has that Python.
 4. **Authorise** the VM's docker-vm key (printed by the script) in
@@ -92,9 +92,12 @@ host use and the VM locked up under `npm ci`.
   `systemctl --user restart remote-control`: a running server loses its
   program file when the binary is replaced. The installer checks the binary
   against the checksum in the release's manifest; the installer script itself
-  is fetched unpinned. Node, gitleaks, mcp-grafana, OrcaSlicer and OpenSCAD
-  are pinned with
-  checksums in the script.
+  is fetched unpinned. Node, gitleaks and mcp-grafana are pinned with
+  checksums in the script; OrcaSlicer and OpenSCAD with the repo that uses
+  each (estate ADR-051): OrcaSlicer in khe-meta's
+  `house/k2-printer/orcaslicer.json`, read from the installed copy, and
+  OpenSCAD in khe-workshop's `ci.yml` on `origin/main`. A missing or
+  malformed pin warns and skips that tool.
 - **When the VM is down,** work from the laptop's personal Claude instance;
   the workspace and its gate are the same.
 - **Artifacts.** The template sets `CLAUDE_CODE_ARTIFACT=1`: a session
@@ -124,28 +127,39 @@ host use and the VM locked up under `npm ci`.
   screenshot starts the server and the browser in one call, from a repo
   that has Playwright:
   `python3 -m http.server 8765 --directory dist & pid=$!; sleep 2; npx playwright screenshot --viewport-size=375,812 http://localhost:8765/ "$TMPDIR/shot.png"; kill $pid`.
-  The K2 printer scripts run outside it the same way, each asking, as
-  `/usr/bin/python3 -I /usr/local/lib/khe/k2/k2.py status|files|upload FILE|print FILE|light on|light off`
-  and `/usr/bin/python3 -I /usr/local/lib/khe/k2/k2_camera.py --frames N`
-  (`python3` by its full path, since `~/.local/bin` comes first in `PATH` and
-  is the session's to write; the
-  argument is required, so the command matches the exclusion; the frames go
-  to a new folder under `~/.cache/k2-camera/`, which sandboxed commands
-  cannot write, so a session cannot plant links there that the run follows).
-  `k2.py` uploads only plain files under `~/khe` or the session's temp
-  folder, never a link, and `upload` and `print` refuse a file with a
-  command that changes the printer (`SAVE_CONFIG`, a restart, a shell command). They are
-  root-owned copies a session cannot change, because they run with the
-  VM's LAN reach; the setup script takes them from khe-meta's `origin/main`,
-  never the working tree, shows the diff against the installed copies and
-  installs them only on the operator's yes. The camera uses Debian's
-  root-owned `chromium` for the same reason. If the camera saves no frames, the likely cause is ufw's
-  default deny of incoming traffic: allow UDP from the printer's address.
+  The camera uses Debian's root-owned `chromium`, since the printer server
+  that drives it runs outside the sandbox. If the camera saves no frames,
+  the likely cause is ufw's default deny of incoming traffic: allow UDP from
+  the printer's address.
   `orca-slicer`, `openscad` and khe-meta's `k2_slice.py` run inside the
   sandbox without a prompt.
   A legitimate command the sandbox blocks gets its host or exclusion added
-  to the template, not a session override. mcp-grafana runs outside the
-  sandbox as an MCP server and keeps its LAN reach.
+  to the template, not a session override.
+- **MCP servers.** Every MCP server runs outside the sandbox with khe's
+  access, so the VM has only those in `/etc/claude-code/managed-mcp.json`
+  (root, 644), which the setup script writes; its exclusive control stops
+  user-scope servers loading and makes `claude mcp add` fail
+  ([estate ADR-051](https://github.com/khelias/khe-architecture/blob/main/decisions/051-the-agent-reaches-the-k2-through-a-root-registered-mcp-server.md)).
+  Each runs a root-owned copy: `grafana` from `/usr/local/lib/khe/mcp-grafana.sh`,
+  copied from the setup's own checkout, and `k2` as
+  `/usr/bin/python3 -I /usr/local/lib/khe/k2/k2_mcp.py`, listed only once that
+  file is installed. The K2 files come from khe-meta's `origin/main`, never
+  the working tree; the setup shows their diff against the installed copies
+  and installs them only on the operator's yes. `k2` has six tools: `status`,
+  `files`, `light`, `camera` (1 to 3 frames, shown inline) and `upload` are
+  allowed in the template and run without a tap; `print` carries the
+  forced-confirmation flag in the server's code, so it asks on every call
+  whatever the rules say. The guards are `k2.py`'s: `upload` and `print`
+  take only an absolute path to a plain file under `~/khe` or the session's
+  temp folder, opened without following a link, and refuse a file with a
+  command that changes the printer; `light` and `print` refuse unless the
+  printer is idle. Frames go to a new folder under `~/.cache/k2-camera/`,
+  which sandboxed commands cannot write. A new device gets a server of its
+  own the same way, not a script let out of the sandbox.
+  Undo: `sudo rm /etc/claude-code/managed-mcp.json`, revert the setup and
+  template commits and rerun the setup; it then registers nothing, so add
+  grafana back by hand with `claude mcp add grafana --scope user --
+  /usr/local/lib/khe/mcp-grafana.sh`.
 - **Session start.** The workspace's `SessionStart` hook
   (`.claude/hooks/session-start.sh` in khe-workspace) fast-forwards the repos
   that are on a clean `main`. Hooks run outside the Bash sandbox, so the hook

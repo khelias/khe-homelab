@@ -28,12 +28,6 @@ MCP_GRAFANA_SHA256=0a0dde2c882c24fedcce79a07d97b232f71730c744b84a09b6b0735c2ca3d
 PLAYWRIGHT_DEPS_VERSION=1.59.1
 # For khe-home-assistant's ha-ws.py and ha-dashboard.py; ruff comes from its ci.yml.
 WEBSOCKETS_VERSION=17.4
-# The K2's slicer and the parts' OpenSCAD (estate ADR-050); GitHub's and
-# files.openscad.org's published sha256 of each AppImage.
-ORCA_VERSION=2.5.1
-ORCA_SHA256=073b8105c928356141db0ddbce88b81d52c7a9e2442f9baae0a9089c89ff04eb
-OPENSCAD_VERSION=2026.10.11
-OPENSCAD_SHA256=35b7248e033563cbb6dc0dbe562ef37deeca13bc98de27f64ec9126f13ecad0c
 LAN_CIDR="${LAN_CIDR:-192.168.0.0/24}"
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -61,22 +55,40 @@ fetch_verified() {
 
 # Fetches the AppImage at $2 (sha256 $3), unpacks it into /usr/local/lib/$1
 # and puts /usr/local/bin/$4 in front of its AppRun, so no FUSE is needed. A
-# rerun with the same $1 skips the fetch and the unpack.
+# rerun with the same $1 skips the fetch and the unpack. Each step returns on
+# failure, since install_pinned calls it as a condition, where set -e is off.
 install_appimage() {
   local dir="/usr/local/lib/$1"
   if [ ! -x "$dir/AppRun" ]; then
-    fetch_verified "$2" "$3" "$TMP/$1.AppImage"
-    chmod +x "$TMP/$1.AppImage"
+    fetch_verified "$2" "$3" "$TMP/$1.AppImage" || return 1
+    chmod +x "$TMP/$1.AppImage" || return 1
+    rm -rf "$TMP/squashfs-root"
     # --appimage-extract writes squashfs-root into the current folder.
-    (cd "$TMP" && "./$1.AppImage" --appimage-extract >/dev/null)
-    sudo rm -rf "$dir"
-    sudo mv "$TMP/squashfs-root" "$dir"
-    sudo chown -R root:root "$dir"
+    (cd "$TMP" && "./$1.AppImage" --appimage-extract >/dev/null) || return 1
     # The image's own modes can leave folders 700, and khe runs the tools.
-    sudo chmod -R a+rX "$dir"
+    if ! { sudo rm -rf "$dir" && sudo mv "$TMP/squashfs-root" "$dir" &&
+      sudo chown -R root:root "$dir" && sudo chmod -R a+rX "$dir"; }; then
+      sudo rm -rf "$dir"
+      return 1
+    fi
   fi
-  printf '#!/bin/sh\nexec %s/AppRun "$@"\n' "$dir" | sudo tee "/usr/local/bin/$4" >/dev/null
-  sudo chmod 755 "/usr/local/bin/$4"
+  printf '#!/bin/sh\nexec %s/AppRun "$@"\n' "$dir" | sudo tee "/usr/local/bin/$4" >/dev/null &&
+    sudo chmod 755 "/usr/local/bin/$4"
+}
+
+# Installs the AppImage tool $1 at version $2 (sha256 $3) from the URL $4
+# names with @V@ for the version, and checks it starts with the flag $5. A missing or malformed pin, or a failed
+# fetch, warns and skips the tool: the pins live in the repos that use them
+# (estate ADR-051) and a session can push to those.
+install_pinned() {
+  if ! [[ "$2" =~ ^[0-9][0-9A-Za-z.]*$ && "$3" =~ ^[0-9a-f]{64}$ ]]; then
+    echo "WARN: no valid pin for $1; it was not installed"
+  elif (install_appimage "$1-$2" "${4//@V@/$2}" "$3" "$1"); then
+    # By its full path: ~/.local/bin, which a session can write, is first in PATH by now.
+    "/usr/local/bin/$1" "$5" >/dev/null || echo "WARN: $1 does not start here"
+  else
+    echo "WARN: $1 $2 was not installed"
+  fi
 }
 
 # --- System -----------------------------------------------------------------
@@ -112,22 +124,6 @@ if ! mcp-grafana --version 2>/dev/null | grep -q "$MCP_GRAFANA_VERSION"; then
     "$MCP_GRAFANA_SHA256" "$TMP/mcp-grafana.tar.gz"
   tar -xzf "$TMP/mcp-grafana.tar.gz" -C "$TMP" mcp-grafana
   sudo install -m 755 "$TMP/mcp-grafana" /usr/local/bin/mcp-grafana
-fi
-
-step "OrcaSlicer $ORCA_VERSION"
-install_appimage "orca-slicer-$ORCA_VERSION" \
-  "https://github.com/OrcaSlicer/OrcaSlicer/releases/download/v$ORCA_VERSION/OrcaSlicer_Linux_AppImage_Ubuntu2404_V$ORCA_VERSION.AppImage" \
-  "$ORCA_SHA256" orca-slicer
-orca-slicer --help >/dev/null || echo "WARN: orca-slicer does not start here"
-
-step "OpenSCAD $OPENSCAD_VERSION"
-# Snapshots are pruned in time: a failed fetch warns and the setup goes on.
-if (install_appimage "openscad-$OPENSCAD_VERSION" \
-  "https://files.openscad.org/snapshots/OpenSCAD-$OPENSCAD_VERSION-x86_64.AppImage" \
-  "$OPENSCAD_SHA256" openscad); then
-  openscad --version || echo "WARN: openscad does not start here"
-else
-  echo "WARN: OpenSCAD $OPENSCAD_VERSION was not installed; pin a current snapshot"
 fi
 
 step "Playwright system libraries"
@@ -316,44 +312,79 @@ if [ -f "$ha/.github/workflows/ci.yml" ]; then
   "$ha/.venv/bin/pip" install --quiet "$ruff_pin" "websockets==$WEBSOCKETS_VERSION"
 fi
 
-# The two printer scripts run outside the sandbox (estate ADR-050), so the
-# sandbox runs root-owned copies a session cannot change. They come from
+# The printer's MCP server runs outside the sandbox (estate ADR-051), so it
+# runs from root-owned copies a session cannot change. They come from
 # khe-meta's origin/main, never the working tree a session can edit, and a
 # change is shown and installed only on the operator's yes.
+# git in a session-writable checkout $1: its own hooks and fsmonitor stay off,
+# as in workspace.sh, and replace refs, which a session can write, are ignored.
+checkout_git() {
+  git -C "$1" -c core.hooksPath=/dev/null -c core.fsmonitor=false --no-replace-objects "${@:2}"
+}
+
 meta="$WORKSPACE/repos/khe-meta"
 K2_LIB=/usr/local/lib/khe/k2
+K2_FILES=(k2.py k2_camera.py k2_gcode.py k2_snapshot.py k2_mcp.py orcaslicer.json)
 if [ -d "$meta/.git" ]; then
-  echo "-- K2 printer scripts"
-  # The checkout's own hooks and fsmonitor stay off, as in workspace.sh.
-  kgit=(git -C "$meta" -c core.hooksPath=/dev/null -c core.fsmonitor=false --no-replace-objects)
-  "${kgit[@]}" fetch -q origin main
+  echo "-- K2 printer server"
+  checkout_git "$meta" fetch -q origin main
   sudo install -d -m 755 "$K2_LIB"
   mkdir "$TMP/k2"
-  # Replace refs are ignored (--no-replace-objects): a session can write them.
-  for f in k2.py k2_camera.py k2_gcode.py k2_snapshot.py; do
-    "${kgit[@]}" show "origin/main:house/k2-printer/$f" > "$TMP/k2/$f"
+  for f in "${K2_FILES[@]}"; do
+    checkout_git "$meta" show "origin/main:house/k2-printer/$f" > "$TMP/k2/$f"
   done
   # A control character could hide a line from the diff on the terminal.
-  if LC_ALL=C grep -q $'[\x01-\x08\x0b-\x1f\x7f]' "$TMP"/k2/*.py; then
-    echo "   not installed: a script holds a control character"
+  if LC_ALL=C grep -q $'[\x01-\x08\x0b-\x1f\x7f]' "$TMP"/k2/*; then
+    echo "   not installed: a file holds a control character"
   elif diff -ruN "$K2_LIB" "$TMP/k2"; then
     echo "   unchanged"
   else
-    "${kgit[@]}" log --format='   %h %an %ad %s' --date=short -10 origin/main -- house/k2-printer/
+    checkout_git "$meta" log --format='   %h %an %ad %s' --date=short -10 origin/main -- house/k2-printer/
     answer=n
-    [ ! -t 0 ] || read -r -p "Install these K2 printer scripts from khe-meta $("${kgit[@]}" rev-parse --short origin/main)? [y/N] " answer
+    [ ! -t 0 ] || read -r -p "Install these K2 printer files from khe-meta $(checkout_git "$meta" rev-parse --short origin/main)? [y/N] " answer
     if [ "$answer" = y ]; then
-      sudo install -m 644 "$TMP"/k2/*.py "$K2_LIB/"
+      sudo install -m 644 "$TMP"/k2/* "$K2_LIB/"
     else
       echo "   not installed; the copies in $K2_LIB stay as they were"
     fi
   fi
 fi
 
-# User scope, so sessions in a repo worktree see it too.
-if ! claude mcp get grafana >/dev/null 2>&1; then
-  claude mcp add grafana --scope user -- "$WORKSPACE/repos/khe-homelab/scripts/mcp-grafana.sh"
+step "OrcaSlicer, pinned beside its profiles in khe-meta"
+orca_version='' orca_sha256=''
+read -r orca_version orca_sha256 < <(jq -r '"\(.version) \(.sha256)"' "$K2_LIB/orcaslicer.json" 2>/dev/null) || true
+install_pinned orca-slicer "$orca_version" "$orca_sha256" \
+  "https://github.com/OrcaSlicer/OrcaSlicer/releases/download/v@V@/OrcaSlicer_Linux_AppImage_Ubuntu2404_V@V@.AppImage" --help
+
+step "OpenSCAD, pinned in khe-workshop's ci.yml"
+workshop="$WORKSPACE/repos/khe-workshop"
+: > "$TMP/workshop-ci.yml"
+if [ -d "$workshop/.git" ]; then
+  checkout_git "$workshop" fetch -q origin main &&
+    checkout_git "$workshop" show origin/main:.github/workflows/ci.yml > "$TMP/workshop-ci.yml" || true
 fi
+openscad_version="$(sed -n '/^ *OPENSCAD_VERSION: */{s///p;q;}' "$TMP/workshop-ci.yml")"
+openscad_sha256="$(sed -n '/^ *OPENSCAD_SHA256: */{s///p;q;}' "$TMP/workshop-ci.yml")"
+# Snapshots are pruned in time: a failed fetch warns and the setup goes on.
+install_pinned openscad "$openscad_version" "$openscad_sha256" \
+  "https://files.openscad.org/snapshots/OpenSCAD-@V@-x86_64.AppImage" --version
+
+# Every MCP server runs outside the sandbox, so the managed file lists only
+# root-owned copies, and its exclusive control keeps a session from adding
+# one of its own (estate ADR-051). The setup's own checkout runs as root
+# already, so mcp-grafana.sh is copied from it.
+step "MCP servers in /etc/claude-code/managed-mcp.json"
+sudo install -m 755 "$HERE/mcp-grafana.sh" /usr/local/lib/khe/mcp-grafana.sh
+if claude mcp get grafana >/dev/null 2>&1 && [ ! -f /etc/claude-code/managed-mcp.json ]; then
+  claude mcp remove grafana --scope user
+fi
+jq -n --arg k2 "$K2_LIB/k2_mcp.py" --argjson with_k2 "$([ -f "$K2_LIB/k2_mcp.py" ] && echo true || echo false)" '
+  {mcpServers: ({grafana: {type: "stdio", command: "/usr/local/lib/khe/mcp-grafana.sh", args: []}}
+    + if $with_k2 then {k2: {type: "stdio", command: "/usr/bin/python3", args: ["-I", $k2]}} else {} end)}' \
+  > "$TMP/managed-mcp.json"
+sudo install -d -m 755 /etc/claude-code
+sudo install -m 644 -o root -g root "$TMP/managed-mcp.json" /etc/claude-code/managed-mcp.json
+jq -r '.mcpServers | keys | join(", ")' /etc/claude-code/managed-mcp.json
 
 echo
 echo "=== agent-vm is set up ==="
