@@ -32,8 +32,8 @@
       "scp *",
       "/home/khe/khe/repos/khe-home-assistant/.venv/bin/python scripts/ha-ws.py *",
       "/home/khe/khe/repos/khe-home-assistant/.venv/bin/python scripts/ha-dashboard.py *",
-      "python3 -I /usr/local/lib/khe/k2/k2.py *",
-      "python3 -I /usr/local/lib/khe/k2/k2_camera.py *"
+      "/usr/bin/python3 -I /usr/local/lib/khe/k2/k2.py *",
+      "/usr/bin/python3 -I /usr/local/lib/khe/k2/k2_camera.py *"
     ],
     "filesystem": {
       "denyRead": [

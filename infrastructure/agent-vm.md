@@ -125,14 +125,16 @@ host use and the VM locked up under `npm ci`.
   that has Playwright:
   `python3 -m http.server 8765 --directory dist & pid=$!; sleep 2; npx playwright screenshot --viewport-size=375,812 http://localhost:8765/ "$TMPDIR/shot.png"; kill $pid`.
   The K2 printer scripts run outside it the same way, each asking, as
-  `python3 -I /usr/local/lib/khe/k2/k2.py status|files|upload FILE|print FILE`
-  and `python3 -I /usr/local/lib/khe/k2/k2_camera.py --frames N` (the
+  `/usr/bin/python3 -I /usr/local/lib/khe/k2/k2.py status|files|upload FILE|print FILE|light on|light off`
+  and `/usr/bin/python3 -I /usr/local/lib/khe/k2/k2_camera.py --frames N`
+  (`python3` by its full path, since `~/.local/bin` comes first in `PATH` and
+  is the session's to write; the
   argument is required, so the command matches the exclusion; the frames go
   to a new folder under `~/.cache/k2-camera/`, which sandboxed commands
   cannot write, so a session cannot plant links there that the run follows).
   `k2.py` uploads only plain files under `~/khe` or the session's temp
-  folder, never a link, and refuses a file with a command that changes the
-  printer (`SAVE_CONFIG`, a restart, a shell command). They are
+  folder, never a link, and `upload` and `print` refuse a file with a
+  command that changes the printer (`SAVE_CONFIG`, a restart, a shell command). They are
   root-owned copies a session cannot change, because they run with the
   VM's LAN reach; the setup script takes them from khe-meta's `origin/main`,
   never the working tree, shows the diff against the installed copies and

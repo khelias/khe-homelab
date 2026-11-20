@@ -106,13 +106,14 @@ for the blast radius:
   VM and revoking it in Home Assistant.
 - It can start prints on the house's 3D printer
   ([estate ADR-050](https://github.com/khelias/khe-architecture/blob/main/decisions/050-the-attended-agent-slices-and-starts-k2-prints.md)):
-  two scripts read the printer's state, files and camera and upload or start
-  a sliced file, and every run asks the operator. The print script refuses
+  two scripts read the printer's state, files and camera, switch its chamber
+  light and upload or start a sliced file, and every run asks the operator. The print script refuses
   unless the printer is idle and the file's side fan stays at or below S38;
   neither script writes the printer's configuration or restarts Klipper.
   Because they run outside the sandbox with the VM's LAN reach, the
   sandbox runs root-owned copies in `/usr/local/lib/khe/k2/` that a session
-  cannot change. The setup script takes them from khe-meta's `origin/main`,
+  cannot change, through `/usr/bin/python3` rather than the one `PATH`
+  finds first. The setup script takes them from khe-meta's `origin/main`,
   which a session can push to, so it shows the diff against the installed
   copies and installs only on the operator's yes: reading that diff is the
   review. The copies hold against sessions, not against a setup rerun: the
