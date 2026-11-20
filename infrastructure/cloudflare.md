@@ -104,7 +104,7 @@ Applies to all Access-protected apps (dash, trips, stories, draft).
 | Message | `Sign in with your authorized email to receive a one-time code. All access attempts are logged.` |
 | Background color | `#09090b` (matches landing page `--bg`) |
 
-Logo is a standalone SVG matching the landing page monogram (indigo 15% → violet 5% tint on `#09090b`, violet 25% border, Inter 600 white "KHE" text).
+Logo is khe.ee's favicon, the family mark: "KHE" in Familjen Grotesk 600 with the Home room's red `.ee`, drawn as paths in a rounded box, light or dark with the system setting (khe-sites `src/landing/logo.svg`).
 
 ## WAF Custom Rules
 
