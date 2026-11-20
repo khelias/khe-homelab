@@ -104,6 +104,25 @@ for the blast radius:
   `ha-dashboard.py` asks the operator, and it writes no heat pump or
   ventilation setting. Undone by removing `ha-token` from the
   VM and revoking it in Home Assistant.
+- It can start prints on the house's 3D printer
+  ([estate ADR-050](https://github.com/khelias/khe-architecture/blob/main/decisions/050-the-attended-agent-slices-and-starts-k2-prints.md)):
+  two scripts read the printer's state, files and camera and upload or start
+  a sliced file, and every run asks the operator. The print script refuses
+  unless the printer is idle and the file's side fan stays at or below S38;
+  neither script writes the printer's configuration or restarts Klipper.
+  Because they run outside the sandbox with the VM's LAN reach, the
+  sandbox runs root-owned copies in `/usr/local/lib/khe/k2/` that a session
+  cannot change. The setup script takes them from khe-meta's `origin/main`,
+  which a session can push to, so it shows the diff against the installed
+  copies and installs only on the operator's yes: reading that diff is the
+  review. The copies hold against sessions, not against a setup rerun: the
+  setup runs repo build code (`npm ci`, the stories app build, `pip install
+  -e`, `workspace.sh`) as `khe` with passwordless sudo, and that code is
+  session-editable, so a rerun after a session was misused could replace
+  them. Accepted with the rest of the VM's sudo (estate ADR-027). The camera runs Debian's root-owned `chromium`. The printer's address is in
+  `~/.config/khe/k2-printer.json`. Slicing and OpenSCAD run inside the
+  sandbox with no network. Undone by removing the printer entries from the
+  template, rerunning `setup-agent-vm.sh` and deleting the address file.
 - Its sessions start in auto mode, so edits and most commands run on the
   classifier's judgement, not a tap, and run in Claude Code's Bash sandbox in
   strict mode: no unsandboxed retry, and Bash's outbound traffic only to the
@@ -114,8 +133,9 @@ for the blast radius:
   `~/.config/khe` (the HA and Grafana tokens) or Claude's credentials, and the
   Read tool is denied the same paths. The gh token in `~/.config/gh/` stays
   readable, because `gh` and git's credential helper need it. Of the commands
-  Claude runs, only `ssh`, `scp` and the two HA scripts run outside the
-  sandbox, and only when written alone on the command line. Claude Code's
+  Claude runs, only `ssh`, `scp`, the two HA scripts and the two printer
+  scripts run outside the sandbox, and only when written alone on the
+  command line. Claude Code's
   hooks, the commit gate among them, and mcp-grafana, a local MCP server,
   run outside it too; mcp-grafana keeps its LAN reach. Its settings template
   (`infrastructure/agent-vm/claude-settings.json`) is the floor: every `ssh`,

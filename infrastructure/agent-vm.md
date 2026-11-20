@@ -42,8 +42,12 @@ by VFIO, so the host needs 6 GB free before the VM is created.
    clones the workspace and every repo, runs `npm ci`, installs Playwright
    browsers, builds the `.venv` of ha-estfeed, of khe-bunny-tales (its
    spellcheck, then the stories app in `.app/` through `scripts/build_app.sh`) and of khe-home-assistant (ruff and `websockets`, for
-   `ha-ws.py` and `ha-dashboard.py`) and registers the
-   grafana MCP server at user scope. ha-estfeed needs Home Assistant's Python (3.14 on
+   `ha-ws.py` and `ha-dashboard.py`), copies the K2 printer scripts from
+   khe-meta into `/usr/local/lib/khe/k2/` (below) and registers the
+   grafana MCP server at user scope. The system part also unpacks the pinned
+   OrcaSlicer and OpenSCAD AppImages into `/usr/local/lib/` behind the
+   `orca-slicer` and `openscad` commands
+   ([estate ADR-050](https://github.com/khelias/khe-architecture/blob/main/decisions/050-the-attended-agent-slices-and-starts-k2-prints.md)). ha-estfeed needs Home Assistant's Python (3.14 on
    2026-11-14), newer than Debian 13's 3.13, so the script skips it and
    ha-estfeed commits stay with the laptop until the VM has that Python.
 4. **Authorise** the VM's docker-vm key (printed by the script) in
@@ -52,7 +56,8 @@ by VFIO, so the host needs 6 GB free before the VM is created.
    from nowhere else; put a Grafana Viewer service-account
    token in `~/.config/khe/grafana-token` (mode 600), and copy the laptop's
    `~/.config/khe/{ha-token,ha-house.json,ha-people.json}` there too (mode
-   600; fetching them is the operator's). The first ssh to
+   600; fetching them is the operator's), and write the K2's address as
+   `{"address": "<address>"}` to `~/.config/khe/k2-printer.json` (mode 600). The first ssh to
    docker-vm trusts the host key it sees (`accept-new`): compare its
    fingerprint with the one docker-vm shows for itself before relying on it.
 5. **Memory.** The agent's memory folder is keyed by the workspace path, so
@@ -85,7 +90,8 @@ by VFIO, so the host needs 6 GB free before the VM is created.
   `systemctl --user restart remote-control`: a running server loses its
   program file when the binary is replaced. The installer checks the binary
   against the checksum in the release's manifest; the installer script itself
-  is fetched unpinned. Node, gitleaks and mcp-grafana are pinned with
+  is fetched unpinned. Node, gitleaks, mcp-grafana, OrcaSlicer and OpenSCAD
+  are pinned with
   checksums in the script.
 - **When the VM is down,** work from the laptop's personal Claude instance;
   the workspace and its gate are the same.
@@ -116,6 +122,23 @@ by VFIO, so the host needs 6 GB free before the VM is created.
   screenshot starts the server and the browser in one call, from a repo
   that has Playwright:
   `python3 -m http.server 8765 --directory dist & pid=$!; sleep 2; npx playwright screenshot --viewport-size=375,812 http://localhost:8765/ "$TMPDIR/shot.png"; kill $pid`.
+  The K2 printer scripts run outside it the same way, each asking, as
+  `python3 -I /usr/local/lib/khe/k2/k2.py status|files|upload FILE|print FILE`
+  and `python3 -I /usr/local/lib/khe/k2/k2_camera.py --frames N` (the
+  argument is required, so the command matches the exclusion; the frames go
+  to a new folder under `~/.cache/k2-camera/`, which sandboxed commands
+  cannot write, so a session cannot plant links there that the run follows).
+  `k2.py` uploads only plain files under `~/khe` or the session's temp
+  folder, never a link, and refuses a file with a command that changes the
+  printer (`SAVE_CONFIG`, a restart, a shell command). They are
+  root-owned copies a session cannot change, because they run with the
+  VM's LAN reach; the setup script takes them from khe-meta's `origin/main`,
+  never the working tree, shows the diff against the installed copies and
+  installs them only on the operator's yes. The camera uses Debian's
+  root-owned `chromium` for the same reason. If the camera saves no frames, the likely cause is ufw's
+  default deny of incoming traffic: allow UDP from the printer's address.
+  `orca-slicer`, `openscad` and khe-meta's `k2_slice.py` run inside the
+  sandbox without a prompt.
   A legitimate command the sandbox blocks gets its host or exclusion added
   to the template, not a session override. mcp-grafana runs outside the
   sandbox as an MCP server and keeps its LAN reach.

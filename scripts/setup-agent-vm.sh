@@ -28,6 +28,12 @@ MCP_GRAFANA_SHA256=0a0dde2c882c24fedcce79a07d97b232f71730c744b84a09b6b0735c2ca3d
 PLAYWRIGHT_DEPS_VERSION=1.59.1
 # For khe-home-assistant's ha-ws.py and ha-dashboard.py; ruff comes from its ci.yml.
 WEBSOCKETS_VERSION=17.4
+# The K2's slicer and the parts' OpenSCAD (estate ADR-050); GitHub's and
+# files.openscad.org's published sha256 of each AppImage.
+ORCA_VERSION=2.5.1
+ORCA_SHA256=073b8105c928356141db0ddbce88b81d52c7a9e2442f9baae0a9089c89ff04eb
+OPENSCAD_VERSION=2026.10.11
+OPENSCAD_SHA256=35b7248e033563cbb6dc0dbe562ef37deeca13bc98de27f64ec9126f13ecad0c
 LAN_CIDR="${LAN_CIDR:-192.168.0.0/24}"
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -53,13 +59,32 @@ fetch_verified() {
   echo "$2  $3" | sha256sum -c - >/dev/null || fail "checksum mismatch for $1"
 }
 
+# Fetches the AppImage at $2 (sha256 $3), unpacks it into /usr/local/lib/$1
+# and puts /usr/local/bin/$4 in front of its AppRun, so no FUSE is needed. A
+# rerun with the same $1 skips the fetch and the unpack.
+install_appimage() {
+  local dir="/usr/local/lib/$1"
+  if [ ! -x "$dir/AppRun" ]; then
+    fetch_verified "$2" "$3" "$TMP/$1.AppImage"
+    chmod +x "$TMP/$1.AppImage"
+    # --appimage-extract writes squashfs-root into the current folder.
+    (cd "$TMP" && "./$1.AppImage" --appimage-extract >/dev/null)
+    sudo rm -rf "$dir"
+    sudo mv "$TMP/squashfs-root" "$dir"
+    sudo chown -R root:root "$dir"
+  fi
+  printf '#!/bin/sh\nexec %s/AppRun "$@"\n' "$dir" | sudo tee "/usr/local/bin/$4" >/dev/null
+  sudo chmod 755 "/usr/local/bin/$4"
+}
+
 # --- System -----------------------------------------------------------------
 
 step "Packages"
 sudo apt-get update
 sudo apt-get install -y git jq gawk curl ca-certificates gnupg xz-utils unzip \
   python3 python3-venv python3-pip python3-dev build-essential libffi-dev libssl-dev \
-  gh tmux ufw unattended-upgrades bubblewrap socat
+  gh tmux ufw unattended-upgrades bubblewrap socat \
+  libopengl0 libgl1 libegl1 libwebkit2gtk-4.1-0 chromium
 
 step "Node $NODE_VERSION"
 if [ "$(node --version 2>/dev/null || true)" != "v$NODE_VERSION" ]; then
@@ -85,6 +110,21 @@ if ! mcp-grafana --version 2>/dev/null | grep -q "$MCP_GRAFANA_VERSION"; then
     "$MCP_GRAFANA_SHA256" "$TMP/mcp-grafana.tar.gz"
   tar -xzf "$TMP/mcp-grafana.tar.gz" -C "$TMP" mcp-grafana
   sudo install -m 755 "$TMP/mcp-grafana" /usr/local/bin/mcp-grafana
+fi
+
+step "OrcaSlicer $ORCA_VERSION"
+install_appimage "orca-slicer-$ORCA_VERSION" \
+  "https://github.com/OrcaSlicer/OrcaSlicer/releases/download/v$ORCA_VERSION/OrcaSlicer_Linux_AppImage_Ubuntu2404_V$ORCA_VERSION.AppImage" \
+  "$ORCA_SHA256" orca-slicer
+
+step "OpenSCAD $OPENSCAD_VERSION"
+# Snapshots are pruned in time: a failed fetch warns and the setup goes on.
+if (install_appimage "openscad-$OPENSCAD_VERSION" \
+  "https://files.openscad.org/snapshots/OpenSCAD-$OPENSCAD_VERSION-x86_64.AppImage" \
+  "$OPENSCAD_SHA256" openscad); then
+  openscad --version || echo "WARN: openscad does not start here"
+else
+  echo "WARN: OpenSCAD $OPENSCAD_VERSION was not installed; pin a current snapshot"
 fi
 
 step "Playwright system libraries"
@@ -273,6 +313,40 @@ if [ -f "$ha/.github/workflows/ci.yml" ]; then
   "$ha/.venv/bin/pip" install --quiet "$ruff_pin" "websockets==$WEBSOCKETS_VERSION"
 fi
 
+# The two printer scripts run outside the sandbox (estate ADR-050), so the
+# sandbox runs root-owned copies a session cannot change. They come from
+# khe-meta's origin/main, never the working tree a session can edit, and a
+# change is shown and installed only on the operator's yes.
+meta="$WORKSPACE/repos/khe-meta"
+K2_LIB=/usr/local/lib/khe/k2
+if [ -d "$meta/.git" ]; then
+  echo "-- K2 printer scripts"
+  # The checkout's own hooks and fsmonitor stay off, as in workspace.sh.
+  kgit=(git -C "$meta" -c core.hooksPath=/dev/null -c core.fsmonitor=false --no-replace-objects)
+  "${kgit[@]}" fetch -q origin main
+  sudo install -d -m 755 "$K2_LIB"
+  mkdir "$TMP/k2"
+  # Replace refs are ignored (--no-replace-objects): a session can write them.
+  for f in k2.py k2_camera.py k2_gcode.py k2_snapshot.py; do
+    "${kgit[@]}" show "origin/main:house/k2-printer/$f" > "$TMP/k2/$f"
+  done
+  # A control character could hide a line from the diff on the terminal.
+  if LC_ALL=C grep -q $'[\x01-\x08\x0b-\x1f\x7f]' "$TMP"/k2/*.py; then
+    echo "   not installed: a script holds a control character"
+  elif diff -ruN "$K2_LIB" "$TMP/k2"; then
+    echo "   unchanged"
+  else
+    "${kgit[@]}" log --format='   %h %an %ad %s' --date=short -10 origin/main -- house/k2-printer/
+    answer=n
+    [ ! -t 0 ] || read -r -p "Install these K2 printer scripts from khe-meta $("${kgit[@]}" rev-parse --short origin/main)? [y/N] " answer
+    if [ "$answer" = y ]; then
+      sudo install -m 644 "$TMP"/k2/*.py "$K2_LIB/"
+    else
+      echo "   not installed; the copies in $K2_LIB stay as they were"
+    fi
+  fi
+fi
+
 # User scope, so sessions in a repo worktree see it too.
 if ! claude mcp get grafana >/dev/null 2>&1; then
   claude mcp add grafana --scope user -- "$WORKSPACE/repos/khe-homelab/scripts/mcp-grafana.sh"
@@ -281,5 +355,6 @@ fi
 echo
 echo "=== agent-vm is set up ==="
 echo "Still the operator's: claude auth login, a Grafana Viewer token in ~/.config/khe/grafana-token,"
+echo "the printer's address in ~/.config/khe/k2-printer.json,"
 echo "authorising the docker-vm key above, and the first remote-control run"
 echo "(infrastructure/agent-vm.md)."
