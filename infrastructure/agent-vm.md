@@ -49,7 +49,7 @@ host use and the VM locked up under `npm ci`.
    OrcaSlicer and OpenSCAD AppImages into `/usr/local/lib/` behind the
    `orca-slicer` and `openscad` commands, and writes the MCP servers into
    `/etc/claude-code/managed-mcp.json`
-   ([estate ADR-051](https://github.com/khelias/khe-architecture/blob/main/decisions/051-the-agent-reaches-the-k2-through-a-root-registered-mcp-server.md)). ha-estfeed needs Home Assistant's Python (3.14 on
+   ([MCP servers](#day-to-day) below). ha-estfeed needs Home Assistant's Python (3.14 on
    2026-11-14), newer than Debian 13's 3.13, so the script skips it and
    ha-estfeed commits stay with the laptop until the VM has that Python.
 4. **Authorise** the VM's docker-vm key (printed by the script) in
@@ -94,7 +94,7 @@ host use and the VM locked up under `npm ci`.
   against the checksum in the release's manifest; the installer script itself
   is fetched unpinned. Node, gitleaks and mcp-grafana are pinned with
   checksums in the script; OrcaSlicer and OpenSCAD with the repo that uses
-  each (estate ADR-051): OrcaSlicer in khe-meta's
+  each: OrcaSlicer in khe-meta's
   `house/k2-printer/orcaslicer.json`, read from the installed copy, and
   OpenSCAD in khe-workshop's `ci.yml` on `origin/main`. A missing or
   malformed pin warns and skips that tool.
@@ -117,8 +117,11 @@ host use and the VM locked up under `npm ci`.
   allow" given in a session lasts until the next run.
 - **Sandbox.** Bash runs in Claude Code's sandbox in strict mode
   (bubblewrap and socat from the setup script): no unsandboxed retry,
-  outbound only to the template's `allowedDomains`, and `~/.ssh`,
-  `~/.config/khe` and Claude's credentials unreadable. Commands outside it
+  outbound only to the template's `allowedDomains` (GitHub, npm, PyPI,
+  Anthropic, Debian, and the two Hinnavaatlus hosts for khe-deals'
+  collector), and `~/.ssh`, `~/.config/khe` (the HA and Grafana tokens) and
+  Claude's credentials unreadable to sandboxed commands and the Read tool.
+  The gh token stays readable, because `gh` and git need it. Commands outside it
   match `excludedCommands` only when written alone, with no `cd`, pipe or
   redirect in the same call: `ssh docker-vm "..."`, and the HA scripts as
   `/home/khe/khe/repos/khe-home-assistant/.venv/bin/python scripts/ha-ws.py '<json>'`
@@ -132,14 +135,15 @@ host use and the VM locked up under `npm ci`.
   the likely cause is ufw's default deny of incoming traffic: allow UDP from
   the printer's address.
   `orca-slicer`, `openscad` and khe-meta's `k2_slice.py` run inside the
-  sandbox without a prompt.
+  sandbox without a prompt; `k2_slice.py` fails a slice whose fan lines
+  differ from the recipe that has printed well.
   A legitimate command the sandbox blocks gets its host or exclusion added
   to the template, not a session override.
 - **MCP servers.** Every MCP server runs outside the sandbox with khe's
   access, so the VM has only those in `/etc/claude-code/managed-mcp.json`
   (root, 644), which the setup script writes; its exclusive control stops
   user-scope servers loading and makes `claude mcp add` fail
-  ([estate ADR-051](https://github.com/khelias/khe-architecture/blob/main/decisions/051-the-agent-reaches-the-k2-through-a-root-registered-mcp-server.md)).
+  ([estate ADR-027](https://github.com/khelias/khe-architecture/blob/main/decisions/027-attended-and-unattended-agent-tiers.md) point 3).
   Each runs a root-owned copy: `grafana` from `/usr/local/lib/khe/mcp-grafana.sh`,
   copied from the setup's own checkout, and `k2` as
   `/usr/bin/python3 -I /usr/local/lib/khe/k2/k2_mcp.py`, listed only once that
@@ -153,9 +157,31 @@ host use and the VM locked up under `npm ci`.
   take only an absolute path to a plain file under `~/khe` or the session's
   temp folder, opened without following a link, and refuse a file with a
   command that changes the printer; `light` and `print` refuse unless the
-  printer is idle. Frames go to a new folder under `~/.cache/k2-camera/`,
+  printer is idle; `print` also refuses unless Klipper is ready, refuses a
+  file whose side fan goes above the value the printer once capped it at,
+  and fails unless the printer reports the print as started. A print starts
+  only on the operator's go for that file in their latest message. Frames
+  go to a new folder under `~/.cache/k2-camera/`,
   which sandboxed commands cannot write. A new device gets a server of its
   own the same way, not a script let out of the sandbox.
+  Why it is built this way:
+  - Only `print` asks, since a read, a light switch, a camera frame or an
+    upload decides nothing; a tap on each of them carried no decision.
+  - The server writes no printer configuration, restarts no Klipper and
+    changes no firmware: a remote restart once shut the printer down with
+    a motor fault.
+  - No third-party printer server: its tools start prints with no forced
+    prompt and write the printer's configuration, and its code would run
+    with home-network reach. No MCP library either: the protocol is
+    newline-delimited JSON-RPC, and the server needs only Python's
+    standard library.
+  - Not two scripts with narrower ask rules: the prompt would rest on
+    settings and shell patterns a session's own changes could reach. Not a
+    user-scope server: a session can rewrite that configuration and the
+    code it points at.
+  If the managed file fails to load under Remote Control, the agent loses
+  both `grafana` and `k2` until it is fixed or removed. The laptop keeps the
+  printer's command-line tool with the same commands and output.
   Undo: `sudo rm /etc/claude-code/managed-mcp.json`, revert the setup and
   template commits and rerun the setup; it then registers nothing, so add
   grafana back by hand with `claude mcp add grafana --scope user --

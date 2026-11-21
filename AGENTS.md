@@ -96,7 +96,7 @@ base branch against the PR tree. The edge fallback's Worker tests
    The one exception for the private khe-trips atlas is its public demo at
    `khe.ee/trips/`, which shows only trips that are over, and only their
    short title, place and start date for trips that do not open
-   ([estate ADR-013](https://github.com/khelias/khe-architecture/blob/main/decisions/013-trips-public-demo.md)).
+   (a decision in khe-trips' own records).
    Landing serves it as khe-trips built it, like `/r/`: no edge cache and
    never indexed.
 6. **AdGuard's live `AdGuardHome.yaml` is gitignored.** Apply changes as

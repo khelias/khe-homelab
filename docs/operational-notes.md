@@ -255,6 +255,40 @@ activity lookup fails the guard, and so does a `workflow_dispatch` run on a
 branch the App touched, whose green check would otherwise stand in for the
 PR run on the same commit.
 
+**What an app's CI does** for every estate image (estate ADR-008; each
+app's `ci.yml` and `AGENTS.md` hold the details):
+
+- Images are `ghcr.io/khelias/<repo>-<part>`, tagged `main` (moves) and
+  `sha-<full commit>` (never overwritten). Publish stops unless its commit
+  is still the tip of `main`, so a re-run of an old commit cannot move
+  `main` backwards.
+- Two jobs. `images` builds and scans every image on every PR and push, with
+  read-only permissions, and is the required check. `publish` runs only on a
+  push to `main` after the quality and `images` jobs, and is the only job
+  that can write packages, mint an OIDC token or write attestations. It
+  rebuilds with no cache (the gha cache can be written by any step holding
+  the runner's cache token, the scanner container and npm scripts included),
+  pushes with an SBOM and `provenance: mode=max`, attests every new `sha-`
+  digest and checks the attestations before it moves `main`.
+- The scan is Grype, run as a container pinned by digest, failing on HIGH
+  or CRITICAL findings that have a fix. The ignore file is `.grype.yaml`;
+  each rule's reason starts with `until YYYY-MM-DD:` and `images` fails once
+  the date has passed. The scanner's Renovate rule: no automerge, a minimum
+  release age of 7 days.
+- Runtime stages carry no package manager; a web image holds only its built
+  assets and a non-root web server. A static frontend gets its `config.js`
+  written at start from the container's environment.
+- Images that depend on each other (the adventure web and proxy share a
+  schema-hash allowlist) are built from one commit in one run, every `sha-`
+  tag is pushed before any `main` tag moves, and the pin job moves all their
+  pins in one commit from the `sha-` tags.
+- The pin job pushes the new digests to `deploy/<repo>`, opens the PR and
+  turns on auto-merge, and skips unless GHCR's `main` still points at its own
+  commit. Its App key sits in a `homelab-pin` environment limited to `main`.
+- An app backend runs as a non-root user, has a healthcheck, logs JSON to
+  stdout, has a memory limit in Compose, and runs migrations as a one-shot
+  Compose service that the app waits on.
+
 **Observed timings**, the reason the pins moved from Renovate to the App:
 
 - Renovate, first real push (2026-09-28, commit `1991e7a`): publish finished
@@ -448,8 +482,8 @@ PR run on the same commit.
   path, answer 301 to the same path under `/ha/`, where khe-sites builds it
   since 2026-10, query string kept.
 - khe-sites builds the landing, privacy and architecture pages once per
-  language, Estonian at the path and English under `/en/` ([estate
-  ADR-048](https://github.com/khelias/khe-architecture/blob/main/decisions/048-khe-ee-pages-are-one-static-page-per-language-estonian-at-the-root.md)).
+  language, Estonian at the path and English under `/en/` ([khe-sites
+  ADR-001](https://github.com/khelias/khe-sites/blob/main/docs/decisions/001-khe-ee-pages-are-one-static-page-per-language.md)).
   The `$lang_page` map answers a `?lang` that differs from the page's
   language with 301 to the other page, query string kept (`/?lang=en` ->
   `/en/?lang=en`), and leaves a matching one alone so nothing loops.
@@ -464,8 +498,7 @@ PR run on the same commit.
   un-shared trip is gone at once. `/srv/data/trips/share` must exist, owned by
   the runner user, before landing starts, or Docker creates it root-owned and
   the khe-trips deploy can no longer write it.
-- `/trips/` serves the public khe-trips demo
-  ([estate ADR-013](https://github.com/khelias/khe-architecture/blob/main/decisions/013-trips-public-demo.md))
+- `/trips/` serves the public khe-trips demo (a khe-trips decision)
   from `/srv/data/trips/demo`, mounted at `/srv/demo/trips`. It is a
   single-page app: a trip URL falls back to `/trips/index.html`, a missing
   file under `/trips/assets/` is a 404, and `/trips` answers 301 to `/trips/`

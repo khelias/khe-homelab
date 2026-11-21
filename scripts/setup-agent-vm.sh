@@ -79,7 +79,7 @@ install_appimage() {
 # Installs the AppImage tool $1 at version $2 (sha256 $3) from the URL $4
 # names with @V@ for the version, and checks it starts with the flag $5. A missing or malformed pin, or a failed
 # fetch, warns and skips the tool: the pins live in the repos that use them
-# (estate ADR-051) and a session can push to those.
+# (infrastructure/agent-vm.md) and a session can push to those.
 install_pinned() {
   if ! [[ "$2" =~ ^[0-9][0-9A-Za-z.]*$ && "$3" =~ ^[0-9a-f]{64}$ ]]; then
     echo "WARN: no valid pin for $1; it was not installed"
@@ -312,7 +312,7 @@ if [ -f "$ha/.github/workflows/ci.yml" ]; then
   "$ha/.venv/bin/pip" install --quiet "$ruff_pin" "websockets==$WEBSOCKETS_VERSION"
 fi
 
-# The printer's MCP server runs outside the sandbox (estate ADR-051), so it
+# The printer's MCP server runs outside the sandbox (estate ADR-027 point 3), so it
 # runs from root-owned copies a session cannot change. They come from
 # khe-meta's origin/main, never the working tree a session can edit, and a
 # change is shown and installed only on the operator's yes.
@@ -371,7 +371,7 @@ install_pinned openscad "$openscad_version" "$openscad_sha256" \
 
 # Every MCP server runs outside the sandbox, so the managed file lists only
 # root-owned copies, and its exclusive control keeps a session from adding
-# one of its own (estate ADR-051). The setup's own checkout runs as root
+# one of its own (estate ADR-027 point 3). The setup's own checkout runs as root
 # already, so mcp-grafana.sh is copied from it.
 step "MCP servers in /etc/claude-code/managed-mcp.json"
 sudo install -m 755 "$HERE/mcp-grafana.sh" /usr/local/lib/khe/mcp-grafana.sh

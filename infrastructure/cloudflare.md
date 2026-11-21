@@ -11,7 +11,7 @@ Tunnel routes directly to Docker containers. LAN traffic goes via NPM (split-hor
 
 | Domain              | CF Tunnel → (external)      | NPM → (LAN)                | Notes |
 |---------------------|-----------------------------|-----------------------------|-------|
-| khe.ee              | landing:80                  | landing:80                  | public; `/r/` = khe-trips share sites and `/trips/` = the khe-trips demo ([estate ADR-013](https://github.com/khelias/khe-architecture/blob/main/decisions/013-trips-public-demo.md)), public by design (no Access, no dashboard change); `/stories/` = the public build of the stories app ([estate ADR-031](https://github.com/khelias/khe-architecture/blob/main/decisions/031-stories-public-app-private-stories-audio-outside-git.md)), from `/srv/data/stories/public`; edge fallback Worker on `khe.ee/*` ([Workers routes](#workers-routes)) |
+| khe.ee              | landing:80                  | landing:80                  | public; `/r/` = khe-trips share sites and `/trips/` = the khe-trips demo (a khe-trips decision), public by design (no Access, no dashboard change); `/stories/` = the public build of the stories app ([estate ADR-031](https://github.com/khelias/khe-architecture/blob/main/decisions/031-stories-public-app-private-stories-audio-outside-git.md)), from `/srv/data/stories/public`; edge fallback Worker on `khe.ee/*` ([Workers routes](#workers-routes)) |
 | dash.khe.ee         | homepage:3000               | homepage:3000               | CF Access (external only) |
 | vault.khe.ee        | vaultwarden:80              | vaultwarden:80              | |
 | photos.khe.ee       | immich-server:2283          | immich-server:2283          | NPM: unlimited upload, 600s timeout |
@@ -48,6 +48,14 @@ the failure mode.
   go straight to the origin, as if no Worker existed.
 - `workers.dev` and Preview URLs are off for both Workers, so the copy is
   reachable only through these routes.
+- Why a route and not Pages: a Pages custom domain replaces the hostname's
+  DNS record, which points at the tunnel, so Pages and the tunnel cannot
+  both answer, and switching between them needs paid Load Balancing. A
+  route runs the Worker in front of the origin, which answers 530 when the
+  tunnel has no connector and 502 when a container is stopped.
+- The adventure `config.js`, which the container writes at start from
+  `API_SECRET`, is a stub without it in the copy, and staging fails on a
+  tree that carries an `apiSecret` value or a symlink.
 - `trips.khe.ee`, `stories.khe.ee` and the other hostnames have no route and
   no copy. `khe.ee/stories/` is copied without its audio, since Workers
   Static Assets ignore `Range`: with the homelab down the page shows the

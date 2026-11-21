@@ -140,7 +140,7 @@ const gamesLocations = [
 
 const LOCATIONS = { khe: kheLocations, games: gamesLocations };
 
-// landing's $lang_page map (estate ADR-048): "<path>:<lang>" to the page in
+// landing's $lang_page map (khe-sites ADR-001): "<path>:<lang>" to the page in
 // that language, for a ?lang that differs from the page's.
 export const LANG_PAGES = {
   "/:en": "/en/",

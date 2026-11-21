@@ -146,7 +146,7 @@ is not the deploy checkout.
 
 ## After `main` was rewritten
 
-A history rewrite is an operator decision; [estate ADR-020](https://github.com/khelias/khe-architecture/blob/main/decisions/020-agent-work-through-pull-requests.md) sets the guards
+A history rewrite is an operator decision; [estate ADR-023](https://github.com/khelias/khe-architecture/blob/main/decisions/023-agent-pushes-where-its-session-allows.md) sets the guards
 that block it. In most estate repos that is a ruleset: on `khe-homelab`
 classic branch protection *allows* force pushes and the ruleset blocks them,
 so Settings -> Branches alone gives the wrong answer. `khe-sites` has no

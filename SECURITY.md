@@ -105,7 +105,7 @@ for the blast radius:
   ventilation setting. Undone by removing `ha-token` from the
   VM and revoking it in Home Assistant.
 - It can start prints on the house's 3D printer
-  ([estate ADR-051](https://github.com/khelias/khe-architecture/blob/main/decisions/051-the-agent-reaches-the-k2-through-a-root-registered-mcp-server.md)):
+  ([agent-vm "MCP servers"](infrastructure/agent-vm.md#day-to-day)):
   the `k2` MCP server reads the printer's state, files and camera, switches
   its chamber light and uploads a sliced file without a tap, since none of
   that starts anything, and starts a print only after a prompt that the

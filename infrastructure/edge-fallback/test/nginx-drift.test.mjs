@@ -45,7 +45,7 @@ test("every games location repeats the same security headers", () => {
   }
 });
 
-// landing's $lang_page map and LANG_PAGES name the same pairs (estate ADR-048).
+// landing's $lang_page map and LANG_PAGES name the same pairs (khe-sites ADR-001).
 test("landing's $lang_page map is LANG_PAGES", () => {
   const text = readFileSync(join(APPS, "landing", "nginx.conf"), "utf8");
   const map = text.slice(text.indexOf('map "$uri:$lang_arg" $lang_page {'), text.indexOf("\n}\n", text.indexOf("$lang_page {")));
