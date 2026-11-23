@@ -1,6 +1,7 @@
 services:
-  # Docker socket proxy: autoheal lists containers and restarts them, nothing
-  # more. linuxserver's image, not Tecnativa's: docs/operational-notes.md#autoheal.
+  # Docker socket proxy: container reads plus restart, stop and kill
+  # (ALLOW_RESTARTS), nothing more. linuxserver's image, not Tecnativa's:
+  # docs/operational-notes.md#autoheal.
   autoheal-socket-proxy:
     image: lscr.io/linuxserver/socket-proxy:3.4.8@sha256:6beb1743581ec3b2ed1a2bafd617e8c7a1d7ae2fe835293e333327618fc2b925
     container_name: autoheal-socket-proxy
@@ -13,8 +14,8 @@ services:
     environment:
       CONTAINERS: 1
       ALLOW_RESTARTS: 1
-      # Written out although most are the image's defaults: this proxy holds
-      # the socket, and a changed default must not widen it unseen.
+      # The widest sections, written out although 0 is the image's default,
+      # so a changed default cannot open them unseen.
       POST: 0
       EVENTS: 0
       EXEC: 0
