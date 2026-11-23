@@ -37,6 +37,11 @@ the required `validate.yml` check:
   repo's `ci.yml` on `main`, or whose images of one repo come from different
   commits. The accepted residual risk (the App can merge or fast-forward an
   already-green change it did not write) is in [estate ADR-008](https://github.com/khelias/khe-architecture/blob/main/decisions/008-container-images.md).
+- **autoheal** restarts any container whose healthcheck reads unhealthy,
+  through a socket proxy that allows container reads (list and inspect,
+  every container's environment included) and restart, stop and kill,
+  nothing else; it writes no code
+  ([notes](docs/operational-notes.md#autoheal)).
 - **The edge fallback sync** (`edge-fallback.yml`, hourly) deploys two
   Cloudflare Workers with a copy of the public static sites
   ([estate ADR-016](https://github.com/khelias/khe-architecture/blob/main/decisions/016-static-fallback-at-the-edge.md)).
@@ -227,8 +232,9 @@ Independent layers, each a way in with its own control:
   leaves the house.
 - **Host hardening.** SSH on the VM takes keys only. UFW and fail2ban run on
   the VM, though UFW does not filter Docker-published ports (below).
-  Homepage, autoheal and Alloy reach Docker through `docker-socket-proxy`
-  instead of mounting `docker.sock`. Every secret is in a `.env` file on the
+  Homepage, autoheal and Alloy reach Docker through a socket proxy each
+  (Tecnativa's for Homepage and Alloy, linuxserver's for autoheal) instead
+  of mounting `docker.sock`. Every secret is in a `.env` file on the
   VM and never committed.
 
 ## Network exposure

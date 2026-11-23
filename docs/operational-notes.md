@@ -611,9 +611,8 @@ the public one mounts the same directory read-only).
   its tsdb index init.
 - **Log shipping.** Alloy talks to Docker through the hardened
   `alloy-socket-proxy` (tecnativa/docker-socket-proxy with only
-  `CONTAINERS`, `NETWORKS` and `IMAGES` read access, no write surface, same
-  pattern as
-  `services/core/autoheal/`). `loki.source.docker` reads each
+  `CONTAINERS`, `NETWORKS` and `IMAGES` read access, no write surface).
+  `loki.source.docker` reads each
   container's log stream via `GET /containers/{id}/logs` and ships
   to Loki via the native push API. `container_name`, `stream`, and
   `cluster` are first-class stream labels — query with
@@ -749,6 +748,27 @@ the private `khe-meta` repo under `house/house-hvac.md`.
   `http://loki:3100/ready` on the observability network — that's
   also why `services/core/uptime-kuma` joins `observability` in
   addition to `proxy`.
+
+## autoheal
+
+- **Its proxy is `lscr.io/linuxserver/socket-proxy`, not Tecnativa's.**
+  `tecnativa/docker-socket-proxy` v0.5.0 runs `deny unless METH_GET ||
+  POST` before its `ALLOW_RESTARTS` rule, so with `POST=0` every restart
+  answered 403 and autoheal logged "Restarting container ... failed" every
+  10 s; found 2026-11-23, likely so since the v0.5.0 bump of 2026-08-22.
+  `POST=1` is not the fix: with `CONTAINERS=1` it opens container create
+  and exec, which is root on the VM. linuxserver's template reads the
+  restart rule first; upstream Tecnativa #194 would do the same.
+- **`ALLOW_RESTARTS` opens restart, stop and kill**, in both images.
+  autoheal itself calls only `GET /containers/json` and `POST
+  /containers/{id}/restart`.
+- **It watches every container with a healthcheck** (`AUTOHEAL_CONTAINER_LABEL:
+  all`), compose or not; `autoheal=False` as a label opts one out. A failed
+  restart pages through the Loki rule `AutohealRestartFailed`. A check
+  that can never pass means a restart every 10 s, so a container whose
+  healthcheck the image breaks (PAI's `pgrep` in 3.8.1) needs the check
+  fixed or removed, not left unhealthy.
+- How to check it: [runbook](runbook.md#checking-autoheal).
 
 ## Hardware passthrough
 

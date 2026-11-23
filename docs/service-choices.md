@@ -55,7 +55,7 @@ comparable, the one that scores better on these wins.
 | Dashboard             | Homepage              | High       | 2026-05-05    |
 | Hypervisor            | Proxmox VE            | High       | 2026-05-05    |
 | Workspace agent       | agent-vm + Remote Control | Medium     | 2026-11-14    |
-| Container auto-heal   | autoheal              | High       | 2026-05-05    |
+| Container auto-heal   | autoheal              | High       | 2026-11-23    |
 | Dependency updates    | Renovate              | High       | 2026-05-05    |
 | House automation      | Home Assistant (Container) | High  | 2026-09-13    |
 | MQTT broker           | Mosquitto (see House automation) | — | 2026-10-02 |
@@ -654,6 +654,11 @@ Single-purpose tool: restart unhealthy containers. Alternatives are
 Watchtower (does both updates and restarts, but we use Renovate for the
 update path) and writing custom health checks. autoheal does one thing
 well; nothing is worth changing here.
+
+Its socket proxy is `linuxserver/socket-proxy` (2026-11-23), not the
+Tecnativa image Homepage and Alloy use, because Tecnativa's denied every
+restart ([notes](operational-notes.md#autoheal)). Revisit when Tecnativa
+#194 lands, so all three proxies can be one image again.
 
 ---
 

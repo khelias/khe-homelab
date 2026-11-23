@@ -28,7 +28,7 @@ Six layers, each catching what the others miss:
    VM and Proxmox boots it back up. Conservative config: only pings the device,
    no load/memory/network checks (those cause false-positive reboots on blips).
 2. **Unhealthy container: autoheal sidecar.** `willfarrell/autoheal` talks to a
-   narrow-scope `docker-socket-proxy` and restarts
+   narrow-scope socket proxy and restarts
    any container whose Docker healthcheck reports `unhealthy`. Fills the gap
    left by `restart: unless-stopped`, which only reacts to full crashes. This
    caught a stuck immich-ml worker the day it was deployed.

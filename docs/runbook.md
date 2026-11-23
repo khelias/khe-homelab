@@ -83,6 +83,30 @@ Check that service's entry in [operational-notes](operational-notes.md) before
 changing anything; most recurring faults there are already documented, with the
 memory limits and config keys that caused them.
 
+## Checking autoheal
+
+After a change to `services/core/autoheal/`, or when an unhealthy container
+stays unhealthy. Restarts through its proxy must reach Docker and every
+other write must not ([notes](operational-notes.md#autoheal)). Probe with
+names that do not exist, so a wrong rule changes nothing:
+
+```bash
+ssh khe@docker-vm 'for r in "GET containers/json" "POST containers/autoheal-none/restart" "POST containers/autoheal-none/kill" "POST containers/create?name=autoheal-none" "POST containers/autoheal-none/exec" "POST images/create" "DELETE containers/autoheal-none"; do set -- $r; printf "%s %s %s\n" "$(docker exec autoheal curl -s -o /dev/null -w "%{http_code}" -X "$1" "http://autoheal-socket-proxy:2375/$2")" "$1" "$2"; done'
+```
+
+Expected: 200 for the list, 404 for restart and kill (Docker answered),
+403 for the rest. Then one real restart, with a container that is unhealthy
+until it has been restarted once (a restart keeps its filesystem, so the
+second start finds the first one's mark):
+
+```bash
+ssh khe@docker-vm 'docker ps --format "{{.Names}} {{.Status}}" > /tmp/autoheal-before.txt; docker run -d --name autoheal-probe --health-cmd "test -f /tmp/restarted" --health-interval 5s --health-retries 1 alpine:3 sh -c "[ -f /tmp/booted ] && touch /tmp/restarted; touch /tmp/booted; exec sleep 600" >/dev/null; for i in $(seq 1 24); do sleep 5; [ "$(docker inspect -f "{{.State.Health.Status}}" autoheal-probe)" = healthy ] && break; done; [ "$(docker inspect -f "{{.State.Health.Status}}" autoheal-probe)" = healthy ] && echo "PASS: autoheal restarted the probe" || echo "FAIL: no restart in 2 min"; docker rm -f autoheal-probe >/dev/null'
+```
+
+`alpine:3` is the image `backup.sh` already uses. Ten minutes later,
+compare `docker ps` with `/tmp/autoheal-before.txt`: no other container
+should show a fresh `Up`.
+
 ## Symptom: nothing responds, not even the LAN
 
 This is the one case where GitHub Actions cannot help: if the VM has no network,

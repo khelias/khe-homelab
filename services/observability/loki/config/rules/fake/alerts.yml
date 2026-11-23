@@ -20,6 +20,25 @@ groups:
         annotations:
           summary: "adventure-proxy logged >3 error or upstream timeout lines in 5 minutes"
 
+  - name: autoheal
+    interval: 1m
+    rules:
+      # autoheal logs "Restarting container <id> failed" when its socket
+      # proxy refuses the restart; that went unseen for months once
+      # (docs/operational-notes.md#autoheal). A refusal repeats every 10 s,
+      # so more than 5 in 10 minutes; a container a deploy removes between
+      # autoheal's list and its restart fails once and does not page.
+      - alert: AutohealRestartFailed
+        expr: |
+          sum by (container_name) (
+            count_over_time({container_name="autoheal"} |~ "Restarting container .* failed" [10m])
+          ) > 5
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "autoheal could not restart an unhealthy container"
+
   - name: containers
     interval: 1m
     rules:

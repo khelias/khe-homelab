@@ -1,26 +1,30 @@
 services:
-  # Docker socket proxy — narrow API surface for autoheal.
-  # Only what autoheal needs: list containers (read) + restart them.
-  # POST=0 with ALLOW_RESTARTS=1 permits only restart/start/stop, nothing else.
+  # Docker socket proxy: autoheal lists containers and restarts them, nothing
+  # more. linuxserver's image, not Tecnativa's: docs/operational-notes.md#autoheal.
   autoheal-socket-proxy:
-    image: tecnativa/docker-socket-proxy:v0.5.0@sha256:1f5038b54f06c3e18422902cf00ba21803d1c97805aae032e5e6673d532d3459
+    image: lscr.io/linuxserver/socket-proxy:3.4.8@sha256:6beb1743581ec3b2ed1a2bafd617e8c7a1d7ae2fe835293e333327618fc2b925
     container_name: autoheal-socket-proxy
     restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /run:rw,mode=1777
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
-      CONTAINERS: 1      # GET /containers (list + inspect for healthcheck state)
-      POST: 0            # No generic writes
-      ALLOW_RESTARTS: 1  # Only restart/start/stop — the one thing autoheal does
-      AUTH: 0
-      SECRETS: 0
-      SWARM: 0
-      TASKS: 0
-      CONFIGS: 0
+      CONTAINERS: 1
+      ALLOW_RESTARTS: 1
+      # Written out although most are the image's defaults: this proxy holds
+      # the socket, and a changed default must not widen it unseen.
+      POST: 0
+      EVENTS: 0
+      EXEC: 0
+      BUILD: 0
       IMAGES: 0
       NETWORKS: 0
       VOLUMES: 0
       INFO: 0
+      AUTH: 0
+      SECRETS: 0
       LOG_LEVEL: warning
     networks:
       - autoheal-socket
@@ -57,8 +61,8 @@ services:
       AUTOHEAL_CONTAINER_LABEL: all
       # Poll docker API every 10s for unhealthy containers.
       AUTOHEAL_INTERVAL: 10
-      # Wait 30s after a container reports unhealthy before restarting.
-      # Complements (does not replace) each container's own `start_period`.
+      # autoheal's own delay after it starts, before its first check; there
+      # is no per-container grace, so each service's `start_period` is that.
       AUTOHEAL_START_PERIOD: 30
       # Route through the socket proxy instead of mounting docker.sock directly.
       DOCKER_SOCK: tcp://autoheal-socket-proxy:2375

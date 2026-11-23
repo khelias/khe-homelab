@@ -41,6 +41,7 @@
         "ghcr.io/immich-app/immich-server",
         "ghcr.io/immich-app/postgres",
         "jc21/nginx-proxy-manager",
+        "lscr.io/linuxserver/socket-proxy",
         "tecnativa/docker-socket-proxy",
         "vaultwarden/server"
       ],

@@ -2,8 +2,8 @@ services:
   # Hardened socket proxy in front of Docker's API — Alloy needs
   # GET /containers (list + inspect) and GET /containers/{id}/logs to
   # do native Docker log shipping with per-container metadata.
-  # Same pattern as services/core/autoheal/, just a separate proxy
-  # so the two consumers don't share trust boundaries.
+  # A proxy of its own, like autoheal's and Homepage's, so the consumers
+  # don't share trust boundaries.
   alloy-socket-proxy:
     image: tecnativa/docker-socket-proxy:v0.5.0@sha256:1f5038b54f06c3e18422902cf00ba21803d1c97805aae032e5e6673d532d3459
     container_name: alloy-socket-proxy
