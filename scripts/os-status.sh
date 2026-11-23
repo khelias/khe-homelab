@@ -3,6 +3,9 @@
 # snapshot (homelab-status.sh) and pushes it to an Uptime Kuma push monitor: down when a
 # reboot is due or an update has been pending for 30 days, up otherwise. Runs
 # daily from the khe-os-status timer on the Proxmox host and on the Docker VM.
+# Where ZFS pools and smartctl exist (the host) it also reports the pools,
+# their last finished scrub and the SMART verdicts, and goes down on a bad
+# one: the host's mail has no relay, so ZED and smartd notices reach no one.
 #
 #   os-status.sh <output.json>             write the status file once
 #   os-status.sh --install <output.json>   install this script and its timer
@@ -20,6 +23,9 @@ OS_RELEASE="${OS_STATUS_OS_RELEASE:-/etc/os-release}"
 STATE_DIR="${OS_STATUS_STATE_DIR:-/var/lib/khe-os-status}"
 CONFIG="${OS_STATUS_CONFIG:-/etc/khe/os-status.env}"
 PENDING_DAYS="${OS_STATUS_PENDING_DAYS:-30}"
+# zfsutils-linux scrubs on the second Sunday of each month, so up to five
+# weeks apart.
+SCRUB_DAYS="${OS_STATUS_SCRUB_DAYS:-45}"
 
 usage() { echo "usage: $0 [--install] <output.json>" >&2; exit 2; }
 
@@ -78,20 +84,67 @@ push_url() {
   printf '%s' "${url%%\?*}"
 }
 
+# Sets POOLS_OK and SCRUB_STALE (true, false or null), SCRUB_AGE (days of
+# the oldest pool's last finished scrub, or null) and SMART_FAILING and
+# SMART_UNREADABLE (counts, or null). null where the tool or a pool is missing.
+storage_health() {
+  local pools pool line epoch age dev type rc
+  POOLS_OK=null SCRUB_STALE=null SCRUB_AGE=null SMART_FAILING=null SMART_UNREADABLE=null
+  pools="$(zpool list -H -o name 2>/dev/null || true)"
+  if [ -n "$pools" ]; then
+    POOLS_OK=false
+    [ "$(zpool status -x 2>/dev/null)" = "all pools are healthy" ] && POOLS_OK=true
+    SCRUB_STALE=false
+    for pool in $pools; do
+      line="$(zpool status "$pool" 2>/dev/null | sed -n 's/^ *scan: //p' | head -n 1 || true)"
+      # Only a finished scrub or resilver read every block; a canceled,
+      # paused or missing one leaves the pool unverified.
+      case "$line" in
+        "scrub repaired "*" on "*|"resilvered "*" on "*) ;;
+        *" in progress since "*) continue ;;
+        *) SCRUB_STALE=true; continue ;;
+      esac
+      epoch="$(date -d "${line##* on }" +%s 2>/dev/null)" || { SCRUB_STALE=true; continue; }
+      age=$(( ($(date +%s) - epoch) / 86400 ))
+      if [ "$SCRUB_AGE" = null ] || [ "$age" -gt "$SCRUB_AGE" ]; then SCRUB_AGE="$age"; fi
+    done
+    if [ "$SCRUB_AGE" != null ] && [ "$SCRUB_AGE" -ge "$SCRUB_DAYS" ]; then SCRUB_STALE=true; fi
+  fi
+  if command -v smartctl >/dev/null 2>&1; then
+    SMART_FAILING=0 SMART_UNREADABLE=0
+    # smartctl's exit status is a bit mask: 8 is "disk failing"; 2 (would not
+    # open) and 4 (a SMART command failed) leave no verdict. A card reader or
+    # bridge sets those too, so they are reported, not paged: a dead mirror
+    # disk already shows in the pool's health.
+    while read -r dev _ type _; do
+      rc=0
+      smartctl -H "$dev" -d "$type" >/dev/null 2>&1 || rc=$?
+      if [ $(( rc & 8 )) -ne 0 ]; then SMART_FAILING=$(( SMART_FAILING + 1 ))
+      elif [ $(( rc & 6 )) -ne 0 ]; then SMART_UNREADABLE=$(( SMART_UNREADABLE + 1 )); fi
+    done < <(smartctl --scan 2>/dev/null)
+  fi
+}
+
 push_status() {
   local reboot="$1" pending="$2" since="$3" running="$4" newest="$5"
   local url status=up msg="" days=0 noun=updates
   url="$(push_url)"
   [ -n "$url" ] || return 0
+  down() { status=down; msg="${msg:+${msg}, }$1"; }
+  [ "$POOLS_OK" = false ] && down "ZFS pool not healthy"
+  [ "$SMART_FAILING" != null ] && [ "$SMART_FAILING" -gt 0 ] && down "SMART failing on ${SMART_FAILING} disk(s)"
+  if [ "$SCRUB_STALE" = true ]; then
+    if [ "$SCRUB_AGE" = null ]; then down "no finished scrub"; else down "last scrub ${SCRUB_AGE} d ago"; fi
+  fi
+  [ "$SMART_UNREADABLE" != null ] && [ "$SMART_UNREADABLE" -gt 0 ] && msg="${msg:+${msg}, }no SMART verdict from ${SMART_UNREADABLE} disk(s)"
   if [ "$pending" -gt 0 ]; then
     days=$(( ($(date +%s) - since) / 86400 ))
     if [ "$pending" -eq 1 ]; then noun=update; fi
-    msg="${pending} ${noun} pending ${days} d"
+    msg="${msg:+${msg}, }${pending} ${noun} pending ${days} d"
     if [ "$days" -ge "$PENDING_DAYS" ]; then status=down; fi
   fi
   if [ "$reboot" = true ]; then
-    status=down
-    msg="${msg:+${msg}, }reboot due"
+    down "reboot due"
     if [ "$newest" != "$running" ]; then msg="${msg} (${running} -> ${newest})"; fi
   fi
   msg="${msg:-up to date}"
@@ -156,6 +209,8 @@ write_status() {
     rm -f "$STATE_DIR/pending-since"
   fi
 
+  storage_health
+
   tmp="$(mktemp "$(dirname "$out")/.os-status.XXXXXX")"
   cat > "$tmp" <<EOF
 {
@@ -168,7 +223,12 @@ write_status() {
   "newestKernel": "$(clean "${newest:-$running}")",
   "rebootRequired": $reboot,
   "pendingUpdates": $pending,
-  "pendingSinceEpoch": $since
+  "pendingSinceEpoch": $since,
+  "zfsPoolsHealthy": $POOLS_OK,
+  "zfsScrubAgeDays": $SCRUB_AGE,
+  "zfsScrubStale": $SCRUB_STALE,
+  "smartFailingDisks": $SMART_FAILING,
+  "smartUnreadableDisks": $SMART_UNREADABLE
 }
 EOF
   chmod 644 "$tmp"

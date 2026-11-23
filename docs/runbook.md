@@ -257,7 +257,8 @@ pending updates and for how long, a due reboot, or "not reported" when a file
 is missing or older than 48 h. Each run also pushes to the Uptime Kuma
 monitors "OS updates: Proxmox host" and "OS updates: Docker VM", which go
 down, and page Telegram, when a reboot is due or an update has been pending
-for 30 days, and resend about every 8 days while down
+for 30 days (the host's also on a bad ZFS pool, SMART verdict or old
+scrub), and resend about every 8 days while down
 ([notes](operational-notes.md#os-update-heartbeats)). On the host a due reboot
 means the newest installed kernel is not the running one, so a kernel pinned
 to an older version reads as "reboot due" until it is unpinned.

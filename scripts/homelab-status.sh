@@ -142,6 +142,27 @@ os_update_line() {
   if [ "$reboot" != true ] && [ "$pending" -eq 0 ]; then
     ok "${label}: up to date (${detail})"
   fi
+  storage_line "$label" "$file"
+}
+
+# Only the host's file has values here; null or a missing field prints nothing.
+# os-status.sh decides whether the scrub is stale, so its limit lives there.
+storage_line() {
+  local label="$1" file="$2" pools stale scrub smart unread when before="$warnings"
+  pools="$(status_field "$file" zfsPoolsHealthy)"
+  case "$pools" in true|false) ;; *) return ;; esac
+  stale="$(status_field "$file" zfsScrubStale)"
+  scrub="$(status_field "$file" zfsScrubAgeDays)"
+  smart="$(status_field "$file" smartFailingDisks)"
+  unread="$(status_field "$file" smartUnreadableDisks)"
+  case "$smart" in ''|*[!0-9]*) smart=0 ;; esac
+  case "$unread" in ''|*[!0-9]*) unread=0 ;; esac
+  case "$scrub" in ''|*[!0-9]*) when="no finished scrub" ;; *) when="last scrub ${scrub} d ago" ;; esac
+  [ "$pools" = false ] && warn "${label}: ZFS pool not healthy"
+  [ "$smart" -gt 0 ] && warn "${label}: SMART failing on ${smart} disk(s)"
+  [ "$unread" -gt 0 ] && warn "${label}: no SMART verdict from ${unread} disk(s)"
+  [ "$stale" = true ] && warn "${label}: ZFS ${when}"
+  [ "$warnings" -eq "$before" ] && ok "${label}: ZFS healthy, ${when}, SMART OK"
 }
 
 os_updates_section() {

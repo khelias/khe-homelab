@@ -734,6 +734,12 @@ the private `khe-meta` repo under `house/house-hvac.md`.
   alpine - localhost doesn't resolve.
 - **cloudflare-tunnel**: uses `cloudflared tunnel ready` (distroless image,
   no curl/wget available; see the Cloudflare Tunnel section).
+- **pai**: no healthcheck. `pai-service` is the container's PID 1, so a
+  dead PAI exits the container and `restart: unless-stopped` brings it back;
+  a process check could only fail when the image drops its tool, which the
+  `pgrep` one did in 3.8.1 and then read unhealthy for good. A dropped panel
+  or broker connection PAI retries itself; the signal for that is the alarm
+  entities going unavailable in Home Assistant.
 - **alloy**, **loki** (>= 3.7): no container-internal healthcheck.
   `grafana/alloy` ships without wget/curl; `grafana/loki` 3.7+ is
   fully distroless (no shell either). Adding a thin Dockerfile
@@ -815,6 +821,17 @@ the private `khe-meta` repo under `house/house-hvac.md`.
   names the count, the days and the kernels, e.g. `12 updates pending 34 d,
   reboot due (a -> b)`. The pending start lives in
   `/var/lib/khe-os-status/pending-since` and resets when the count is zero.
+- **The host's monitor also carries its storage**: down when `zpool status
+  -x` is not "all pools are healthy", a disk's `smartctl -H` says failing,
+  or a pool's last finished scrub is 45 days old or more or missing
+  (`OS_STATUS_SCRUB_DAYS`; zfsutils scrubs on the second Sunday of each
+  month). A disk that gives no SMART verdict is named in the message and
+  the snapshot but does not page, since a card reader does that too. The
+  host's mail has no relay and outbound port 25 does not connect, so ZED's
+  and smartd's own notices to root stay in its queue: this daily push is
+  the only way a failing mirror disk reaches Telegram, and the monitor's
+  "OS updates" name covers it too. On the VM, with no pool and no
+  smartctl, the five storage fields are `null`.
 - Both monitors: heartbeat interval 28 h, Retries 0, Resend Notification
   every 7 down beats, the Telegram notification. Kuma keeps generating down
   beats for a push monitor that hears nothing, so a VM left on

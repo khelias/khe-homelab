@@ -84,7 +84,8 @@ Operational work is kept to a minimum by pushing everything into code and cron.
   so its deploy is a merge here, minutes after the push.
 - **OS update reminders** — `scripts/os-status.sh` pushes the Proxmox host's and
   the VM's update state to Uptime Kuma daily, which pages Telegram when a reboot is
-  due or an update has waited 30 days.
+  due or an update has waited 30 days, and on the host also when a ZFS pool, a
+  disk's SMART verdict or the last scrub's age is bad.
 - **Certificate renewal** — NPM auto-renews the wildcard cert via Cloudflare DNS API. No manual steps.
 - **Backups** — `scripts/backup.sh` dumps every Postgres DB, the Home Assistant
   recorder and the service configs on a schedule; `scripts/offsite-backup.sh` then
