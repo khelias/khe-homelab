@@ -318,8 +318,9 @@ fi
 # change is shown and installed only on the operator's yes.
 # git in a session-writable checkout $1: its own hooks and fsmonitor stay off,
 # as in workspace.sh, and replace refs, which a session can write, are ignored.
+# No pager: core.pager is a command too, and less stops a run with no terminal.
 checkout_git() {
-  git -C "$1" -c core.hooksPath=/dev/null -c core.fsmonitor=false --no-replace-objects "${@:2}"
+  git --no-pager -C "$1" -c core.hooksPath=/dev/null -c core.fsmonitor=false --no-replace-objects "${@:2}"
 }
 
 meta="$WORKSPACE/repos/khe-meta"
