@@ -10,6 +10,12 @@
           url: http://immich-server:2283
           key: "{{HOMEPAGE_VAR_IMMICH_API_KEY}}"
           version: 2
+    - Immich Swipe:
+        icon: mdi-gesture-swipe
+        href: https://swipe.khe.ee
+        description: Fotode kiirvalik
+        server: my-docker
+        container: immich-swipe
     - Vaultwarden:
         icon: vaultwarden
         href: https://vault.khe.ee

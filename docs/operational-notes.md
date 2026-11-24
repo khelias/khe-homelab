@@ -45,7 +45,7 @@ file in every session is wasteful; the entries are independent.
 
 - **Wildcard `*.khe.ee` Let's Encrypt cert** via Cloudflare DNS-01 (auto-renew).
 - **Proxy hosts**: one per AdGuard rewrite: `khe.ee`, `dash`, `vault`,
-  `photos`, `status`, `home`, `trips`.
+  `photos`, `status`, `home`, `swipe`, `trips`.
 - **The upload-heavy host** (photos) has unlimited body size + 600s
   timeouts. Applies to LAN clients only; the CF
   tunnel does not route through NPM (see Cloudflare Tunnel section).
@@ -434,6 +434,25 @@ app's `ci.yml` and `AGENTS.md` hold the details):
   edge after ~1.7MB, the same POST via NPM on the LAN reached Immich.
   Routing the tunnel through NPM would not help - the cap is at the CF
   edge, before the origin. Large videos have to go via LAN or Tailscale.
+
+## Immich Swipe
+
+- Companion container (`immich-swipe`) in `services/media/immich/docker-compose.yml`,
+  served at `swipe.khe.ee` over LAN and Tailscale only (AdGuard rewrite + NPM
+  proxy host to `http://immich-swipe:80`, not on Cloudflare Tunnel).
+- Joins `proxy` only (never `immich-internal`) and proxies `/api/` to
+  `IMMICH_URL=http://immich-server:2283` so Immich needs no CORS changes and
+  the container holds no secrets.
+- **Scoped API key:** create a dedicated Immich API key with `user.read`,
+  `asset.read`, `asset.view`, `asset.download`, `album.read`, `albumAsset.create`
+  (optionally `asset.update`), **omitting `asset.delete`** so an accidental
+  left-swipe fails with 403 instead of trashing photos. Login requires both
+  Server URL (`https://photos.khe.ee`) and the API key.
+- **Workflow (v1.0):** there is no date-range filter, so stage a period into an
+  Immich source album first and select `In album` in Settings. Adding a frame
+  to the selection album uses `0-9` hotkeys on desktop or AlbumPicker on a
+  phone (swiping right only marks kept in `localStorage`; Undo does not remove
+  an already-added album item).
 
 ## Immich machine-learning
 

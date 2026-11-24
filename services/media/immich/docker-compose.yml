@@ -116,6 +116,31 @@ services:
           memory: 2G
           cpus: '2.00'
 
+  immich-swipe:
+    image: ghcr.io/dev-nick421/immich-swipe:v1.0@sha256:ef1a7fd2a4d595e9b89ed7b2b0d77d195f89fbdcf7ebcc73067c66d2242dbc8e
+    container_name: immich-swipe
+    restart: unless-stopped
+    environment:
+      - IMMICH_URL=http://immich-server:2283
+    depends_on:
+      immich-server:
+        condition: service_healthy
+    networks:
+      - proxy
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.50'
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/config.js || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    security_opt:
+      - no-new-privileges:true
+
 volumes:
   immich_pgdata:
   immich_ml_cache:

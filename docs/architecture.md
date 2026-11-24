@@ -26,7 +26,7 @@ graph TB
     subgraph DVM[Docker VM · 192.168.0.11]
         direction LR
         Core["<b>Core</b><br/>Homepage · Vaultwarden<br/>Uptime Kuma"]
-        Media["<b>Media</b><br/>Immich"]
+        Media["<b>Media</b><br/>Immich · immich-swipe"]
         Apps["<b>Apps</b><br/>Landing Page · games hub<br/>pages · trips · stories"]
         Obs["<b>Observability</b><br/>Loki · Grafana<br/>Alloy · Alertmanager"]
         Home["<b>Home</b><br/>Home Assistant<br/>Mosquitto · PAI"]
@@ -53,6 +53,7 @@ Proxmox VE (192.168.0.10) is the hypervisor; the Docker VM (192.168.0.11) runs e
 | 🌐 | **Landing Page** | `khe.ee` | Public family landing page; shared trips under `/r/`, the trip atlas demo under `/trips/`, the published bedtime stories under `/stories/` |
 | 🏠 | **Homepage** | `dash.khe.ee` | Service dashboard with live widgets (CF Access protected) |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/immich.svg" width="22" /> | **Immich** | `photos.khe.ee` | Photo library with ML tagging (Google Photos replacement) |
+| | **immich-swipe** | `swipe.khe.ee` (LAN + Tailscale) | Swipe-style photo triage frontend for Immich; not on the Cloudflare Tunnel |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/vaultwarden.svg" width="22" /> | **Vaultwarden** | `vault.khe.ee` | Password manager with Passkey support |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/uptime-kuma.svg" width="22" /> | **Uptime Kuma** | `status.khe.ee` | Service monitoring and alerts |
 | 🎮 | **games hub** | `games.khe.ee` | Launcher, khe-study (`/study/`) and khe-ai-adventure (`/adventure/`), auto-deployed from GitHub |

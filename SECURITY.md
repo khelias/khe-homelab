@@ -248,6 +248,10 @@ included) is reachable from the LAN and over the Tailscale subnet route,
 whatever the UFW port list says. `dash`, `trips` and `stories` open without a login from the LAN and the
 tailnet, through AdGuard rewrites and NPM
 ([estate ADR-022](https://github.com/khelias/khe-architecture/blob/main/decisions/022-home-route-for-access-only-apps.md)).
+`home.khe.ee` and `swipe.khe.ee` are LAN and Tailscale only (not on Cloudflare
+Tunnel); `immich-swipe` sits on `proxy` only (isolated from `immich-internal`),
+publishes no host port, holds no server-side secrets, and the browser authenticates
+to Immich with a scoped API key that omits `asset.delete`.
 Behind both routes, `stories.khe.ee/api/` asks for a paired phone of its own:
 a parent pairs it once with the family phrase, four random words, which is
 tried at most five times an hour per client address and twenty in all (a LAN

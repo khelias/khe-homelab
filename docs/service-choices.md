@@ -43,6 +43,7 @@ comparable, the one that scores better on these wins.
 | Mesh VPN              | Tailscale             | High       | 2026-05-05    |
 | Password manager      | Vaultwarden           | High       | 2026-05-05    |
 | Photo management      | Immich                | High       | 2026-05-05    |
+| Photo triage UI       | Immich Swipe          | Medium     | 2026-11-24    |
 | Media server          | Jellyfin, removed 2026-10 | —      | 2026-10-01    |
 | Audiobook server      | Audiobookshelf, removed 2026-10 | — | 2026-10-01   |
 | Cloud / file sync     | Nextcloud, removed 2026-10 | —     | 2026-10-01    |
@@ -304,6 +305,38 @@ today.
 
 - We stop using a phone for primary photo capture (unlikely).
 - Immich pivots to closed-source / commercial-only (no signal of this).
+
+---
+
+## Photo triage UI - Immich Swipe
+
+Stateless `nginx:alpine` companion container in `services/media/immich/` (`ghcr.io/dev-nick421/immich-swipe`, LAN + Tailscale only at `swipe.khe.ee`) for fast human photo curation into Immich selection albums, which `khe-albums` then reads to write Apple Photos favourites.
+
+### Alternatives considered
+
+| Tool | Notable strengths | Why not for us |
+|------|-------------------|----------------|
+| **Immich Swipe** | Stateless nginx frontend with built-in `/api/` reverse proxy (`IMMICH_URL`), no server-side secrets, desktop `0-9` album hotkeys and mobile picker | (selected) |
+| immich-cull | Fast desktop triage workflow | Heavier runtime surface and workflow oriented around deleting/culling rather than album curation without delete rights |
+| Custom web UI | Exact date-range filter and one-tap mobile album add | Building and maintaining another app when a pinned stateless frontend already covers triage |
+
+### Why Immich Swipe
+
+- **Zero server-side state or secrets.** The container holds no database, no volumes and no API keys; the browser stores the Immich URL and a scoped user API key in `localStorage` and talks through the container's `/api/` reverse proxy to `http://immich-server:2283` without CORS changes on Immich.
+- **Scoped delete-less key.** The operator creates an Immich API key without `asset.delete` (`user.read`, `asset.read`, `asset.view`, `asset.download`, `album.read`, `albumAsset.create`; optionally `asset.update`), so an accidental left-swipe returns 403 and cannot trash photos.
+- **`proxy`-only isolation and LAN + Tailscale only.** The container joins only the `proxy` network (never `immich-internal`, keeping Postgres, Valkey and ML isolated), publishes no host ports and is not routed through the Cloudflare Tunnel.
+- **Standard Renovate cadence.** Stateless frontend with no volumes, DB access or Docker socket, so it stays outside the critical-infrastructure hold in `renovate.json`.
+
+### Known costs
+
+- v1.0 has no built-in date-range filter (`All`, `No album`, or `In album`), so triaging a single period starts by putting that period's photos into a staging album in Immich once.
+- Swiping right only marks a frame kept in browser `localStorage`; adding to an Immich selection album uses `0-9` hotkeys on desktop or AlbumPicker on a phone, and Undo does not remove an added photo from the album.
+
+### When we'd revisit
+
+- Upstream stagnates or breaks against a future Immich API change.
+- Immich ships a native fast-triage mode with keyboard/swipe album assignment.
+- Manual staging + swiping large trips proves too slow without a date-range filter or ML pre-filter.
 
 ---
 

@@ -41,6 +41,7 @@ duplicated here.
 | Proxmox             | 192.168.0.10:8006        |
 | Grafana             | 192.168.0.11:3030        |
 | Home Assistant      | 192.168.0.11:8123 (`home.khe.ee`) |
+| Immich Swipe        | `swipe.khe.ee` via NPM (no host port) |
 
 ## Remote Access (Tailscale VPN)
 
