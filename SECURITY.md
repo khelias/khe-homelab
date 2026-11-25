@@ -71,6 +71,17 @@ the required `validate.yml` check:
   environment before it lapses, or the job fails at its first call. Undone
   by disabling the workflow, revoking the token in claude.ai and deleting
   the issue.
+- **Home Assistant DHW price control** (`khe-home-assistant`
+  `config/packages/heating_price.yaml`) is opt-in behind
+  `input_boolean.boileri_hinnajuhtimine` (off by default). While on, it writes
+  only the Daikin Altherma hot-water tank target over the LAN WebSocket,
+  clamped to 45-55 °C from the day-ahead electricity price forecast, skipping
+  when the tank is off, in `performance` boost or in its weekly 60 °C
+  anti-legionella cycle (`temperature >= 60`). Turning the toggle off, or
+  losing the price sensor for 15 minutes while on, restores 55 °C. Space
+  heating and ventilation stay read-only. Undone by turning off
+  `input_boolean.boileri_hinnajuhtimine` in Home Assistant (which restores
+  55 °C immediately) or reverting `heating_price.yaml`.
 
 ## Automated readers
 
