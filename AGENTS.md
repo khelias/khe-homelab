@@ -10,7 +10,7 @@ Every compose file,
 AdGuard and Homepage config lives here. This file holds rules and
 pointers; the reference lives in:
 
-- [README.md](README.md) - what the homelab is, the resilience layers
+- [README.md](README.md) - what the homelab is, the resilience layers in one line each
   (khe-sites builds the khe.ee architecture page from its numbered
   `## Resilience` list), day-to-day ops
 - [docs/architecture.md](docs/architecture.md) - the diagram, the services
