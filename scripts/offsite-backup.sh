@@ -78,7 +78,7 @@ fi
 #                  yaml, mosquitto passwd) are captured via
 #                  /srv/backups tarballs — excluded here because restic runs
 #                  as khe, and one unreadable file makes restic exit 3, which
-#                  skips forget and check below. mosquitto/data is only the
+#                  skips the check below. mosquitto/data is only the
 #                  broker's retained-message cache, rebuilt by its clients.
 # - /srv/data/stories/audio  the bedtime stories' audio store (estate ADR-031),
 #                  kept outside git, so this is its only copy off the VM.
@@ -97,25 +97,15 @@ if ! restic backup \
   exit 1
 fi
 
-# Group by host and tags: the default host+paths grouping would make each day's
-# dated path its own group, and the policy would then keep every snapshot.
-echo "-> restic forget --prune"
-if ! restic forget \
-       --prune \
-       --group-by host,tags \
-       --keep-daily 7 \
-       --keep-weekly 4 \
-       --keep-monthly 3; then
-  echo "FAIL: restic forget/prune" >&2
-  exit 1
-fi
+# No forget or prune here: the R2 bucket lock refuses deletes outside locks/.
+# Pruning is the attended quarterly step in infrastructure/offsite-backup.md.
 
-# Metadata integrity check. Full data verification (--read-data) is a
-# separate monthly cron — too much egress for daily, even on R2 which
-# doesn't bill egress.
-echo "-> restic check (metadata)"
+# Reads one of 28 groups of packs a night, picked by days since the epoch, so
+# every pack is read back every four weeks (R2 does not bill egress).
+SUBSET=$(( $(date +%s) / 86400 % 28 + 1 ))
+echo "-> restic check --read-data-subset=${SUBSET}/28"
 CHECK_EXIT=0
-if ! restic check; then
+if ! restic check --read-data-subset="${SUBSET}/28"; then
   echo "FAIL: restic check reported issues — inspect before next run" >&2
   CHECK_EXIT=1
 fi

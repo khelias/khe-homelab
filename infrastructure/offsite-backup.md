@@ -5,7 +5,8 @@ Third-tier backup. Local `scripts/backup.sh` at 02:00 produces
 day's directory only, plus VM-local `.env` files and the bedtime stories'
 audio store `/srv/data/stories/audio` (outside git, so this is its only copy
 off the VM; [estate ADR-031](https://github.com/khelias/khe-architecture/blob/main/decisions/031-stories-public-app-private-stories-audio-outside-git.md)) to an R2 bucket via restic. Client-side AES-256 +
-dedup + retention. Why three tiers: [architecture](../docs/architecture.md#automation), Backups.
+dedup. The bucket is locked, so the VM can add but not delete
+(see [Bucket lock](#bucket-lock)). Why three tiers: [architecture](../docs/architecture.md#automation), Backups.
 
 ## Cloudflare R2 (dashboard, one-time)
 
@@ -16,6 +17,7 @@ dedup + retention. Why three tiers: [architecture](../docs/architecture.md#autom
    - Applied to: `khe-homelab-backup`
    - TTL: Forever (or long-lived)
    - Copy Access Key ID + Secret — secret is shown once.
+   R2 has no level that writes without deleting: see [Bucket lock](#bucket-lock).
 4. Account ID (32-hex) is visible on the R2 overview page.
 
 ## VM setup (one-time)
@@ -52,40 +54,70 @@ restic init
 0 3 * * *  cd /home/khe/homelab && ./scripts/offsite-backup.sh >> /srv/backups/offsite-backup.log 2>&1
 ```
 
-Retention policy (enforced each run via `restic forget --prune`):
-`--keep-daily 7 --keep-weekly 4 --keep-monthly 3`, grouped by host and tags because
-the dated path differs in every snapshot. Each retained snapshot
-is a point-in-time capture — the monthly one keeps a single `/srv/backups/<date>/`
-payload, not a rolling month. Longest cold-recovery window is ~3 months,
-granular only at the daily tier. The policy keeps the repo near 7 GB, inside
-R2's free 10 GB-month.
+The nightly run only adds a snapshot and checks the repo; it never forgets or
+prunes, since the lock would refuse it. Snapshots pile up until the attended
+prune below; a quarter between prunes costs well under $1 a month past R2's
+free 10 GB.
 
-## Restore
+## Bucket lock
 
-```bash
-set -a; source ~/homelab/.env.offsite; set +a
+R2 → `khe-homelab-backup` → Settings → Bucket lock rules. Every rule is
+Indefinite:
 
-restic snapshots                                # list
-restic restore <snapshot-id> --target /tmp/r    # full restore
-# --include matches the absolute path as stored in the snapshot
-restic restore <snapshot-id> --target /tmp/r \
-       --include "/srv/backups/2026-04-18/immich-postgres.dump"
-```
+| Rule | Prefix |
+|------|--------|
+| restic-data | `data/` |
+| restic-index | `index/` |
+| restic-snapshots | `snapshots/` |
+| restic-keys | `keys/` |
+| restic-config | `config` |
 
-Vaultwarden's restore from these files is in
-[operational notes](../docs/operational-notes.md#vaultwarden).
+- `locks/` has no rule: restic deletes its own lock files on every `backup`
+  and `check`.
+- `forget`, `prune`, `key remove`, `migrate` and `repair` run only while
+  the rules are off: restic only warns (`unable to remove`) when a delete is
+  refused. Why no age rule:
+  [service-choices](../docs/service-choices.md#offsite-backup---restic-to-cloudflare-r2-locked-bucket).
+- The lock also refuses an overwrite, so an upload restic retries after a
+  lost response fails that night's backup; the heartbeat goes down and the
+  next run starts clean.
+- Changing the rules needs R2 bucket-configuration rights (Admin, or Workers
+  R2 Storage Write), which no credential on the VM may hold
+  ([SECURITY.md](../SECURITY.md#automated-writers)).
 
-DB recovery example:
+`scripts/offsite-lock-check.sh` proves the lock from the VM's own token: for
+one existing key under each prefix, a PUT with `If-None-Match: *` must answer
+409 `ObjectLockedByBucketPolicy`. With a rule off it answers 412 and changes
+nothing.
 
-```bash
-docker exec -i immich-postgres pg_restore -U postgres -d immich --clean \
-       < /tmp/r/srv/backups/2026-04-18/immich-postgres.dump
-```
+## Attended prune (quarterly)
+
+The next date is in the estate roadmap in `khe-meta`. Not between 02:00 and
+04:00 (the nightly runs), nor on a Sunday morning (`restore-verify.yml` at
+04:00 UTC): a prune holds restic's exclusive lock.
+
+1. Turn the five rules off in the dashboard.
+2. On the VM:
+
+   ```bash
+   set -a; source ~/homelab/.env.offsite; set +a
+   restic forget --prune --group-by host,tags \
+          --keep-daily 7 --keep-weekly 4 --keep-monthly 3
+   restic check
+   ```
+
+   Grouped by host and tags because the dated path differs in every
+   snapshot. No `unable to remove` may appear. Each kept snapshot is one
+   day's `/srv/backups/<date>/`, so the cold-recovery window is about 3
+   months, daily only for the last week.
+3. Turn the rules back on.
+4. `./scripts/offsite-lock-check.sh` prints `locked:` for all five.
+
+The prune deletes offsite data, so the operator runs or approves it
+(`AGENTS.md`, Access and operations).
 
 ## Integrity
 
-Daily `restic check` (metadata only) runs at the end of `offsite-backup.sh`.
-Full data verification is not scheduled today — add a monthly
-`restic check --read-data` cron once the repo grows enough to make daily
-`--read-data-subset=1%` meaningful. R2 has no egress fees, so reads are
-free; the cost is time.
+Each night `offsite-backup.sh` ends with `restic check
+--read-data-subset=<n>/28`, n from days since the epoch, so every pack is
+read back every four weeks (1/28 of the repo a night; R2 has no egress fees).

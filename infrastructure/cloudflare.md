@@ -65,8 +65,11 @@ the failure mode.
   Worker, which passes the origin's answer through. With the VM down
   AdGuard is down too, so the fallback serves only visitors outside.
 - API token: the "Edit Cloudflare Workers" template limited to this account
-  and the `khe.ee` zone, in the `edge-fallback` environment of this repo
-  (`main` only) with the account id.
+  and the `khe.ee` zone, without its Workers R2 Storage and Workers KV
+  Storage permissions, in the `edge-fallback` environment of this repo
+  (`main` only) with the account id. R2 Storage could lift the
+  [offsite bucket lock](offsite-backup.md#bucket-lock) from the VM this runs
+  on; the Workers bind neither R2 nor KV.
 
 The Worker `makett-preview` is khe-makett's sales site preview, deployed by
 that repo's `ci.yml` on `main` from a GitHub-hosted runner. It owns the

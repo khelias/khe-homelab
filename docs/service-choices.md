@@ -51,6 +51,7 @@ comparable, the one that scores better on these wins.
 | LLM serving           | Ollama, removed 2026-10 | —        | 2026-10-01    |
 | Workflow automation   | n8n, removed 2026-10  | —          | 2026-10-01    |
 | Ad-hoc page publishing| dufs (+ nginx)        | Medium     | 2026-10-01    |
+| Offsite backup        | restic → R2, bucket lock | High    | 2026-11-26    |
 | Uptime monitoring     | Uptime Kuma           | High       | 2026-05-05    |
 | Logs and log alerts   | Loki + Alloy + Grafana| Medium     | 2026-10-01    |
 | Dashboard             | Homepage              | High       | 2026-05-05    |
@@ -544,6 +545,32 @@ in 2023.
 - We want true paste-and-go with auto-expiring links at volume → a
   purpose-built pastebin, or the TTL-cron upgrade above.
 - We need multi-user publishing with per-user spaces.
+
+---
+
+## Offsite backup - restic to Cloudflare R2, locked bucket
+
+The third backup tier, set up in
+[offsite-backup.md](../infrastructure/offsite-backup.md). The question here is
+how the copy survives the VM that writes it: R2 has no permission that writes
+without deleting and no object versioning, so the R2 token on the VM can
+delete everything.
+
+### Alternatives considered
+
+| Option | Notable strengths | Why not for us |
+|--------|-------------------|----------------|
+| **Indefinite R2 bucket lock on all but `locks/`, attended prune** | Built into R2 and free; the VM can only add; no new host or service | (selected) Prune needs the operator to turn the rules off; storage grows between prunes |
+| R2 lock by age (30 days), nightly prune | No attended step | Restic reuses old packs in new snapshots, so the packs behind recent snapshots become deletable; restic only warns on a refused delete, so a nightly prune fails silently |
+| rest-server or `rclone serve restic --append-only` | Restic's own append-only model | A second host holding the R2 credentials and a service to run |
+| Prune from elsewhere (GitHub-hosted job, laptop) | Prune rights off the VM | The VM's token still deletes; it only helps with a write-only token, which R2 lacks |
+
+### When we'd revisit
+
+- R2 gains a write-without-delete permission or object versioning.
+- The quarterly prune is skipped often enough that storage cost matters.
+- The second site in [ROADMAP.md](../ROADMAP.md) lands with an
+  append-only repository of its own.
 
 ---
 

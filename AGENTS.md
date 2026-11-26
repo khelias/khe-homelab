@@ -164,8 +164,8 @@ base branch against the PR tree. The edge fallback's Worker tests
   minors, the critical-infrastructure group and autoheal (a monthly PR for
   review), and Docker Hub updates wait three days first (`renovate.json`), the pin
   Apps automerge estate image pins (rule 3), every merge to `main` deploys,
-  and scheduled jobs back up and prune, verify a restore and clean the
-  runner. `edge-fallback.yml` deploys the edge copy hourly when a served tree
+  and scheduled jobs back up (the offsite prune is attended), verify a
+  restore and clean the runner. `edge-fallback.yml` deploys the edge copy hourly when a served tree
   changed; it is undone by disabling the workflow and deleting the two
   Worker routes. `weekly-digest.yml` opens one `agent-digest` issue a week
   from a Claude run on a GitHub-hosted runner, posted by a model-free job

@@ -63,6 +63,13 @@ the required `validate.yml` check:
   public trees, fails on a symlink or an `apiSecret` value, and replaces the
   adventure `config.js` with a stub, so the private trips atlas and the API
   secret never reach Cloudflare.
+- **The nightly offsite backup** (`offsite-backup.sh`, cron 03:00) holds an
+  R2 token that can delete. The bucket lock refuses every delete outside
+  restic's `locks/`, so the run only adds; pruning is an attended step.
+  The lock holds only while no Cloudflare credential on the VM or its runners
+  has R2 rights: the edge fallback token has none, NPM's DNS-01 token is Zone
+  DNS only and the tunnel token is not an API token
+  ([offsite-backup.md](infrastructure/offsite-backup.md#bucket-lock)).
 - **The makett preview deploy** (khe-makett `ci.yml`, on a push to `main`
   or a manual run from it) deploys the Worker `makett-preview` on
   `makett.khe.ee`, behind Cloudflare Access, after the repo's full check

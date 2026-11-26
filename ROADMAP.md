@@ -36,12 +36,6 @@ Direction and priorities for the homelab — what it should become, beyond curre
 
 ## Medium-term (when app phase starts)
 
-- **Offsite backup verification** — offsite is live (`restic` → Cloudflare R2, daily,
-  client-side AES-256, `--keep-daily 7 --keep-weekly 4 --keep-monthly 3`; see
-  [infrastructure/offsite-backup.md](infrastructure/offsite-backup.md)), so 3-2-1 is
-  satisfied. Daily `restic check` covers metadata only; schedule a monthly
-  `restic check --read-data-subset` once the repo is large enough to make full-data
-  verification meaningful.
 - **Bootstrap script for full rebuild** — one entry point that takes a fresh
   Proxmox host to a fully working homelab. The setup steps are scripted already
   but have no orchestrator handling the reboot points.
