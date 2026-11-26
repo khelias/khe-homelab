@@ -61,8 +61,8 @@ Proxmox VE (192.168.0.10) is the hypervisor; the Docker VM (192.168.0.11) runs e
 | 🌙 | **stories** | `stories.khe.ee` | Unejänku, the family's bedtime stories app, CF Access protected; khe-bunny-tales' runner deploys it, audio in `/srv/data/stories/audio`; `stories-api` under `/api/` takes the children's story requests |
 | 📝 | **pages** | `pages.khe.ee` | Quick-publish HTML pages; edited at `draft.khe.ee` (CF Access protected) |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/home-assistant.svg" width="22" /> | Home Assistant | `home.khe.ee` (LAN + Tailscale) | House automation: HVAC, grid metering and cameras over local protocols. Deliberately not on the tunnel; the house detail is in the private khe-meta repo |
-| | Mosquitto | internal only | MQTT broker for Home Assistant and PAI; publishes no host port |
-| | PAI | internal only | Bridges the Paradox alarm panel to MQTT |
+| | Mosquitto | internal only | MQTT broker for Home Assistant and PAI; on `home-internal` only, publishes no host port |
+| | PAI | internal only | Bridges the Paradox alarm panel to MQTT; on `home-internal` only |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/adguard-home.svg" width="22" /> | AdGuard Home | LAN + Tailscale | DNS ad-blocking on the LAN + split-horizon DNS; over Tailscale it answers only the `khe.ee` zone |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/nginx-proxy-manager.svg" width="22" /> | Nginx Proxy Manager | LAN only | Reverse proxy + wildcard SSL for LAN traffic |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/cloudflare.svg" width="22" /> | Cloudflare Tunnel | — | Secure external access (no open ports) |

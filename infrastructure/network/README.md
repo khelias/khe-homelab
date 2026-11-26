@@ -43,6 +43,10 @@ duplicated here.
 | Home Assistant      | 192.168.0.11:8123 (`home.khe.ee`) |
 | Immich Swipe        | `swipe.khe.ee` via NPM (no host port) |
 
+Homepage and Immich publish no host port either (`dash.khe.ee`,
+`photos.khe.ee` via NPM). Mosquitto and PAI have none and sit on the
+`home-internal` Docker network with Home Assistant, off `proxy`.
+
 ## Remote Access (Tailscale VPN)
 
 Tailscale mesh VPN on the Docker VM provides remote access to the entire LAN.

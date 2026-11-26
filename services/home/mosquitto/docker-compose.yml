@@ -14,13 +14,13 @@ services:
       - ./data:/mosquitto/data
       - /etc/localtime:/etc/localtime:ro
     networks:
-      - proxy
+      - home-internal
     # Checks the listening socket without opening a connection. A connecting
     # probe (nc, mosquitto_sub) works too, but every probe logs a connect and
     # a disconnect at notice level, which Alloy then ships to Loki twice a
     # minute forever. A protocol-level check would also need broker
-    # credentials in this container; real end-to-end liveness belongs in the
-    # Uptime Kuma MQTT monitor instead.
+    # credentials in this container; real end-to-end liveness belongs in an
+    # Uptime Kuma MQTT monitor instead, which needs Kuma on home-internal.
     healthcheck:
       test: ["CMD-SHELL", "netstat -ltn | grep -q ':1883' || exit 1"]
       interval: 30s
@@ -34,5 +34,6 @@ services:
           cpus: '0.25'
 
 networks:
-  proxy:
-    external: true
+  home-internal:
+    name: home-internal
+    driver: bridge

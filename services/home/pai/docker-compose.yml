@@ -10,7 +10,7 @@ services:
       - ./config/pai.conf:/etc/pai/pai.conf:ro
       - /etc/localtime:/etc/localtime:ro
     networks:
-      - proxy
+      - home-internal
     # No healthcheck (docs/operational-notes.md#healthchecks).
     deploy:
       resources:
@@ -19,5 +19,5 @@ services:
           cpus: '0.5'
 
 networks:
-  proxy:
+  home-internal:
     external: true
