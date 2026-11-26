@@ -110,6 +110,13 @@ if ! restic check --read-data-subset="${SUBSET}/28"; then
   CHECK_EXIT=1
 fi
 
+# A lock rule left off after a prune, or removed, fails the run here.
+echo "-> bucket lock"
+if ! "$(dirname "$0")/offsite-lock-check.sh" --sentinel; then
+  echo "FAIL: bucket lock is off — switch the R2 lock rules back on" >&2
+  CHECK_EXIT=1
+fi
+
 DURATION=$(( $(date +%s) - START_TS ))
 echo
 echo "=== Summary ==="

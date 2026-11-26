@@ -65,7 +65,9 @@ the required `validate.yml` check:
   secret never reach Cloudflare.
 - **The nightly offsite backup** (`offsite-backup.sh`, cron 03:00) holds an
   R2 token that can delete. The bucket lock refuses every delete outside
-  restic's `locks/`, so the run only adds; pruning is an attended step.
+  restic's `locks/`, so the run only adds; pruning is an attended step. Its
+  one other write is a conditional PUT to a sentinel that proves the lock
+  (409 locked, 412 unchanged otherwise).
   The lock holds only while no Cloudflare credential on the VM or its runners
   has R2 rights: the edge fallback token has none, NPM's DNS-01 token is Zone
   DNS only and the tunnel token is not an API token

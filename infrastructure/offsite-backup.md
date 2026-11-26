@@ -88,7 +88,10 @@ Indefinite:
 `scripts/offsite-lock-check.sh` proves the lock from the VM's own token: for
 one existing key under each prefix, a PUT with `If-None-Match: *` must answer
 409 `ObjectLockedByBucketPolicy`. With a rule off it answers 412 and changes
-nothing.
+nothing. After each successful backup `offsite-backup.sh` runs it with
+`--sentinel`, which probes only `config-lock-probe` (covered by the `config`
+rule, never read by restic), so a rule left off fails the run and turns the
+heartbeat down without an unattended write aimed at restic's own files.
 
 ## Attended prune (quarterly)
 
@@ -118,6 +121,7 @@ The prune deletes offsite data, so the operator runs or approves it
 
 ## Integrity
 
-Each night `offsite-backup.sh` ends with `restic check
---read-data-subset=<n>/28`, n from days since the epoch, so every pack is
-read back every four weeks (1/28 of the repo a night; R2 has no egress fees).
+Each night `offsite-backup.sh` runs `restic check
+--read-data-subset=<n>/28`, n from days since the epoch, so every pack is read
+back every four weeks (1/28 of the repo a night; R2 has no egress fees), then
+the sentinel lock check above.
