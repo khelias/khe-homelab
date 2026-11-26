@@ -27,11 +27,9 @@ ALLOWED_PORTS=(
   443   # NPM HTTPS
   81    # NPM Admin
   53    # AdGuard DNS
-  3003  # AdGuard Setup (temporary)
   8080  # AdGuard Admin
-  3000  # Homepage
   3001  # Uptime Kuma
-  2283  # Immich
+  3030  # Grafana
   8123  # Home Assistant
 )
 
