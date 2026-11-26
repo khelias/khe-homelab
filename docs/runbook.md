@@ -359,6 +359,15 @@ pick the previous kernel under "Advanced options" in GRUB. Once it is up,
 100 is not running five minutes after the host is back, read its task log in
 the web UI.
 
+## The VM's firewall list
+
+Docker-published ports bypass UFW, so its list only mirrors the compose
+files; it closes nothing. After a change to the port list in
+`scripts/harden-docker-vm.sh`,
+`sudo ufw delete allow from 192.168.0.0/24 to any port <port>` for a port
+taken out and `sudo ufw allow from 192.168.0.0/24 to any port <port>` for
+one added, then `sudo ufw status` matches the script.
+
 ## Undoing an automerged update
 
 Renovate automerges Docker patch, minor and digest updates (`renovate.json`),

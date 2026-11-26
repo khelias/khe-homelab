@@ -288,8 +288,15 @@ Cloudflare Tunnel. The edge fallback Workers sit in front of the tunnel on
 forward the request as it came and, on failure, answer from their own copy. Docker-published ports bypass UFW, because Docker's
 iptables rules come before UFW's, so every published port (Grafana's 3030
 included) is reachable from the LAN and over the Tailscale subnet route,
-whatever the UFW port list says. `dash`, `trips` and `stories` open without a login from the LAN and the
-tailnet, through AdGuard rewrites and NPM
+whatever the UFW port list says. The published ports are only those with
+no other way in: NPM's 80, 443 and admin 81, AdGuard's DNS 53 and admin
+8080, Grafana's 3030 (`mcp-grafana.sh`), Uptime Kuma's 3001 (the push URLs
+of docker-vm and the Proxmox host) and Home Assistant's 8123 (the
+NVR's event push and the HA scripts); Homepage and Immich publish none and
+open only through NPM and the tunnel. Mosquitto and PAI (the alarm bridge)
+are on `home-internal` only, shared with Home Assistant and not with
+cloudflared or the public sites. `dash`, `trips` and `stories` open
+without a login from the LAN and the tailnet, through AdGuard rewrites and NPM
 ([estate ADR-022](https://github.com/khelias/khe-architecture/blob/main/decisions/022-home-route-for-access-only-apps.md)).
 `home.khe.ee` and `swipe.khe.ee` are LAN and Tailscale only (not on Cloudflare
 Tunnel); `immich-swipe` sits on `proxy` only (isolated from `immich-internal`),

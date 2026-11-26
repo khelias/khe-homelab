@@ -14,8 +14,6 @@ services:
       - DB_HOSTNAME=immich-postgres
       - REDIS_HOSTNAME=immich-valkey
       - IMMICH_CONFIG_FILE=/immich.config.json
-    ports:
-      - "2283:2283"
     depends_on:
       immich-valkey:
         condition: service_healthy

@@ -676,8 +676,7 @@ the public one mounts the same directory read-only).
     `label_values({cluster="homelab"}, container_name)`. Auto-
     populates from whatever Alloy is currently shipping, no manual
     ID-to-name map.
-- **Grafana ingress.** LAN-only via host port `3030` (port 3000 is
-  taken by homepage); Homepage and `mcp-grafana.sh` use it. There is
+- **Grafana ingress.** LAN-only via host port `3030`; Homepage and `mcp-grafana.sh` use it. There is
   no `grafana.khe.ee`: it would need an AdGuard rewrite and an NPM
   proxy host first. **Do not** expose via Cloudflare
   Tunnel without CF Access OTP — log search is the door to every
@@ -708,10 +707,9 @@ backups but not in the repo.
 it the frontend loads and then hangs on a blank page, which looks like a HA
 fault and is not one.
 
-**Port 8123 needs a UFW rule.** Added to `ALLOWED_PORTS` in
-`harden-docker-vm.sh`, but that script is not re-run on deploy, so on an
-existing VM the rule has to be added by hand:
-`sudo ufw allow from 192.168.0.0/24 to any port 8123`.
+**Port 8123 is published** for the NVR's event push and the HA scripts.
+Docker-published ports bypass UFW, so its `ALLOWED_PORTS` entry in
+`harden-docker-vm.sh` only keeps the list true.
 
 **The live config is the `homeassistant_ha_config` volume** on the VM's local
 disk, not `/srv/data`: the recorder is a live SQLite database in WAL mode, and

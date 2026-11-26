@@ -13,8 +13,11 @@ services:
     volumes:
       - ha_config:/config
       - /etc/localtime:/etc/localtime:ro
+    # proxy stays the default gateway; home-internal is only for MQTT.
     networks:
-      - proxy
+      proxy:
+        gw_priority: 1
+      home-internal: {}
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/manifest.json"]
       interval: 30s
@@ -32,4 +35,6 @@ volumes:
 
 networks:
   proxy:
+    external: true
+  home-internal:
     external: true
