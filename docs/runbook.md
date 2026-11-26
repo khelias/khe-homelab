@@ -128,7 +128,7 @@ docker ps --format '{{.Names}}\t{{.Status}}'
 
 If the VM is wedged entirely (no console response), the Proxmox UI can force a
 reset. The hardware watchdog also handles this automatically, see
-[README](../README.md) resilience section.
+[Resilience](architecture.md#resilience).
 
 If the Proxmox UI does not answer either (the host does not answer ping, Cloudflare
 error 1033 on the public sites), the host itself is off. After a power cut it

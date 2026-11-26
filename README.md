@@ -1,9 +1,14 @@
-# KHE Homelab
+# khe-homelab
+
+[![CI](https://github.com/khelias/khe-homelab/actions/workflows/validate.yml/badge.svg)](https://github.com/khelias/khe-homelab/actions/workflows/validate.yml)
+[![Deploy](https://github.com/khelias/khe-homelab/actions/workflows/deploy.yml/badge.svg)](https://github.com/khelias/khe-homelab/actions/workflows/deploy.yml)
 
 The family homelab as code: self-hosted photos, passwords, family apps and
-home automation on one machine, with Docker Compose on Proxmox VE.
+home automation on one machine, with Docker Compose on Proxmox VE, for one
+household. It serves [khe.ee](https://khe.ee), and its shape is drawn on
+[khe.ee/architecture](https://khe.ee/architecture/).
 
-## How it fits together
+## How it works
 
 One Proxmox VE host runs one Debian VM, and every service on it is a Docker
 Compose stack under [`services/`](services/): core (proxy, DNS, tunnel,
@@ -18,41 +23,20 @@ The diagram, the services with their domains, and the automation are in
 [docs/architecture.md](docs/architecture.md); the access model is in
 [SECURITY.md](SECURITY.md#access-model).
 
-## Resilience
+### Resilience
 
-Six layers, each catching what the others miss:
+Six layers, each catching what the others miss; how each works is in
+[docs/architecture.md](docs/architecture.md#resilience).
 
-1. **Kernel hang: hardware watchdog.** The Docker VM runs the `watchdog` daemon
-   pinging `/dev/watchdog` (Proxmox-emulated iTCO, 30s hardware timeout). If the
-   kernel wedges (OOM, I/O lock, driver bug), the hypervisor force-resets the
-   VM and Proxmox boots it back up. Conservative config: only pings the device,
-   no load/memory/network checks (those cause false-positive reboots on blips).
-2. **Unhealthy container: autoheal sidecar.** `willfarrell/autoheal` talks to a
-   narrow-scope socket proxy and restarts
-   any container whose Docker healthcheck reports `unhealthy`. Fills the gap
-   left by `restart: unless-stopped`, which only reacts to full crashes. This
-   caught a stuck immich-ml worker the day it was deployed.
-3. **Runaway service: Compose resource limits.** Every long-running container
-   has conservative memory and CPU limits in its `docker-compose.yml`; media
-   and database workloads get larger caps than static web services. This
-   keeps one bad process from consuming the whole VM.
-4. **Service down: Uptime Kuma + Telegram push.** Kuma watches the services
-   with HTTP/DNS monitors and takes push heartbeats from the backups and the OS
-   update reports; all notify the same Telegram bot (`@khe_homelab_bot`).
-   Alert lands on the owner's phone within ~90s. Kuma
-   DB is in `backup.sh`, so monitor + notification config survives a VM rebuild.
-5. **Whole homelab down: external UptimeRobot.** Pings `khe.ee/healthz`
-   every 5 min from outside the home network, pushes to the UptimeRobot iOS
-   app. The only layer that can notify when the VM, Proxmox, or the home
-   internet itself is unreachable (when layers 1–4 can't reach any network).
-6. **Whole homelab down, static copy at the edge.** A Cloudflare Worker in
-   front of `khe.ee` and `games.khe.ee` serves an hourly copy of the static
-   sites when the homelab answers 5xx or not at all
-   ([estate ADR-016](https://github.com/khelias/khe-architecture/blob/main/decisions/016-static-fallback-at-the-edge.md)). Visitors outside the home network still get the
-   pages; the APIs and `/healthz` fail as they should, so layer 5 still
-   alerts.
+1. A hardware watchdog resets the VM when its kernel hangs.
+2. An autoheal sidecar restarts a container whose healthcheck turns unhealthy.
+3. Compose resource limits keep one runaway service from taking the VM.
+4. Uptime Kuma pushes a Telegram alert when a service goes down.
+5. External UptimeRobot alerts when the whole homelab is unreachable.
+6. A Cloudflare Worker serves a static copy of khe.ee and games.khe.ee while
+   the homelab is down.
 
-## Running it
+## Run it
 
 A push to `main` is the deploy: the homelab's own runner pulls the repo on
 the VM and deploys the stacks that changed. By hand, on the VM:
@@ -79,4 +63,6 @@ Building the host and the VM from scratch is in
 - [AGENTS.md](AGENTS.md) - layout and conventions for working on the repo; the Home
   Assistant configuration is in [khe-home-assistant](https://github.com/khelias/khe-home-assistant)
 
-MIT licensed.
+## Licence
+
+MIT, see [LICENSE](LICENSE).
