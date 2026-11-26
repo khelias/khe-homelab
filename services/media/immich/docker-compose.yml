@@ -73,7 +73,7 @@ services:
       start_period: 180s  # ML model loading takes time on first start
 
   immich-valkey:
-    image: docker.io/valkey/valkey:9-alpine@sha256:c8e2d17498838af5d91e12eb7c11220b3434a7b7131a333e3af52ad5e0b80882
+    image: docker.io/valkey/valkey:9.2.0-alpine@sha256:c8e2d17498838af5d91e12eb7c11220b3434a7b7131a333e3af52ad5e0b80882
     container_name: immich-valkey
     restart: unless-stopped
     healthcheck:

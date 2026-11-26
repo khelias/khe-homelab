@@ -701,8 +701,9 @@ GitHub-native dependency-update bot. Dependabot is the realistic alternative
 but Renovate's grouping + scheduling + Docker-tag strategies are richer.
 It runs every weekend; each image's bump comes in its own PR, and patch,
 minor and digest bumps automerge, except the critical-infrastructure group
-(one PR, never automerged) and Home Assistant minor releases. Majors wait
-for review. Configured in `renovate.json` at repo root.
+(one PR, never automerged), Home Assistant minor releases and autoheal,
+which has no version tag and comes once a month for review. Majors wait
+for review. A Docker Hub release waits three days before its PR. Configured in `renovate.json` at repo root.
 
 ---
 
