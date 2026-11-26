@@ -22,10 +22,13 @@ availability as high priority.
 
 khe.ee sends one CSP from `services/apps/landing/nginx.conf`, mirrored in the
 edge fallback's `rules.mjs`. Only `/ha/` is wider: it adds `worker-src 'self'
-blob:` and `'wasm-unsafe-eval'` in `script-src`, so three.js's KTX2 loader can
-decode textures for the 3D house's Foto style in a worker it starts from a
-`blob:` URL. `'wasm-unsafe-eval'` allows WebAssembly compilation only, not JS
-`eval` or `new Function`.
+blob:`, and `'unsafe-eval'` and `'wasm-unsafe-eval'` in `script-src`, so
+three.js's KTX2 loader can decode textures for the 3D house's Foto style in a
+worker it starts from a `blob:` URL. The worker's Basis transcoder compiles
+WebAssembly and builds its bindings with `new Function`, which only
+`'unsafe-eval'` allows. `/ha/` already allows inline script, and it is a static
+demo with no login and no visitor data, so the eval adds little there; no other
+path has it.
 
 ## Automated writers
 

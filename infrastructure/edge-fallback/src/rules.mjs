@@ -12,8 +12,8 @@ const HSTS_KHE = "max-age=31536000";
 
 export const CSP_KHE =
   "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: https:; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; upgrade-insecure-requests";
-// /ha/ adds the blob: worker and WebAssembly of the 3D house's KTX2 decoder.
-export const CSP_KHE_HA = CSP_KHE.replace("'unsafe-inline' https://static", "'unsafe-inline' 'wasm-unsafe-eval' https://static").replace("connect-src", "worker-src 'self' blob:; connect-src");
+// /ha/ adds the blob: worker, WebAssembly and eval of the 3D house's KTX2 decoder.
+export const CSP_KHE_HA = CSP_KHE.replace("'unsafe-inline' https://static", "'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' https://static").replace("connect-src", "worker-src 'self' blob:; connect-src");
 // The khe CSP with media-src for the stories' audio.
 export const CSP_STORIES = CSP_KHE.replace("img-src 'self' data: https:; ", "img-src 'self' data: https:; media-src 'self'; ");
 export const CSP_GAMES =
