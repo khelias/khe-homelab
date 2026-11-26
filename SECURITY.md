@@ -2,14 +2,10 @@
 
 ## Reporting a Vulnerability
 
-Please do not open public issues for suspected vulnerabilities.
-
-Report security concerns privately through the contact links on
-https://khe.ee. Include the affected URL or repository, a short reproduction
-path, and the impact you believe the issue has.
-
-Do not include secrets, tokens, internal host details, private logs, or
-personally sensitive data in public issues or pull requests.
+Report a vulnerability privately with the **Report a vulnerability** button
+on this repository's Security tab, as the
+[default policy](https://github.com/khelias/.github/blob/main/SECURITY.md)
+describes, not in a public issue.
 
 ## Supported Scope
 
