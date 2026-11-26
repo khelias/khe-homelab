@@ -87,23 +87,26 @@ Identity: One-time PIN via email (no OAuth setup needed).
 
 | Application  | Domain  | Policy          |
 |--------------|---------|-----------------|
-| KHE Dashboard | dash.khe.ee | Email allowlist + Require Country=EE |
-| KHE Trips    | trips.khe.ee | Email allowlist + Require Country=EE |
-| KHE Pages    | draft.khe.ee | Email allowlist + Require Country=EE |
-| Unejänku     | stories.khe.ee | Its own policy: both parents' e-mails + Require Country=EE, session about 30 days |
-| Makett preview | makett.khe.ee | The owner policy (Email allowlist + Require Country=EE) |
-| Uptime Kuma  | status.khe.ee | The owner policy (Email allowlist + Require Country=EE) |
-| Makett webhook | makett.khe.ee/api/stripe/webhook | Bypass, Everyone |
+| KHE Homepage  | dash.khe.ee | Owner only |
+| KHE Trips    | trips.khe.ee | Owner only |
+| KHE Draft    | draft.khe.ee | Owner only |
+| Unejänku     | stories.khe.ee | Owner only |
+| Makett preview | makett.khe.ee | Owner only |
+| Uptime Kuma  | status.khe.ee | Owner only |
+| Makett webhook | makett.khe.ee/api/stripe/webhook | Stripe webhook (bypass): Bypass, Everyone |
 
-Dashboard, Trips, Pages, Uptime Kuma and the makett preview share a single reusable policy (edit once → applies to all);
-Unejänku has its own, since both parents sign in there.
-Its Access application is created before the tunnel route to `stories:80`,
+Every application but the webhook uses the one reusable policy "Owner
+only" (edit once → applies to all). Despite its name it lets in both
+parents' e-mails, so both reach every one of these apps, `draft` included,
+which has no login of its own. Its session is 24 hours, which overrides the
+applications' own.
+Unejänku's Access application is created before the tunnel route to `stories:80`,
 or the family build and the whole audio store are public in between; an
 unauthenticated `curl -sI https://stories.khe.ee/` must then answer 302 to
 the Access login.
-Policy combines `Include: Email = owner` AND `Require: Countries = Estonia`.
+The policy combines `Include: Emails = both parents` AND `Require: Countries = Estonia`.
 The VM is not a Tailscale exit node (it advertises only the `192.168.0.0/24`
-subnet route), so Tailscale does not carry the owner past the country rule
+subnet route), so Tailscale does not carry the family past the country rule
 when abroad. Over Tailscale, `dash.khe.ee`, `trips.khe.ee`, `status.khe.ee` and `stories.khe.ee` resolve through AdGuard to
 `192.168.0.11` and go through NPM, so Access never sees them, abroad
 included: the home route of
