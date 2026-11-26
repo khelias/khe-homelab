@@ -149,21 +149,13 @@ Security → Security rules → Custom rules. Free plan: 5 rule slots, 4 in use.
 | 4 | Block Vaultwarden admin | `(http.host eq "vault.khe.ee") and starts_with(http.request.uri.path, "/admin")` | Block | The admin panel is never needed from the internet; LAN reaches it through NPM, which the tunnel never touches. `ADMIN_TOKEN` stays an argon2 hash as the second layer |
 
 Also enabled:
-- Bot Fight Mode: ON (+ JS Detections). It cannot be skipped by a WAF rule
-  and challenges datacenter addresses, the GitHub runner and Stripe's
-  webhooks included, but it does not act when a zone IP Access rule matches
-  first. So Security → WAF → Tools has an IP Access **Allow** rule on the
-  `khe.ee` zone for each of [Stripe's webhook
-  IPs](https://docs.stripe.com/ips#webhook-notifications), with the note
-  `Stripe webhooks (makett)`, for the makett webhook above. The list changes
-  rarely; a stale one shows as 403 deliveries in Stripe's dashboard, and the
-  fix is to bring the rules in line with Stripe's page. To undo, delete the
-  rules with that note. IP Access rules are zone-wide: from those addresses
-  every `khe.ee` hostname skips Bot Fight Mode and the custom rules above,
-  the Vaultwarden admin block included. Only Stripe's own webhook requests
-  come from them, and Vaultwarden's `ADMIN_TOKEN` stays the second layer, so
-  the risk is accepted; a host-scoped skip of Bot Fight Mode would need a paid
-  plan.
+- Bot Fight Mode: ON (+ JS Detections). It challenged the GitHub runner, but
+  not Stripe's webhook calls to `makett.khe.ee/api/stripe/webhook`, which
+  reached the Worker on 2026-11-26 without any IP rule. If Stripe's
+  dashboard ever shows 403 deliveries there, Bot Fight Mode is the first
+  suspect; a zone IP Access Allow rule matches before it, but would let
+  those addresses past every custom rule on every `khe.ee` host, and the
+  dashboard creates the first one only through the API.
 - Block AI bots: "Block on all pages" (stops GPTBot/ClaudeBot/etc. training crawlers)
 - Security Level: automated ("always protected" — the old slider was removed by CF)
 
