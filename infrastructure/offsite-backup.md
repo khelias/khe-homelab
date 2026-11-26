@@ -119,6 +119,28 @@ The next date is in the estate roadmap in `khe-meta`. Not between 02:00 and
 The prune deletes offsite data, so the operator runs or approves it
 (`AGENTS.md`, Access and operations).
 
+## Restore
+
+```bash
+set -a; source ~/homelab/.env.offsite; set +a
+
+restic snapshots                                # list
+restic restore <snapshot-id> --target /tmp/r    # full restore
+# --include matches the absolute path as stored in the snapshot
+restic restore <snapshot-id> --target /tmp/r \
+       --include "/srv/backups/2026-04-18/immich-postgres.dump"
+```
+
+Vaultwarden's restore from these files is in
+[operational notes](../docs/operational-notes.md#vaultwarden).
+
+DB recovery example:
+
+```bash
+docker exec -i immich-postgres pg_restore -U postgres -d immich --clean \
+       < /tmp/r/srv/backups/2026-04-18/immich-postgres.dump
+```
+
 ## Integrity
 
 Each night `offsite-backup.sh` runs `restic check

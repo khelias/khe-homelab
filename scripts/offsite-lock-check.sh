@@ -12,6 +12,7 @@
 set -uo pipefail
 
 ENV_FILE="${HOME}/homelab/.env.offsite"
+[ -f "$ENV_FILE" ] || { echo "FATAL: missing $ENV_FILE" >&2; exit 2; }
 set -a
 # shellcheck source=/dev/null
 source "$ENV_FILE"
