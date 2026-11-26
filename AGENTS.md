@@ -138,7 +138,8 @@ base branch against the PR tree. The edge fallback's Worker tests
   are the interactive agent: it works in `~/khe` and reaches docker-vm by
   `ssh khe@docker-vm`, with the same limits as everywhere (estate ADR-023).
 - On the VM: `./scripts/deploy.sh status|pull|up|down`, `./scripts/backup.sh`
-  (Postgres dumps, config snapshots, HA's config volume and recorder). Per service:
+  (Postgres dumps, config snapshots, HA's config volume and recorder, the
+  Vaultwarden DB copy). Per service:
   `cd services/<group>/<service> && docker compose up -d`.
 - **A push to `main` is the deploy.** `deploy.yml` runs when `services/**`,
   `scripts/deploy.sh`, `scripts/deploy-stacks.sh`, `scripts/lib.sh` (which
@@ -174,7 +175,7 @@ base branch against the PR tree. The edge fallback's Worker tests
   backup taken before the update
   ([runbook](docs/runbook.md#undoing-an-automerged-update)).
 - **A new app database** joins `POSTGRES_JOBS` in `scripts/backup.sh` and the
-  weekly restore check (`restore-verify.yml`, Immich only today) in the
+  weekly restore check (`restore-verify.yml`, Immich and Vaultwarden today) in the
   change that creates it, and one passing restore of it comes before any
   data that is not the family's own
   ([estate ADR-004](https://github.com/khelias/khe-architecture/blob/main/decisions/004-app-backend-and-identity.md) point 6).
