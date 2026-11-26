@@ -318,6 +318,22 @@ describe("headers", () => {
     });
   }
 
+  test("only /ha/ allows blob: workers and wasm", async () => {
+    for (const path of ["/ha/", "/ha/assets/house.js"]) {
+      const csp = (await request("khe", path)).response.headers.get("Content-Security-Policy");
+      assert.match(csp, /worker-src 'self' blob:/);
+      assert.match(csp, /script-src [^;]*'wasm-unsafe-eval'/);
+    }
+    for (const path of ["/", "/architecture/"]) {
+      const csp = (await request("khe", path)).response.headers.get("Content-Security-Policy");
+      assert.doesNotMatch(csp, /blob:|wasm-unsafe-eval/);
+    }
+    // nginx's error_page serves the 404 at /404.html, under the default CSP
+    const { response } = await request("khe", "/ha/no-such-page");
+    assert.equal(response.status, 404);
+    assert.doesNotMatch(response.headers.get("Content-Security-Policy"), /blob:|wasm-unsafe-eval/);
+  });
+
   test("the landing carries its CSP", async () => {
     const { response } = await request("khe", "/");
     assert.match(response.headers.get("Content-Security-Policy"), /^default-src 'self'/);

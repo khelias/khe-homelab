@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
-import { HEADER_SETS, LANG_PAGES } from "../src/rules.mjs";
+import { CSP_KHE_HA, HEADER_SETS, LANG_PAGES } from "../src/rules.mjs";
 
 const APPS = join(import.meta.dirname, "../../../services/apps");
 
@@ -16,7 +16,11 @@ function blockHeaders(conf, opening) {
   assert.notEqual(start, -1, `${opening} not in ${conf}/nginx.conf`);
   const rest = text.slice(start + opening.length);
   const block = rest.slice(0, rest.search(/\n\s*location /));
-  return Object.fromEntries([...block.matchAll(/add_header (\S+) "([^"]*)" always;/g)].map((m) => [m[1], m[2]]));
+  const cspMap = text.slice(text.indexOf("map $uri $csp_khe {"));
+  const csp = cspMap.match(/default "([^"]*)";/)?.[1];
+  return Object.fromEntries(
+    [...block.matchAll(/add_header (\S+) (?:"([^"]*)"|(\$csp_khe)) always;/g)].map((m) => [m[1], m[3] ? csp : m[2]]),
+  );
 }
 
 const BLOCKS = [
@@ -33,6 +37,11 @@ for (const [conf, opening, set] of BLOCKS) {
     assert.deepEqual(blockHeaders(conf, opening), HEADER_SETS[set]);
   });
 }
+
+test("landing's /ha/ CSP is CSP_KHE_HA", () => {
+  const text = readFileSync(join(APPS, "landing", "nginx.conf"), "utf8");
+  assert.equal(text.match(/map \$uri \$csp_khe \{[^}]*~\^\/ha\/ "([^"]*)";/)?.[1], CSP_KHE_HA);
+});
 
 // A location with an add_header of its own repeats the server's security
 // headers, so every copy in the games nginx has to say the same.

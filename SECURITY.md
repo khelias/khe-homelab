@@ -18,6 +18,15 @@ This is a personal infrastructure repository, so there is no formal SLA, but I
 treat reports that could affect users, data, deployment credentials, or service
 availability as high priority.
 
+## Content Security Policy
+
+khe.ee sends one CSP from `services/apps/landing/nginx.conf`, mirrored in the
+edge fallback's `rules.mjs`. Only `/ha/` is wider: it adds `worker-src 'self'
+blob:` and `'wasm-unsafe-eval'` in `script-src`, so three.js's KTX2 loader can
+decode textures for the 3D house's Foto style in a worker it starts from a
+`blob:` URL. `'wasm-unsafe-eval'` allows WebAssembly compilation only, not JS
+`eval` or `new Function`.
+
 ## Automated writers
 
 A merge to `main` deploys to the VM, so every automated writer is bounded by

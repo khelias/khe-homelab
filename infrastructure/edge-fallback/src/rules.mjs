@@ -12,6 +12,8 @@ const HSTS_KHE = "max-age=31536000";
 
 export const CSP_KHE =
   "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: https:; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; upgrade-insecure-requests";
+// /ha/ adds the blob: worker and WebAssembly of the 3D house's KTX2 decoder.
+export const CSP_KHE_HA = CSP_KHE.replace("'unsafe-inline' https://static", "'unsafe-inline' 'wasm-unsafe-eval' https://static").replace("connect-src", "worker-src 'self' blob:; connect-src");
 // The khe CSP with media-src for the stories' audio.
 export const CSP_STORIES = CSP_KHE.replace("img-src 'self' data: https:; ", "img-src 'self' data: https:; media-src 'self'; ");
 export const CSP_GAMES =
@@ -58,6 +60,7 @@ export const HEADER_SETS = {
     "Content-Security-Policy": CSP_GAMES,
   },
 };
+HEADER_SETS.kheHa = { ...HEADER_SETS.khe, "Content-Security-Policy": CSP_KHE_HA };
 
 // landing's $share_asset_cache map.
 export function shareAssetCache(status) {
@@ -101,6 +104,7 @@ const LANDING_ASSET = /\.(css|js|woff2?|ttf|eot|png|jpg|jpeg|gif|ico|svg|webp)$/
 //   fallback   the file served when both miss; none means 404
 //   missPage   the file served with a 404 when all of those miss
 //   headers    the HEADER_SETS entry, the site's own when unset
+//   missHeaders  the HEADER_SETS entry of a 404, headers when unset
 //   cache      Cache-Control to set, a string or a function of the status
 //   type       Content-Type to set
 // keepQuery appends the request's query to a redirect, as nginx's
@@ -121,6 +125,8 @@ const kheLocations = [
   [(p) => p.startsWith("/stories/assets/"), { file: true, headers: "stories", cache: shareAssetCache }],
   [(p) => p.startsWith("/stories/audio/"), { file: true, headers: "stories", cache: storiesAudioCache }],
   [(p) => p.startsWith("/stories/"), { file: true, dir: true, headers: "stories" }],
+  [(p) => p.startsWith("/ha/") && LANDING_ASSET.test(p), { file: true, cache: onSuccess("public, max-age=2592000"), headers: "kheHa" }],
+  [(p) => p.startsWith("/ha/"), { file: true, dir: true, missPage: "/404.html", headers: "kheHa", missHeaders: "khe" }],
   [(p) => LANDING_ASSET.test(p), { file: true, cache: onSuccess("public, max-age=2592000") }],
   [() => true, { file: true, dir: true, missPage: "/404.html" }],
 ];
