@@ -9,6 +9,9 @@ services:
       # and that chown fails on a read-only mount, so passwd must already be
       # owned by 1883 on the host or the broker cannot read its own password
       # file: sudo chown 1883:1883 services/home/mosquitto/config/passwd
+      # config/ itself is owned by 1883 on the VM too, so the deploy's git pull
+      # cannot replace mosquitto.conf (its header still says proxy): before a
+      # change to it, sudo chown khe:khe services/home/mosquitto/config.
       - ./config/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
       - ./config/passwd:/mosquitto/config/passwd:ro
       - ./data:/mosquitto/data
