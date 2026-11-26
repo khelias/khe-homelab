@@ -161,7 +161,8 @@ base branch against the PR tree. The edge fallback's Worker tests
 - **Automated writers**
   ([estate ADR-007](https://github.com/khelias/khe-architecture/blob/main/decisions/007-automated-writers.md)): Renovate
   automerges Docker patch, minor and digest updates except Home Assistant
-  minors and the critical-infrastructure group (`renovate.json`), the pin
+  minors, the critical-infrastructure group and autoheal (a monthly PR for
+  review), and Docker Hub updates wait three days first (`renovate.json`), the pin
   Apps automerge estate image pins (rule 3), every merge to `main` deploys,
   and scheduled jobs back up and prune, verify a restore and clean the
   runner. `edge-fallback.yml` deploys the edge copy hourly when a served tree
