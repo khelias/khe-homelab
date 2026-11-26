@@ -175,6 +175,8 @@ Stack: `services/apps/games/` (nginx + adventure-web + adventure-proxy).
 - The web image writes `/adventure/config.js` at start from `API_SECRET`,
   from the same games `.env` as the proxy. Rotating the key is an `.env`
   change and a recreate, no rebuild.
+- The proxy's production usage budgets are the `PROXY_MAX_*` lines in the
+  compose; they are in-memory and reset on every recreate.
 - The games nginx resolves both upstreams per request (`resolver
   127.0.0.11`), because every deploy recreates both containers.
 

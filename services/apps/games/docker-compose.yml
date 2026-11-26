@@ -59,6 +59,12 @@ services:
       - GEMINI_MODEL=gemini-2.5-flash
       - CLAUDE_MODEL=claude-sonnet-4-6
       - DEFAULT_PROVIDER=gemini
+      # The proxy's spend ceiling below the provider cap; raising one widens
+      # the abuse ceiling (khe-ai-adventure ADR 0006). Per client, then global.
+      - PROXY_MAX_REQUESTS_PER_HOUR=80
+      - PROXY_MAX_TOKENS_PER_HOUR=300000
+      - PROXY_MAX_TOKENS_PER_DAY=1200000
+      - PROXY_MAX_TOKENS_GLOBAL_PER_DAY=5000000
       - TZ=Europe/Tallinn
     networks:
       - games-internal
