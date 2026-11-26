@@ -432,6 +432,12 @@ app's `ci.yml` and `AGENTS.md` hold the details):
   admin settings page is read-only. Secrets (SMTP password, OAuth client
   secret) therefore have nowhere to live yet - the file is committed to a
   public repo.
+- **Immich's own database backup is off** (`backup.database.enabled: false`;
+  without the key Immich's default runs it at 02:00, inside the upload tree
+  that is not backed up). The one dump is `scripts/backup.sh`'s `pg_dump`,
+  shipped offsite and restored by `restore-verify`, so Immich's own restore
+  screen lists nothing: restore by
+  [offsite-backup.md](../infrastructure/offsite-backup.md)'s `pg_restore`.
 - **Uploads over 100MB fail from outside the LAN** with 413, not 502:
   Cloudflare's free plan caps request body at 100MB and the Immich app
   does not chunk. Measured 2026-08-03: a 120MB POST got 413 from the CF
