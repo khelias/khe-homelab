@@ -20,13 +20,13 @@ home and over Tailscale the same names go through Nginx Proxy Manager, which
 AdGuard's split-horizon DNS points them at. The router forwards no ports.
 
 The diagram, the services with their domains, and the automation are in
-[docs/architecture.md](docs/architecture.md); the access model is in
+[ARCHITECTURE.md](ARCHITECTURE.md); the access model is in
 [SECURITY.md](SECURITY.md#access-model).
 
 ### Resilience
 
 Six layers, each catching what the others miss; how each works is in
-[docs/architecture.md](docs/architecture.md#resilience).
+[ARCHITECTURE.md](ARCHITECTURE.md#resilience).
 
 1. A hardware watchdog resets the VM when its kernel hangs.
 2. An autoheal sidecar restarts a container whose healthcheck turns unhealthy.
@@ -53,7 +53,7 @@ Building the host and the VM from scratch is in
 
 ## More
 
-- [docs/architecture.md](docs/architecture.md) - the diagram, services and automation
+- [ARCHITECTURE.md](ARCHITECTURE.md) - the diagram, services and automation
 - [docs/runbook.md](docs/runbook.md) - what to do when something is broken
 - [docs/operational-notes.md](docs/operational-notes.md) - per-service quirks
 - [docs/service-choices.md](docs/service-choices.md) - why each service

@@ -10,11 +10,12 @@ Every compose file,
 AdGuard and Homepage config lives here. This file holds rules and
 pointers; the reference lives in:
 
-- [README.md](README.md) - what the homelab is, the resilience layers in one line each
-  (khe-sites builds the khe.ee architecture page from its numbered
-  `## Resilience` list), day-to-day ops
-- [docs/architecture.md](docs/architecture.md) - the diagram, the services
-  table and the automation
+- [README.md](README.md) - what the homelab is, the resilience layers in one line each,
+  day-to-day ops
+- [ARCHITECTURE.md](ARCHITECTURE.md) - the two paths in, the services
+  table, the automation and the resilience layers (khe-sites builds the
+  khe.ee architecture page from its numbered `## Resilience` list, a bold
+  title per item)
 - [docs/runbook.md](docs/runbook.md) - what to do when something is broken
 - [docs/operational-notes.md](docs/operational-notes.md) - per-service quirks
   and measured integration behaviour
@@ -107,7 +108,7 @@ base branch against the PR tree. The edge fallback's Worker tests
    ([notes](docs/operational-notes.md#adguard-home)).
 7. **Deployment surface changes update their doc in the same commit:** a
    service or domain goes into the services table and diagram in
-   `docs/architecture.md`, a
+   `ARCHITECTURE.md`, a
    service quirk into `docs/operational-notes.md`, a network, DNS,
    Cloudflare or Tailscale change into `infrastructure/*.md`, a security
    model change into `SECURITY.md`.

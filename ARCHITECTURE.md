@@ -3,9 +3,9 @@
 How the homelab fits together: the two paths in, the services and their
 domains, the automation that keeps it running and the resilience layers. The
 access model is in
-[SECURITY.md](../SECURITY.md#access-model), the LAN and DNS in
-[infrastructure/network/](../infrastructure/network/) and the hardware in
-[infrastructure/proxmox/](../infrastructure/proxmox/).
+[SECURITY.md](SECURITY.md#access-model), the LAN and DNS in
+[infrastructure/network/](infrastructure/network/) and the hardware in
+[infrastructure/proxmox/](infrastructure/proxmox/).
 
 ## Overview
 
@@ -42,7 +42,7 @@ Two independent paths to the same containers:
 - **External** — Cloudflare Tunnel goes directly to each container. CF Access OTP gates the private apps. Subject to Cloudflare's 100MB upload limit.
 - **LAN / Tailscale** — AdGuard rewrites the LAN-served hostnames to `192.168.0.11`, so devices hit NPM with the wildcard cert and no upload limit. `draft`, games and pages have no LAN shortcut and always go through Cloudflare; `dash`, `trips` and `stories` are Access-gated only from outside.
 
-Which hostname goes where, and which ones Access gates, is in [infrastructure/cloudflare.md](../infrastructure/cloudflare.md).
+Which hostname goes where, and which ones Access gates, is in [infrastructure/cloudflare.md](infrastructure/cloudflare.md).
 
 Proxmox VE (192.168.0.10) is the hypervisor; the Docker VM (192.168.0.11) runs every service. Fast storage (NVMe) holds the VM root + DB volumes; bulk storage (ZFS mirror, NFS-mounted at `/srv`) holds photos and backups.
 
@@ -91,11 +91,9 @@ Operational work is kept to a minimum by pushing everything into code and cron.
 - **Backups** — `scripts/backup.sh` dumps every Postgres DB, the Home Assistant
   recorder and the service configs on a schedule; `scripts/offsite-backup.sh` then
   pushes the set to Cloudflare R2 with `restic` (client-side AES-256), which is what
-  makes this 3-2-1. See [infrastructure/offsite-backup.md](../infrastructure/offsite-backup.md).
+  makes this 3-2-1. See [infrastructure/offsite-backup.md](infrastructure/offsite-backup.md).
 
 ## Resilience
-
-Six layers, each catching what the others miss:
 
 Six layers, each catching what the others miss:
 
