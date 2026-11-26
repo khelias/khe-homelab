@@ -9,42 +9,25 @@ access model is in
 
 ## Overview
 
-```mermaid
-graph TB
-    Internet((Internet))
-    VPN((Tailscale<br/>VPN))
-    LAN((LAN<br/>devices))
-
-    Internet --> CF[Cloudflare Tunnel]
-    VPN -->|subnet route<br/>192.168.0.0/24| LAN
-    AG[AdGuard Home<br/>split-horizon DNS] -.->|per-host rewrites<br/>→ 192.168.0.11| LAN
-    LAN --> NPM[Nginx Proxy Manager<br/>wildcard *.khe.ee · LAN-only]
-
-    CF -->|public hostnames<br/>CF Access OTP on<br/>the private apps| DVM
-    NPM --> DVM
-
-    subgraph DVM[Docker VM · 192.168.0.11]
-        direction LR
-        Core["<b>Core</b><br/>Homepage · Vaultwarden<br/>Uptime Kuma"]
-        Media["<b>Media</b><br/>Immich · immich-swipe"]
-        Apps["<b>Apps</b><br/>Landing Page · games hub<br/>pages · trips · stories"]
-        Obs["<b>Observability</b><br/>Loki · Grafana<br/>Alloy · Alertmanager"]
-        Home["<b>Home</b><br/>Home Assistant<br/>Mosquitto · PAI"]
-    end
-
-    DVM --> HDD[(ZFS Mirror · 2× 12TB<br/>NFS /srv)]
-    DVM -.-> NVMe[(NVMe 2TB<br/>OS + DB volumes)]
-```
-
-> NPM, AdGuard, and Cloudflare Tunnel also run on the same Docker VM (shown above in the ingress tier, not listed again inside Core).
+The drawn diagram is on [khe.ee/architecture](https://khe.ee/architecture/).
 
 Two independent paths to the same containers:
-- **External** — Cloudflare Tunnel goes directly to each container. CF Access OTP gates the private apps. Subject to Cloudflare's 100MB upload limit.
-- **LAN / Tailscale** — AdGuard rewrites the LAN-served hostnames to `192.168.0.11`, so devices hit NPM with the wildcard cert and no upload limit. `draft`, games and pages have no LAN shortcut and always go through Cloudflare; `dash`, `trips` and `stories` are Access-gated only from outside.
+- **External**: the internet reaches each container directly through Cloudflare Tunnel, on its public hostname. CF Access OTP gates the private apps. Subject to Cloudflare's 100MB upload limit.
+- **LAN / Tailscale**: LAN devices, and Tailscale devices through the subnet route to `192.168.0.0/24`, ask AdGuard Home, whose split-horizon DNS rewrites the LAN-served hostnames to `192.168.0.11`, so they hit Nginx Proxy Manager (LAN-only) with the wildcard `*.khe.ee` cert and no upload limit. `draft`, games and pages have no LAN shortcut and always go through Cloudflare; `dash`, `trips` and `stories` are Access-gated only from outside.
+
+Proxmox VE (192.168.0.10) is the hypervisor; the Docker VM (192.168.0.11) runs every service, in five stacks:
+
+| Stack | Services |
+|-------|----------|
+| Core | Nginx Proxy Manager, AdGuard Home and Cloudflare Tunnel (the ingress above), Homepage, Vaultwarden, Uptime Kuma, autoheal |
+| Media | Immich, immich-swipe |
+| Apps | Landing Page, games hub, pages, trips, stories |
+| Observability | Loki, Grafana, Alloy, Alertmanager |
+| Home | Home Assistant, Mosquitto, PAI |
 
 Which hostname goes where, and which ones Access gates, is in [infrastructure/cloudflare.md](infrastructure/cloudflare.md).
 
-Proxmox VE (192.168.0.10) is the hypervisor; the Docker VM (192.168.0.11) runs every service. Fast storage (NVMe) holds the VM root + DB volumes; bulk storage (ZFS mirror, NFS-mounted at `/srv`) holds photos and backups.
+Fast storage (NVMe, 2TB) holds the VM root + DB volumes; bulk storage (ZFS mirror of two 12TB disks, NFS-mounted at `/srv`) holds photos and backups.
 
 ## Services
 

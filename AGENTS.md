@@ -107,7 +107,7 @@ base branch against the PR tree. The edge fallback's Worker tests
    wipes admin credentials and sessions
    ([notes](docs/operational-notes.md#adguard-home)).
 7. **Deployment surface changes update their doc in the same commit:** a
-   service or domain goes into the services table and diagram in
+   service or domain goes into the services and stacks tables in
    `ARCHITECTURE.md`, a
    service quirk into `docs/operational-notes.md`, a network, DNS,
    Cloudflare or Tailscale change into `infrastructure/*.md`, a security

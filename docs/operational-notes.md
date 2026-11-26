@@ -231,27 +231,18 @@ are depleted" and the game stops; the proxy logs it, so check
 
 How an adventure push becomes a running container (estate ADR-008):
 
-```mermaid
-sequenceDiagram
-    participant Dev as Developer
-    participant App as khe-ai-adventure CI
-    participant GHCR
-    participant Pin as Pin homelab job
-    participant PR as khe-homelab PR
-    participant Val as validate.yml
-    participant Dep as deploy.yml on the VM
-    Dev->>App: push main
-    App->>App: App quality + Images (~4 min)
-    App->>GHCR: publish sha- tags, attest, move main
-    App->>Pin: needs publish (moved)
-    Pin->>GHCR: check main = this commit (~30 s)
-    Pin->>PR: force-push deploy/khe-ai-adventure, open PR, auto-merge
-    PR->>Val: guard + attestations + compose (~1 min)
-    Val-->>PR: green
-    PR->>PR: squash-merge to main
-    PR->>Dep: push to main
-    Dep->>GHCR: pull pinned digests, recreate (~1 min)
-```
+1. A developer pushes to `main` of khe-ai-adventure.
+2. Its CI runs the app quality and `images` jobs (about 4 minutes), then
+   publishes the `sha-` tags to GHCR, attests them and moves `main`.
+3. Once publish has moved `main`, the pin homelab job checks that GHCR's
+   `main` is this commit (about 30 seconds).
+4. The job force-pushes `deploy/khe-ai-adventure` here, opens the PR and
+   turns on auto-merge.
+5. `validate.yml` runs the guard, the attestation check and the compose
+   check on the PR (about a minute) and goes green.
+6. The PR is squash-merged to `main`.
+7. That push to `main` starts `deploy.yml` on the VM, which pulls the pinned
+   digests and recreates the containers (about a minute).
 
 **The pin App guard** in `validate.yml` is inline in the workflow, because
 the App cannot change workflow files. It applies when the PR's author or the

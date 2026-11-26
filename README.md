@@ -19,7 +19,7 @@ Cloudflare Tunnel, with Cloudflare Access in front of the private apps; at
 home and over Tailscale the same names go through Nginx Proxy Manager, which
 AdGuard's split-horizon DNS points them at. The router forwards no ports.
 
-The diagram, the services with their domains, and the automation are in
+The stacks, the services with their domains, and the automation are in
 [ARCHITECTURE.md](ARCHITECTURE.md); the access model is in
 [SECURITY.md](SECURITY.md#access-model).
 
@@ -53,7 +53,7 @@ Building the host and the VM from scratch is in
 
 ## More
 
-- [ARCHITECTURE.md](ARCHITECTURE.md) - the diagram, services and automation
+- [ARCHITECTURE.md](ARCHITECTURE.md) - the stacks, services, automation and resilience
 - [docs/runbook.md](docs/runbook.md) - what to do when something is broken
 - [docs/operational-notes.md](docs/operational-notes.md) - per-service quirks
 - [docs/service-choices.md](docs/service-choices.md) - why each service
