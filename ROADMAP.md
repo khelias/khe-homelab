@@ -46,7 +46,8 @@ Direction and priorities for the homelab — what it should become, beyond curre
   Proxmox host to a fully working homelab. The setup steps are scripted already
   but have no orchestrator handling the reboot points.
 - **Disaster recovery runbook from a rebuild rehearsal** — the tested restore is
-  done (`restore-verify.yml` restores a Postgres dump from R2 every week). What
+  done (`restore-verify.yml` restores a Postgres dump and the Vaultwarden DB
+  from R2 every week). What
   is left is rebuilding the host once for real and writing the runbook from it;
   tracked in the estate roadmap in `khe-meta` (1.3).
 

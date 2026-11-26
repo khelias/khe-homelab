@@ -12,9 +12,10 @@
 # crashes on restore, but a snapshot captured mid-transaction is not
 # guaranteed consistent. Acceptable for this homelab
 # — fixing it properly requires per-service quiesce or SQLite .backup API.
-# The Home Assistant recorder DB is the one exception: it is large, written
-# continuously, and dumped through the .backup API below instead of tarred,
-# in a throwaway container so the copy is charged to its own memory cgroup.
+# The Home Assistant recorder DB and the Vaultwarden DB are copied through
+# their backup APIs below: the recorder instead of being tarred, in a
+# throwaway container so the copy is charged to its own memory cgroup;
+# Vaultwarden in addition to its tar, which keeps the live DB as a fallback.
 set -uo pipefail
 
 # Optional heartbeat ping — silently disabled if no URL configured.
@@ -149,6 +150,49 @@ for entry in "${NAMED_VOLUMES[@]}"; do
   tar_via_alpine "$volume" "$name" \
     || fail "tar failed: $volume (see ${name}.err)"
 done
+
+# --- Vaultwarden. Its SQLite DB is copied through Vaultwarden's own `backup`
+#     subcommand (VACUUM INTO on a read-only connection), the one consistent
+#     copy tool in the image, which has no sqlite3 or Python. The copy lands
+#     next to the live DB as data/db_<ts>.sqlite3; it is read out and only
+#     files this run created are removed, since the admin panel's "Backup
+#     database" writes the same names. Runs before the bind-mount tar so the
+#     copy is gone by then; the tar still holds the live DB as a fallback.
+VW_CONTAINER="vaultwarden"
+if container_running "$VW_CONTAINER"; then
+  echo "-> sqlite: vaultwarden db"
+  dump_file="$BACKUP_DIR/vaultwarden-db.sqlite3.gz"
+  err_file="$BACKUP_DIR/vaultwarden-db.err"
+  # The exec's status is docker's, not ls's: a failed listing must not read
+  # as "no copies before", or the cleanup would delete the admin panel's.
+  vw_list() { docker exec "$VW_CONTAINER" sh -c 'ls -1 /data/db_*.sqlite3 2>/dev/null; true'; }
+  vw_listed=0
+  if before="$(vw_list)"; then
+    vw_listed=1
+    vw_out="$(docker exec "$VW_CONTAINER" /vaultwarden backup 2>>"$err_file")" || true
+  else
+    vw_out="listing /data/db_*.sqlite3 failed, backup skipped"
+  fi
+  vw_path="$(printf '%s\n' "$vw_out" | sed -n "s/^Backup to '\(.*\)' was successful$/\1/p")"
+  if [[ "$vw_path" =~ ^/?data/db_[0-9]{8}_[0-9]{6}\.sqlite3$ ]] \
+     && [ "$(docker exec "$VW_CONTAINER" head -c 15 "/${vw_path#/}" 2>>"$err_file")" = "SQLite format 3" ] \
+     && { docker exec "$VW_CONTAINER" cat "/${vw_path#/}" | gzip -c > "$dump_file"; } 2>>"$err_file"; then
+    rm -f "$err_file"
+  else
+    rm -f "$dump_file"
+    printf '%s\n' "$vw_out" >> "$err_file"
+    fail "vaultwarden db backup failed: $VW_CONTAINER (see $(basename "$err_file"))"
+  fi
+  if [ "$vw_listed" -eq 1 ]; then
+    after="$(vw_list)" || after=""
+    while IFS= read -r f; do
+      [ -n "$f" ] || continue
+      grep -qxF "$f" <<<"$before" || docker exec "$VW_CONTAINER" rm -f "$f"
+    done <<<"$after"
+  fi
+else
+  fail "container not running: $VW_CONTAINER"
+fi
 
 # --- Host bind mounts (config + small user data on /srv).
 #     The repo-tracked config dirs (homepage, adguard) are also tar'd because

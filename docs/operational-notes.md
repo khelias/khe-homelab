@@ -181,8 +181,9 @@ Stack: `services/apps/games/` (nginx + adventure-web + adventure-proxy).
 **Per-repo runners on the VM**:
 
 - `/home/khe/actions-runner` - khe-study
-- `/home/khe/actions-runner-adventure` - khe-ai-adventure (no job since the
-  images moved to CI)
+- `/home/khe/actions-runner-adventure` - unregistered and its service
+  removed on 2026-11-26 (khe-ai-adventure had no job for it since its images
+  moved to CI); the directory stays until the operator deletes it
 - `/home/khe/actions-runner-sites` - khe-sites
 - `/home/khe/actions-runner-trips` - khe-trips
 - `/home/khe/actions-runner-homelab` - khe-homelab
@@ -810,13 +811,33 @@ the private `khe-meta` repo under `house/house-hvac.md`.
   checks (those cause false-positive reboots on blips). See
   `/etc/watchdog.conf` on the VM.
 
+## Vaultwarden
+
+- **Backup:** `backup.sh` copies the DB with Vaultwarden's own `docker exec
+  vaultwarden /vaultwarden backup` (`VACUUM INTO`, a consistent copy of the
+  live SQLite) to `vaultwarden-db.sqlite3.gz`, then tars `/srv/data/vaultwarden`
+  as before, live DB included, as `vaultwarden-data.tar.gz`. The subcommand
+  writes `data/db_<ts>.sqlite3` next to the live DB; the script removes only
+  the copies its own run made, never the admin panel's "Backup database"
+  files. Backups from before 2026-11-26 have only the tarred DB.
+- **Restore:** `/srv/data/vaultwarden` is not writable by `khe`, so through a
+  throwaway alpine container, as the Home Assistant restore: stop the
+  container, untar `vaultwarden-data.tar.gz` into `/srv/data/vaultwarden`,
+  gunzip `vaultwarden-db.sqlite3.gz` over it as `db.sqlite3`, remove
+  `db.sqlite3-wal` and `db.sqlite3-shm`, start the container.
+
 ## Restore verify (GH Action)
 
 - `.github/workflows/restore-verify.yml` runs `scripts/restore-verify.sh`
   Sundays 04:00 UTC on the self-hosted homelab runner. Pulls the latest
   restic snapshot from R2, restores the newest dated `immich-postgres.dump`
   into a throwaway Postgres container, and asserts ≥20 public tables before
-  tearing down.
+  tearing down. Then it restores the newest dated backup's Vaultwarden DB
+  copy and data tar and checks, in a throwaway `alpine:3` with `sqlite`
+  added (the runner host is not known to have `sqlite3`): integrity `ok`, at
+  least one user and one item, `rsa_key.pem` in the tar. It prints pass or
+  fail only: the Actions logs are public, and the vault's counts do not
+  belong there.
   Heartbeat pings Kuma at the end.
 - **Why immich-postgres:** it is the one Postgres data service left. Only
   the newest dated copy is restored, because every copy carries the
@@ -825,8 +846,8 @@ the private `khe-meta` repo under `house/house-hvac.md`.
   `immich-postgres` container (`docker inspect`), because the dump needs
   the vchord extension. The job fails unless it is a
   `ghcr.io/immich-app/postgres` image.
-- **Not covered:** snapshot age, the volume tarballs and Vaultwarden's
-  SQLite (audit finding 10 in khe-meta).
+- **Not covered:** snapshot age and the other volume tarballs (audit
+  finding 10 in khe-meta).
 - **Manual trigger:** Actions tab → Restore Verify → Run workflow.
   Useful right after touching backup.sh, the Immich Postgres image, or an
   Immich major version upgrade.

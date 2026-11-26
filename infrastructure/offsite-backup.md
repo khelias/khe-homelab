@@ -72,6 +72,9 @@ restic restore <snapshot-id> --target /tmp/r \
        --include "/srv/backups/2026-04-18/immich-postgres.dump"
 ```
 
+Vaultwarden's restore from these files is in
+[operational notes](../docs/operational-notes.md#vaultwarden).
+
 DB recovery example:
 
 ```bash

@@ -4,7 +4,11 @@
 #
 # Pulls the latest restic snapshot from R2, isolates the newest Immich
 # PostgreSQL dump, restores it into a throwaway Postgres container, and
-# checks that the schema is queryable. The heartbeat pings Uptime Kuma at the
+# checks that the schema is queryable. Then restores the newest backup's
+# Vaultwarden DB copy and data tar and checks the DB in a throwaway alpine
+# container: integrity ok, at least one user and one item, and rsa_key.pem
+# in the tar. It prints pass or fail only, never counts, since this repo's
+# Actions logs are public. The heartbeat pings Uptime Kuma at the
 # end so a missed verification fires the existing Telegram alert.
 #
 # Why immich-postgres: it is the one Postgres data service left in the
@@ -12,8 +16,8 @@
 # runs the image that wrote it. The table threshold is intentionally low:
 # we're proving the chain, not auditing data.
 #
-# Not covered: snapshot age (a stale snapshot still passes), the volume
-# tarballs, and Vaultwarden's SQLite. See audit finding 10 in khe-meta.
+# Not covered: snapshot age (a stale snapshot still passes) and the other
+# volume tarballs. See audit finding 10 in khe-meta.
 set -euo pipefail
 
 DUMP_NAME="immich-postgres.dump"
@@ -36,7 +40,7 @@ on_exit() {
   docker rm -f pg-restore-verify >/dev/null 2>&1 || true
   rm -rf "$WORKDIR"
   if [ "$code" -eq 0 ]; then
-    heartbeat up "tables=$TABLES"
+    heartbeat up "tables=$TABLES vw=ok"
   else
     heartbeat down "exit=$code stage=$STAGE"
   fi
@@ -58,15 +62,26 @@ esac
 STAGE="restic-restore"
 # Restic snapshot path: /srv/backups/<date>/<dump-name>. An older
 # snapshot may hold several dated copies, so take the newest.
-SNAPSHOT_LS="$(mktemp)"
+# The listing stays in $WORKDIR for the Vaultwarden lookup below.
+SNAPSHOT_LS="$WORKDIR/snapshot.ls"
 restic ls latest --tag cron-daily > "$SNAPSHOT_LS"
 SNAPSHOT_PATH="$(grep -E "^/srv/backups/[0-9]{4}-[0-9]{2}-[0-9]{2}/${DUMP_NAME}\$" "$SNAPSHOT_LS" \
   | sort | tail -1 || true)"
-rm -f "$SNAPSHOT_LS"
 [ -n "$SNAPSHOT_PATH" ] || { echo "no $DUMP_NAME in latest snapshot"; exit 3; }
+# The newest dated backup dir in the snapshot must hold both Vaultwarden
+# files: an older dir's copy would pass on stale data.
+VW_DIR="$(grep -oE '^/srv/backups/[0-9]{4}-[0-9]{2}-[0-9]{2}' "$SNAPSHOT_LS" | sort -u | tail -1 || true)"
+VW_DB_GZ="$VW_DIR/vaultwarden-db.sqlite3.gz"
+VW_TAR="$VW_DIR/vaultwarden-data.tar.gz"
+if ! grep -qxF "$VW_DB_GZ" "$SNAPSHOT_LS" || ! grep -qxF "$VW_TAR" "$SNAPSHOT_LS"; then
+  echo "FAIL: newest backup ${VW_DIR##*/} has no Vaultwarden DB copy or data tar"
+  exit 3
+fi
 restic restore latest \
   --target "$WORKDIR" \
   --include "$SNAPSHOT_PATH" \
+  --include "$VW_DB_GZ" \
+  --include "$VW_TAR" \
   --tag cron-daily
 
 DUMP_PATH="${WORKDIR}${SNAPSHOT_PATH}"
@@ -117,6 +132,33 @@ if [ "$TABLES" -lt "$MIN_TABLES" ]; then
   echo "FAIL: too few tables — restore likely incomplete"
   exit 4
 fi
+
+STAGE="vw-restore"
+VW_WORK="${WORKDIR}${VW_DIR}"
+gunzip -f "${WORKDIR}${VW_DB_GZ}"
+
+STAGE="vw-check"
+VW_QUERY="SELECT (SELECT integrity_check FROM pragma_integrity_check LIMIT 1), (SELECT count(*) FROM users), (SELECT count(*) FROM ciphers);"
+if ! VW_RESULT="$(docker run --rm -v "$VW_WORK":/vw:ro alpine:3 sh -c \
+     "apk add --no-cache sqlite >/dev/null && sqlite3 -readonly /vw/vaultwarden-db.sqlite3 '$VW_QUERY'")"; then
+  echo "FAIL: Vaultwarden DB unreadable"
+  exit 4
+fi
+IFS='|' read -r VW_INTEGRITY VW_USERS VW_CIPHERS <<<"$VW_RESULT"
+if [ "$VW_INTEGRITY" != "ok" ]; then
+  echo "FAIL: Vaultwarden DB integrity check is not ok"
+  exit 4
+fi
+if ! [[ "$VW_USERS" =~ ^[0-9]+$ && "$VW_CIPHERS" =~ ^[0-9]+$ ]] \
+   || [ "$VW_USERS" -lt 1 ] || [ "$VW_CIPHERS" -lt 1 ]; then
+  echo "FAIL: Vaultwarden DB has no users or no items"
+  exit 4
+fi
+if ! tar tzf "${WORKDIR}${VW_TAR}" ./rsa_key.pem >/dev/null 2>&1; then
+  echo "FAIL: Vaultwarden data tar has no rsa_key.pem"
+  exit 4
+fi
+echo "Vaultwarden: integrity ok, users and ciphers present, rsa_key.pem present"
 
 STAGE="done"
 echo "Restore verification OK."
