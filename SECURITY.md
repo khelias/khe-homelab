@@ -122,7 +122,9 @@ the required `validate.yml` check:
   account token of role Viewer in `~/.config/khe/grafana-token` (mode 600,
   never in git). It talks plain http to Grafana's published port, which the
   LAN and the Tailscale subnet route reach (see Network exposure). Loki itself has `auth_enabled: false` and
-  is reachable only on the `observability` Docker network, through Grafana.
+  is reachable only on the `observability` Docker network, from Grafana and
+  from Uptime Kuma, which probes it there; Kuma's login is behind Access from
+  outside.
 - **Public Actions logs** get only aggregate output: `ops-status.yml` prints
   the snapshot's summary, and the snapshot itself goes to Loki.
 - **Homepage** (dash.khe.ee, internet-facing behind Access) reads Docker
@@ -295,8 +297,9 @@ of docker-vm and the Proxmox host) and Home Assistant's 8123 (the
 NVR's event push and the HA scripts); Homepage and Immich publish none and
 open only through NPM and the tunnel. Mosquitto and PAI (the alarm bridge)
 are on `home-internal` only, shared with Home Assistant and not with
-cloudflared or the public sites. `dash`, `trips` and `stories` open
-without a login from the LAN and the tailnet, through AdGuard rewrites and NPM
+cloudflared or the public sites. `dash`, `trips` and `stories` open without a
+login, and `status` without Access (Kuma keeps its own login), from the
+LAN and the tailnet, through AdGuard rewrites and NPM
 ([estate ADR-022](https://github.com/khelias/khe-architecture/blob/main/decisions/022-home-route-for-access-only-apps.md)).
 `home.khe.ee` and `swipe.khe.ee` are LAN and Tailscale only (not on Cloudflare
 Tunnel); `immich-swipe` sits on `proxy` only (isolated from `immich-internal`),

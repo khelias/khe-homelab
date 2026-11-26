@@ -15,7 +15,7 @@ Tunnel routes directly to Docker containers. LAN traffic goes via NPM (split-hor
 | dash.khe.ee         | homepage:3000               | homepage:3000               | CF Access (external only) |
 | vault.khe.ee        | vaultwarden:80              | vaultwarden:80              | |
 | photos.khe.ee       | immich-server:2283          | immich-server:2283          | NPM: unlimited upload, 600s timeout |
-| status.khe.ee       | uptime-kuma:3001            | uptime-kuma:3001            | |
+| status.khe.ee       | uptime-kuma:3001            | uptime-kuma:3001            | CF Access (external only), like dash; Kuma keeps its own login |
 | games.khe.ee        | games:80                    | — (CF only)                 | no AdGuard rewrite; edge fallback Worker on `games.khe.ee/*` ([Workers routes](#workers-routes)) |
 | trips.khe.ee        | trips:80                    | trips:80                    | CF Access (external only), like dash |
 | stories.khe.ee      | stories:80                  | stories:80                  | CF Access (external only), its own application; never in the edge copy |
@@ -92,9 +92,10 @@ Identity: One-time PIN via email (no OAuth setup needed).
 | KHE Pages    | draft.khe.ee | Email allowlist + Require Country=EE |
 | Unejänku     | stories.khe.ee | Its own policy: both parents' e-mails + Require Country=EE, session about 30 days |
 | Makett preview | makett.khe.ee | The owner policy (Email allowlist + Require Country=EE) |
+| Uptime Kuma  | status.khe.ee | The owner policy (Email allowlist + Require Country=EE) |
 | Makett webhook | makett.khe.ee/api/stripe/webhook | Bypass, Everyone |
 
-Dashboard, Trips, Pages and the makett preview share a single reusable policy (edit once → applies to all);
+Dashboard, Trips, Pages, Uptime Kuma and the makett preview share a single reusable policy (edit once → applies to all);
 Unejänku has its own, since both parents sign in there.
 Its Access application is created before the tunnel route to `stories:80`,
 or the family build and the whole audio store are public in between; an
@@ -103,7 +104,7 @@ the Access login.
 Policy combines `Include: Email = owner` AND `Require: Countries = Estonia`.
 The VM is not a Tailscale exit node (it advertises only the `192.168.0.0/24`
 subnet route), so Tailscale does not carry the owner past the country rule
-when abroad. Over Tailscale, `dash.khe.ee`, `trips.khe.ee` and `stories.khe.ee` resolve through AdGuard to
+when abroad. Over Tailscale, `dash.khe.ee`, `trips.khe.ee`, `status.khe.ee` and `stories.khe.ee` resolve through AdGuard to
 `192.168.0.11` and go through NPM, so Access never sees them, abroad
 included: the home route of
 [estate ADR-022](https://github.com/khelias/khe-architecture/blob/main/decisions/022-home-route-for-access-only-apps.md) point 4. `draft.khe.ee` has no AdGuard rewrite: it reaches Cloudflare from
@@ -128,7 +129,7 @@ https://makett.khe.ee/api/stripe/webhook` answers 400 (no signature) while
 ## Custom Login Page
 
 Zero Trust → Reusable components → Custom pages → Access login page.
-Applies to all Access-protected apps (dash, trips, stories, draft).
+Applies to all Access-protected apps (dash, trips, status, stories, draft).
 
 | Field | Value |
 |-------|-------|

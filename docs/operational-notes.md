@@ -140,9 +140,10 @@ token in [cloudflare.md](../infrastructure/cloudflare.md#workers-routes)).
   (git-tracked bind mount).
 - API keys in VM `.env` only, never committed.
 - The Uptime Kuma widget reads the Kuma status page with slug `homelab`;
-  without it the widget errors. Kuma status pages cannot be private, so it
-  is public at `status.khe.ee/status/homelab`: put only monitors whose
-  names are fine to show.
+  without it the widget errors. Kuma status pages cannot be private, so
+  `status.khe.ee/status/homelab` opens without a login on the home route
+  (LAN and Tailscale), while Access covers all of `status.khe.ee` from
+  outside: put only monitors whose names are fine to show.
 - **Regenerate API keys** from scratch:
   - Proxmox: a privilege-separated token of the read-only `monitor@pve` user
     ([Proxmox API tokens](../infrastructure/proxmox/README.md#api-tokens)),
@@ -901,7 +902,7 @@ the private `khe-meta` repo under `house/house-hvac.md`.
   0600), read with `sed`, never sourced. No file or an empty value: no push.
   The VM uses `http://localhost:3001/api/push/<token>`; the host uses
   `http://<vm-lan-address>:3001/api/push/<token>`, since `status.khe.ee`
-  through Cloudflare meets WAF rule 3's CLI challenge. Kuma's
+  through Cloudflare meets WAF rule 3's CLI challenge and Access. Kuma's
   `?status=up&msg=OK&ping=` suffix can be pasted along; the script strips it.
 - The push retries for about five minutes: the host's boot run fires while
   VM 100 and Kuma are still starting. A failed push changes nothing locally.
