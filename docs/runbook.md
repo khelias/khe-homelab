@@ -362,7 +362,7 @@ the web UI.
 ## Undoing an automerged update
 
 Renovate automerges Docker patch, minor and digest updates (`renovate.json`),
-and a push to `main` deploys them. If one breaks a service:
+Docker Hub ones after a three-day wait, and a push to `main` deploys them. If one breaks a service:
 
 1. For an image that keeps state, the revert alone is not enough. A database,
    or an app that migrates its data when it starts, may already have rewritten

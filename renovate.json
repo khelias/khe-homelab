@@ -50,6 +50,18 @@
       "groupSlug": "critical-updates"
     },
     {
+      "description": "willfarrell/autoheal has no maintained version tag (1.2.0 breaks the tcp:// socket proxy), so it is pinned by digest alone. Its updates come once a month and are not automerged.",
+      "matchPackageNames": ["willfarrell/autoheal"],
+      "automerge": false,
+      "schedule": ["* * 1 * *"]
+    },
+    {
+      "description": "Docker updates wait three days, so a bad release can be pulled upstream before the deploy recreates the stack. Renovate dates only Docker Hub images; an undated one (ghcr.io, lscr.io) goes ahead without the wait instead of being held for good.",
+      "matchManagers": ["docker-compose", "dockerfile"],
+      "minimumReleaseAge": "3 days",
+      "minimumReleaseAgeBehaviour": "timestamp-optional"
+    },
+    {
       "description": "Estate images (ghcr.io/khelias/*) are pinned by their own repo's CI, which opens a pin PR here after each publish (estate ADR-008). Renovate's registry lookups lag the registry, so it would propose an older digest after CI moved the pin and automerge a silent downgrade.",
       "matchPackageNames": ["ghcr.io/khelias/**"],
       "enabled": false
