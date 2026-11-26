@@ -93,7 +93,7 @@ base branch against the PR tree. The edge fallback's Worker tests
    ([estate ADR-022](https://github.com/khelias/khe-architecture/blob/main/decisions/022-home-route-for-access-only-apps.md)).
    Such an app gets a home route (an AdGuard rewrite and an NPM host) only
    while it has no backend that reads the Access identity; today `dash`,
-   `trips` and `stories`, and trips' route goes, with a move to an Access
+   `trips`, `status` and `stories`, and trips' route goes, with a move to an Access
    application of its own, when its backend lands.
    The one exception for the private khe-trips atlas is its public demo at
    `khe.ee/trips/`, which shows only trips that are over, and only their
