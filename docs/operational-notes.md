@@ -24,6 +24,11 @@ file in every session is wasteful; the entries are independent.
   daily filter update holds old and new rules at once, so from about 1.75M
   rules the update OOM-killed AdGuard inside its 1G limit every night
   (2026-10-13 to 11-04, about 14 s without DNS each time).
+- **Upgrades only go forward.** v1.0 rewrote the live YAML to schema 35,
+  which v0.107 refuses to start on, so rolling back the image means
+  restoring the copy taken before the upgrade
+  (`AdGuardHome.yaml.pre-v1`) with it. From v1.0 a minor release may also
+  break things, so read each critical-infrastructure PR's AdGuard notes.
 - **Safe Browsing config key is `safebrowsing_enabled`** (one word).
   `safe_browsing_enabled` is a silent no-op.
 - **`ratelimit_whitelist` does NOT accept CIDR**, only bare IPs. The

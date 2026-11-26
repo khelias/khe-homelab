@@ -56,6 +56,11 @@
       "schedule": ["* * 1 * *"]
     },
     {
+      "description": "immich-swipe's v4.0 image is a stray tag from 2025-12, older than v1.0, with no git tag or release behind it; following it would be a downgrade.",
+      "matchPackageNames": ["ghcr.io/dev-nick421/immich-swipe"],
+      "allowedVersions": "!/^v4\\.0$/"
+    },
+    {
       "description": "Docker updates wait three days, so a bad release can be pulled upstream before the deploy recreates the stack. Renovate dates only Docker Hub images; an undated one (ghcr.io, lscr.io) goes ahead without the wait instead of being held for good.",
       "matchManagers": ["docker-compose", "dockerfile"],
       "minimumReleaseAge": "3 days",
