@@ -68,6 +68,15 @@ the failure mode.
   and the `khe.ee` zone, in the `edge-fallback` environment of this repo
   (`main` only) with the account id.
 
+The Worker `makett-preview` is khe-makett's sales site preview, deployed by
+that repo's `ci.yml` on `main` from a GitHub-hosted runner. It owns the
+custom domain `makett.khe.ee`, its only address (`workers.dev` and Preview
+URLs off), which Wrangler creates with the DNS record; the homelab serves
+nothing there. Its API token is a custom one, Account Workers Scripts Edit
+and Zone Workers Routes Edit on `khe.ee`, in khe-makett's repo secrets
+`CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`; its accepted risk is in
+[SECURITY.md](../SECURITY.md#automated-writers).
+
 ## Cloudflare Access
 
 Zero Trust → Access → Applications.
@@ -79,8 +88,9 @@ Identity: One-time PIN via email (no OAuth setup needed).
 | KHE Trips    | trips.khe.ee | Email allowlist + Require Country=EE |
 | KHE Pages    | draft.khe.ee | Email allowlist + Require Country=EE |
 | Unejänku     | stories.khe.ee | Its own policy: both parents' e-mails + Require Country=EE, session about 30 days |
+| Makett preview | makett.khe.ee | The owner policy (Email allowlist + Require Country=EE) |
 
-Dashboard, Trips and Pages share a single reusable policy (edit once → applies to all);
+Dashboard, Trips, Pages and the makett preview share a single reusable policy (edit once → applies to all);
 Unejänku has its own, since both parents sign in there.
 Its Access application is created before the tunnel route to `stories:80`,
 or the family build and the whole audio store are public in between; an
@@ -98,6 +108,10 @@ the device's own connection, and the country rule blocks it outside Estonia.
 `draft.khe.ee` has no application-level login behind Access (dufs runs
 without `--auth`), so removing or loosening its Access application exposes the
 editor outright.
+
+The makett preview's application is created before its first deploy, or the
+preview is public in between; an unauthenticated `curl -sI
+https://makett.khe.ee/` must then answer 302 to the Access login.
 
 ## Custom Login Page
 
@@ -154,7 +168,9 @@ SSL/TLS → Edge Certificates.
 ## DNS
 
 Zone: khe.ee
-All *.khe.ee records are CNAME → tunnel (proxied).
+All *.khe.ee records are CNAME → tunnel (proxied), except `makett.khe.ee`,
+a Worker custom domain whose record Cloudflare manages for the
+`makett-preview` Worker.
 `www` is CNAME → `khe.ee` (proxied), handled by redirect rule below.
 Split-horizon: local DNS via per-host AdGuard rewrites (no wildcard) → 192.168.0.11.
 Router DHCP DNS: 192.168.0.11 (AdGuard) ONLY — never advertise a secondary.

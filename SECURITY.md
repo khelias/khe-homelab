@@ -51,6 +51,19 @@ the required `validate.yml` check:
   public trees, fails on a symlink or an `apiSecret` value, and replaces the
   adventure `config.js` with a stub, so the private trips atlas and the API
   secret never reach Cloudflare.
+- **The makett preview deploy** (khe-makett `ci.yml`, on a push to `main`
+  or a manual run from it) deploys the Worker `makett-preview` on
+  `makett.khe.ee`, behind Cloudflare Access, after the repo's full check
+  passed at the same commit ([infrastructure/cloudflare.md](infrastructure/cloudflare.md#workers-routes)).
+  Its token is custom, Account Workers Scripts Edit and Zone Workers Routes
+  Edit on `khe.ee`, and sits in that private repo's secrets, since GitHub
+  Free has no environments there; only its one collaborator can push.
+  Accepted risk, 2026-11-26: Workers Scripts Edit is account-wide, so a
+  leaked token could overwrite the edge fallback Workers too, and then what
+  the edge serves when the homelab is down; undone by revoking the token and
+  redeploying the copy with `gh workflow run edge-fallback.yml`. The Worker refuses a Stripe key
+  whose mode differs from its `STRIPE_MODE` (`test` here), so the preview
+  cannot take real money.
 - **The weekly digest** (`weekly-digest.yml`, Friday night) opens one issue
   labelled `agent-digest` and closes the previous one
   ([estate ADR-027](https://github.com/khelias/khe-architecture/blob/main/decisions/027-attended-and-unattended-agent-tiers.md)).
