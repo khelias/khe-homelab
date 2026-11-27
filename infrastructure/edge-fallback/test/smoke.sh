@@ -89,7 +89,8 @@ case "$site" in
     page /architecture/ "<html"
     page /architecture/decisions/ 'data-page="decisions"'
     page /agents/ 'data-page="agents"'
-    page /ha/ "<html"
+    page /ha/ "data-ha-demo"
+    page /ha/demo/ "<html"
     page /trips/ "/trips/assets/"
     page /trips/some/deep/link "/trips/assets/"
     page /stories/ "/stories/assets/"
