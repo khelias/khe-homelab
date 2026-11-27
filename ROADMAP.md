@@ -6,13 +6,10 @@ Direction and priorities for the homelab — what it should become, beyond curre
 
 - **House automation** — moved to
   [khe-home-assistant's roadmap](https://github.com/khelias/khe-home-assistant/blob/main/ROADMAP.md).
-- **Resource-limit tuning from metrics** — initial `deploy.resources.limits`
-  now cover every long-running container. Watch Docker stats / service behavior
-  and tune caps where Immich shows real workload pressure.
-- **Healthcheck cleanup** — standardise `start_period`, replace trivial checks
-  with real probes.
 - **Immich: unused feature surface** — audited 2026-08-03, Tier 1 (multilingual
-  CLIP, fullsize renders, video transcoding) landed. Still open, roughly in order:
+  CLIP, fullsize renders, video transcoding) landed. A second family account
+  is coming (2026-11-27), so the account items come first. Still open, roughly
+  in order:
   - **Config secrets have nowhere to live.** `immich.config.json` is committed
     to a public repo and `IMMICH_CONFIG_FILE` locks the admin UI, so SMTP and
     OAuth cannot be enabled at all until the file is rendered at deploy time
@@ -33,6 +30,14 @@ Direction and priorities for the homelab — what it should become, beyond curre
   - **Upload backup assumption** — `backup.sh` skips Immich uploads because
     they are mirrored to iCloud + Google Photos. That stops being true the
     moment a family account without such a mirror starts backing up.
+- **Healthcheck cleanup** — every check tests something its own restart can
+  fix and has a `start_period` sized to the service, so autoheal restarts only
+  what is broken. Then host and container metrics (Prometheus) and a Uptime
+  Kuma monitor for every address, with the list kept in git (estate roadmap
+  1.2 steps 2 and 3).
+- **Resource-limit tuning from metrics** — initial `deploy.resources.limits`
+  now cover every long-running container. Tune the caps where Immich shows
+  real pressure, once the metrics above exist.
 
 ## Medium-term (when app phase starts)
 
@@ -47,14 +52,9 @@ Direction and priorities for the homelab — what it should become, beyond curre
 
 ## Long-term (when app-heavy projects arrive)
 
-- **Komodo as GitOps controller** — once adventure-engine, spliit, or similar
-  projects land, a UI + API + rollback become worth the install. A push to
-  `main` already deploys through `deploy.yml`.
 - **Upgrade strategy documented** — major jumps (PVE 9 → 10, Debian 13 → 14,
   Immich major) need a rehearsed path. Capture the steps before the first
   painful upgrade, not after.
-- **Authentik / Authelia SSO** — once RAM upgrade lands, consolidate auth across
-  services instead of each one managing its own.
 
 ## Ambitions
 
@@ -110,10 +110,10 @@ The sections above come first.
     2026-09-25 because its socket proxy let an LLM agent read every
     container's env; an agent here reads through those same read-only
     windows and never gets the Docker socket.
-  - *First step:* a weekly triage note (a scheduled Actions workflow or a
-    `/schedule` routine carries it) listing each alert and held PR with a
-    proposed action.
-    Measure how many proposals the operator accepts unchanged.
+  - *First step, done 2026-11-14:* `weekly-digest.yml` opens one issue a
+    week from a Claude run on a GitHub-hosted runner
+    ([estate ADR-027](https://github.com/khelias/khe-architecture/blob/main/decisions/027-attended-and-unattended-agent-tiers.md)).
+    Next: count how many of its proposals the operator takes unchanged.
   - *Waits for:* Prometheus metrics (estate roadmap), so diagnoses rest on
     more than logs.
   - *Risk and cost:* logs, changelogs and PR bodies are untrusted text an
@@ -124,26 +124,9 @@ The sections above come first.
     write path beyond a branch or a note, and a workflow still never takes
     a shell command as input. Model cost if a hosted model does the work;
     no local model runs here since Ollama was removed on 2026-10-01.
-- **Local AI serving for the apps.** Serve khe-ai-adventure's narration
-  from a local model here instead of a hosted API, so a game costs nothing
-  per play.
-  - *Why here:* Ollama ran here with an OpenAI-compatible API until
-    2026-10-01, when it was removed for lack of use. Its compose file is in
-    this repo's git history.
-  - *Honest state:* it was CPU-only, capped at 10G RAM and 6 CPUs inside an
-    8-vCPU, 24GB VM, and ran `qwen2.5:7b`. khe-ai-adventure's own roadmap
-    keeps local models out of the live path until latency, Estonian quality
-    and structured-output reliability are competitive, and nothing measured
-    says a 7B CPU model is. On this hardware the answer is most likely no.
-  - *First step:* re-add the Ollama stack from git history (with the
-    `ai-internal` network it needs), replay a recorded game's prompts
-    against it and score it with the adventure repo's model matrix: turn
-    latency, schema retries, Estonian editor corrections.
-  - *Waits for:* the RTX-class GPU under Hardware, and a measured per-game
-    API cost from the proxy logs to compare against.
-  - *Risk and cost:* a GPU costs money and draws power around the clock,
-    which may exceed the API bill of a low-volume party game. Worth doing
-    only if the GPU is bought for Immich and local models anyway.
+- **Local AI serving for the apps** — moved to
+  [khe-ai-adventure's roadmap](https://github.com/khelias/khe-ai-adventure/blob/main/ROADMAP.md),
+  "Local Model On The Homelab", which holds the benchmark that comes first.
 - **Family data the homelab can stand behind alone.** Today `backup.sh`
   skips Immich originals because they are mirrored to iCloud and Google
   Photos. The ambition is the reverse: the homelab holds the primary copy
@@ -168,8 +151,8 @@ Currently: i7-12700K, 32GB DDR5, 2× 12TB ZFS mirror, 2TB NVMe. No discrete GPU.
   removed on 2026-10-01 for lack of use) and Immich ML (today OpenVINO CPU).
   IOMMU is already on, iGPU is already passed through for
   Quick Sync — a discrete card would pass through the same way.
-- **+32GB DDR5 → 64GB total** — unblocks Authentik SSO, more concurrent services,
-  larger local LLMs, parallel ML workloads. On hold: a 32GB kit cost about
+- **+32GB DDR5 → 64GB total** — more concurrent services, a parallel
+  rebuild VM, larger local LLMs, parallel ML workloads. On hold: a 32GB kit cost about
   €1000 in November 2026, twice what the whole server cost, so it waits for
   DRAM prices to fall. Until then the stories reading runs on GitHub's runner,
   not here.
@@ -180,23 +163,11 @@ Currently: i7-12700K, 32GB DDR5, 2× 12TB ZFS mirror, 2TB NVMe. No discrete GPU.
 
 ## Service wishlist
 
-Rough order of impact:
+Gone through on 2026-11-27 against what already runs: the rest had a
+replacement in place or no user.
 
-- **Quick wins** — Dozzle (Docker log viewer), ntfy (push notifications),
-  IT-Tools (dev utilities)
-- **Weekend projects** — Forgejo (self-hosted Git), CrowdSec (IPS),
-  KitchenOwl (groceries + recipes)
-- **When time allows** — Actual Budget, Stirling PDF, Karakeep (bookmarks + AI),
-  FreshRSS, Changedetection.io, Docmost (wiki)
-- **After RAM upgrade** — Authentik (SSO) or Authelia (lighter alternative)
-- **Own projects** — adventure-engine revival, Spliit (Splitwise alternative),
-  khe-study iterations
-- **khe-memory (idea, not started)** — cross-agent memory bank as own project.
-  SQLite + sqlite-vec + local embeddings (`nomic-embed-text`; Ollama, removed on
-  2026-10-01, would have to come back), MCP server over
-  HTTP. Shared store for Claude Code and Codex CLI on both laptops, reached via
-  Tailscale. Differentiators worth pursuing: auto-ingest from existing
-  `~/.claude/projects/` and `~/.codex/sessions/` history (bootstrap problem
-  solved with real data), cross-agent provenance (track which agent wrote each
-  fact, surface conflicts), memory decay / re-validation lifecycle. Lives under
-  `services/ai/memory/`, ~500MB RAM, no extra DB infrastructure.
+- **Actual Budget** — a household budget shared with the family, if bank
+  sync works for Estonian banks (GoCardless or Enable Banking). To be tried
+  before it gets a stack.
+- **A shared shopping list** — Home Assistant already has one; tracked in
+  [khe-home-assistant's roadmap](https://github.com/khelias/khe-home-assistant/blob/main/ROADMAP.md).
