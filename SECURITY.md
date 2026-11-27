@@ -26,6 +26,10 @@ WebAssembly and builds its bindings with `new Function`, which only
 demo with no login and no visitor data, so the eval adds little there; no other
 path has it.
 
+`/ha/demo/` keeps `/ha/`'s policy but sends `frame-ancestors 'self'` instead
+of `'none'`: the `/ha/` page shows the demo in a window. Only khe.ee's own pages
+may frame it, and every other path, its 404 page included, still refuses framing.
+
 ## Automated writers
 
 A merge to `main` deploys to the VM, so every automated writer is bounded by

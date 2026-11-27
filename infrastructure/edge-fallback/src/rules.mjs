@@ -15,6 +15,8 @@ export const CSP_KHE =
   "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: https:; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; upgrade-insecure-requests";
 // /ha/ adds the blob: worker, WebAssembly and eval of the 3D house's KTX2 decoder.
 export const CSP_KHE_HA = CSP_KHE.replace("'unsafe-inline' https://static", "'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' https://static").replace("connect-src", "worker-src 'self' blob:; connect-src");
+// /ha/demo/ may also be framed by khe.ee's own pages: the /ha/ page shows it in a window.
+export const CSP_KHE_HA_DEMO = CSP_KHE_HA.replace("frame-ancestors 'none'", "frame-ancestors 'self'");
 // The khe CSP with media-src for the stories' audio.
 export const CSP_STORIES = CSP_KHE.replace("img-src 'self' data: https:; ", "img-src 'self' data: https:; media-src 'self'; ");
 export const CSP_GAMES =
@@ -62,6 +64,8 @@ export const HEADER_SETS = {
   },
 };
 HEADER_SETS.kheHa = { ...HEADER_SETS.khe, "Content-Security-Policy": CSP_KHE_HA };
+HEADER_SETS.kheHaDemo = { ...HEADER_SETS.khe, "Content-Security-Policy": CSP_KHE_HA_DEMO };
+const haHeaders = (p) => (p.startsWith("/ha/demo/") ? "kheHaDemo" : "kheHa");
 
 // landing's $share_asset_cache map.
 export function shareAssetCache(status) {
@@ -126,8 +130,8 @@ const kheLocations = [
   [(p) => p.startsWith("/stories/assets/"), { file: true, headers: "stories", cache: shareAssetCache }],
   [(p) => p.startsWith("/stories/audio/"), { file: true, headers: "stories", cache: storiesAudioCache }],
   [(p) => p.startsWith("/stories/"), { file: true, dir: true, headers: "stories" }],
-  [(p) => p.startsWith("/ha/") && LANDING_ASSET.test(p), { file: true, cache: onSuccess("public, max-age=2592000"), headers: "kheHa" }],
-  [(p) => p.startsWith("/ha/"), { file: true, dir: true, missPage: "/404.html", headers: "kheHa", missHeaders: "khe" }],
+  [(p) => p.startsWith("/ha/") && LANDING_ASSET.test(p), (p) => ({ file: true, cache: onSuccess("public, max-age=2592000"), headers: haHeaders(p) })],
+  [(p) => p.startsWith("/ha/"), (p) => ({ file: true, dir: true, missPage: "/404.html", headers: haHeaders(p), missHeaders: "khe" })],
   [(p) => LANDING_ASSET.test(p), { file: true, cache: onSuccess("public, max-age=2592000") }],
   [() => true, { file: true, dir: true, missPage: "/404.html" }],
 ];

@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
-import { CSP_KHE_HA, HEADER_SETS, LANG_PAGES } from "../src/rules.mjs";
+import { CSP_KHE_HA, CSP_KHE_HA_DEMO, HEADER_SETS, LANG_PAGES } from "../src/rules.mjs";
 
 const APPS = join(import.meta.dirname, "../../../services/apps");
 
@@ -74,9 +74,12 @@ for (const [conf, opening, set] of BLOCKS) {
   });
 }
 
-test("landing's /ha/ CSP is CSP_KHE_HA", () => {
+test("landing's /ha/ CSPs are CSP_KHE_HA and CSP_KHE_HA_DEMO, the demo's first", () => {
   const text = readFileSync(join(APPS, "landing", "nginx.conf"), "utf8");
-  assert.equal(text.match(/map \$uri \$csp_khe \{[^}]*~\^\/ha\/ "([^"]*)";/)?.[1], CSP_KHE_HA);
+  const map = text.match(/map \$uri \$csp_khe \{([^}]*)\}/)?.[1] ?? "";
+  assert.equal(map.match(/~\^\/ha\/ "([^"]*)";/)?.[1], CSP_KHE_HA);
+  assert.equal(map.match(/~\^\/ha\/demo\/ "([^"]*)";/)?.[1], CSP_KHE_HA_DEMO);
+  assert.ok(map.indexOf("~^/ha/demo/") < map.indexOf("~^/ha/ "));
 });
 
 // A location with an add_header of its own drops the server's, so each one

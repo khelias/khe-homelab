@@ -319,7 +319,7 @@ describe("headers", () => {
   }
 
   test("only /ha/ allows blob: workers, wasm and eval", async () => {
-    for (const path of ["/ha/", "/ha/assets/house.js"]) {
+    for (const path of ["/ha/", "/ha/assets/house.js", "/ha/demo/", "/ha/demo/assets/house.js"]) {
       const csp = (await request("khe", path)).response.headers.get("Content-Security-Policy");
       assert.match(csp, /worker-src 'self' blob:/);
       assert.match(csp, /script-src [^;]*'wasm-unsafe-eval'/);
@@ -333,6 +333,21 @@ describe("headers", () => {
     const { response } = await request("khe", "/ha/no-such-page");
     assert.equal(response.status, 404);
     assert.doesNotMatch(response.headers.get("Content-Security-Policy"), /blob:|unsafe-eval/);
+  });
+
+  test("only /ha/demo/ may be framed, and only by khe.ee itself", async () => {
+    for (const path of ["/ha/demo/", "/ha/demo/assets/house.js"]) {
+      const { response } = await request("khe", path);
+      assert.equal(response.status, 200);
+      assert.match(response.headers.get("Content-Security-Policy"), /frame-ancestors 'self'/);
+    }
+    for (const path of ["/", "/ha/", "/ha/assets/house.js", "/stories/", "/architecture/"]) {
+      const csp = (await request("khe", path)).response.headers.get("Content-Security-Policy");
+      assert.match(csp, /frame-ancestors 'none'/);
+    }
+    const { response } = await request("khe", "/ha/demo/no-such-page");
+    assert.equal(response.status, 404);
+    assert.match(response.headers.get("Content-Security-Policy"), /frame-ancestors 'none'/);
   });
 
   test("the landing carries its CSP", async () => {
