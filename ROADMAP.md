@@ -30,11 +30,9 @@ Direction and priorities for the homelab — what it should become, beyond curre
   - **Upload backup assumption** — `backup.sh` skips Immich uploads because
     they are mirrored to iCloud + Google Photos. That stops being true the
     moment a family account without such a mirror starts backing up.
-- **Healthcheck cleanup** — every check tests something its own restart can
-  fix and has a `start_period` sized to the service, so autoheal restarts only
-  what is broken. Then host and container metrics (Prometheus) and a Uptime
-  Kuma monitor for every address, with the list kept in git (estate roadmap
-  1.2 steps 2 and 3).
+- **Host and container metrics** (Prometheus), then a Uptime Kuma monitor
+  for every address, with the list kept in git (estate roadmap 1.2 steps 2
+  and 3).
 - **Resource-limit tuning from metrics** — initial `deploy.resources.limits`
   now cover every long-running container. Tune the caps where Immich shows
   real pressure, once the metrics above exist.

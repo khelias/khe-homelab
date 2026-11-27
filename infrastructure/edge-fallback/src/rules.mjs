@@ -94,7 +94,7 @@ const isServiceWorker = (path) => path.endsWith("/sw.js");
 
 export const PASS_THROUGH = {
   khe: (path) => path === "/healthz" || isServiceWorker(path),
-  games: (path) => path.startsWith("/adventure/api/") || isServiceWorker(path),
+  games: (path) => path === "/healthz" || path.startsWith("/adventure/api/") || isServiceWorker(path),
 };
 
 const MANIFEST_TYPE = "application/manifest+json";

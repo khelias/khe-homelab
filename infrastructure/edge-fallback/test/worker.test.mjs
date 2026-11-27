@@ -72,11 +72,13 @@ describe("never falls back", () => {
     assert.ok(!fallback(response));
   });
 
-  test("khe.ee /healthz gets the origin's 530", async () => {
-    const { response } = await request("khe", "/healthz");
-    assert.equal(response.status, 530);
-    assert.ok(!fallback(response));
-  });
+  for (const site of ["khe", "games"]) {
+    test(`${site} /healthz gets the origin's 530`, async () => {
+      const { response } = await request(site, "/healthz");
+      assert.equal(response.status, 530);
+      assert.ok(!fallback(response));
+    });
+  }
 });
 
 describe("SPA fallbacks", () => {

@@ -20,10 +20,11 @@ services:
           memory: 1G  # 512M caused 2-4 OOM-kills/day with OISD big (330k rules) + Hagezi Pro Plus (245k rules); each kill = ~10s DNS outage
           cpus: '0.50'
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:80"]
+      test: ["CMD", "nslookup", "khe.ee", "127.0.0.1"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 30s
 
 volumes:
   adguard_work:

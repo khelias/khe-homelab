@@ -762,8 +762,18 @@ the private `khe-meta` repo under `house/house-hvac.md`.
 
 ## Healthchecks
 
-- **games**: uses `127.0.0.1` (NOT `localhost`). Busybox wget DNS issue in
-  alpine - localhost doesn't resolve.
+- **A check tests what its own restart can fix**, since autoheal restarts
+  whatever turns unhealthy. A static nginx fetches its own `/healthz`
+  (`return 200`), never a file from a deploy, which a restart cannot bring
+  back. adguard looks up its rewrite `khe.ee`, so an upstream outage does
+  not restart it; the rewrite stays in the live config. The nginx probes use
+  `127.0.0.1`: busybox wget there does not resolve `localhost`.
+- **Every check has a `start_period` sized to the service**, autoheal's
+  only grace; nginx-proxy-manager and Uptime Kuma get 60 s because both
+  migrate a database on start.
+- **mosquitto** keeps its listening-port check: the broker requires
+  credentials, and a connecting probe would log a connect twice a minute
+  (its compose comment).
 - **cloudflare-tunnel**: uses `cloudflared tunnel ready` (distroless image,
   no curl/wget available; see the Cloudflare Tunnel section).
 - **pai**: no healthcheck. `pai-service` is the container's PID 1, so a
