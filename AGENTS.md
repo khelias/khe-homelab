@@ -117,7 +117,8 @@ base branch against the PR tree. The edge fallback's Worker tests
    Two Cloudflare Workers (`infrastructure/edge-fallback/`) serve a copy of
    the static sites when the homelab answers 5xx or not at all. A header,
    redirect or SPA-fallback change in `services/apps/landing/nginx.conf` or
-   `services/apps/games/nginx.conf` is mirrored in
+   `services/apps/games/nginx.conf`, or in the header sets they include
+   (`landing/*-headers.conf`, `games/headers.conf`), is mirrored in
    `infrastructure/edge-fallback/src/rules.mjs` in the same commit; the
    Worker tests catch header drift. The allowlist in
    `scripts/edge-fallback-stage.sh` is the only way a tree reaches the copy:

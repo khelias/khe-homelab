@@ -126,7 +126,7 @@ token in [cloudflare.md](../infrastructure/cloudflare.md#workers-routes)).
   the Worker → Domains & Routes); the sites behave as before at once. Disable
   `edge-fallback.yml` so the sync stops too.
 - **Changing nginx:** a header, redirect or SPA-fallback change in the
-  landing or games `nginx.conf` goes into
+  landing or games `nginx.conf` or their header include files goes into
   `infrastructure/edge-fallback/src/rules.mjs` in the same commit;
   `node --test infrastructure/edge-fallback/test/` (also the workspace
   commit gate) fails on header drift. A new public tree under `khe.ee` or
@@ -161,6 +161,8 @@ token in [cloudflare.md](../infrastructure/cloudflare.md#workers-routes)).
 
 Stack: `services/apps/games/` (nginx + adventure-web + adventure-proxy).
 
+- `nginx.conf` and `headers.conf` are single-file bind mounts: a change to
+  them alone needs a deploy with `force_recreate`, as landing.
 - `/` -> launcher (`khe-sites` repo deploys to `/srv/data/games/launcher/`)
 - `/study/` -> `khe-study` (`/srv/data/games/study/`, GH Actions runner deploys here)
 - `/adventure/` -> `adventure-web` container (`khe-ai-adventure` web image)
@@ -317,6 +319,10 @@ app's `ci.yml` and `AGENTS.md` hold the details):
   reads it without a login; that is the household's choice, as for dash.
 - Static SPA: bind mount `/srv/data/trips/app:/usr/share/nginx/html:ro`,
   SPA fallback to `/index.html`.
+- Security headers in `headers.conf`, with the reason its CSP sets only
+  `frame-ancestors`.
+- `nginx.conf` and `headers.conf` are single-file bind mounts: a change to
+  them alone needs a deploy with `force_recreate`, as landing.
 - Source: `khelias/khe-trips` (private).
 - Share sites (one trip each, public by link) and the public demo are served
   by landing at `khe.ee/r/<slug>/` and `khe.ee/trips/`, not here; see
@@ -489,15 +495,18 @@ app's `ci.yml` and `AGENTS.md` hold the details):
 ## Landing page
 
 - Static HTML at `khe.ee` (public), served by nginx alpine (pinned by Renovate).
-- `nginx.conf` is a single-file bind mount, so a change to it alone needs a
-  deploy of `services/apps/landing` with `force_recreate` (the same inode
-  trap as `immich.config.json`); the push deploy's plain `up -d` leaves the
-  old config running.
-- Security headers (HSTS, nosniff, referrer, permissions, a CSP with no
-  third-party hosts but Cloudflare Web Analytics) are set at server level and
-  repeated in the static-asset location, since a location with its own
-  `add_header` inherits none. HSTS has no `includeSubDomains`:
-  the apex policy must not pin LAN-only names. `/r/` keeps its own set.
+- `nginx.conf` and the `*-headers.conf` files are single-file bind mounts,
+  so a change to them alone needs a deploy of `services/apps/landing` with
+  `force_recreate` (the same inode trap as `immich.config.json`); the push
+  deploy's plain `up -d` leaves the old config running.
+- Security headers live in one include file per set: `khe-headers.conf`
+  (HSTS, nosniff, referrer, permissions, a CSP with no third-party hosts but
+  Cloudflare Web Analytics), `share-headers.conf` for `/r/`,
+  `trips-headers.conf` for `/trips/` and `stories-headers.conf` for
+  `/stories/`. The server block and every location with its own
+  `add_header` include their set, since such a location inherits none. HSTS
+  has no `includeSubDomains`: the apex policy must not pin LAN-only names.
+  The games and trips stacks keep theirs in a `headers.conf` the same way.
   `absolute_redirect off`, so `/privacy` -> `/privacy/` stays on https.
 - An address with no page answers 404 with khe-sites' `404.html`, on
   games.khe.ee too. The bare `/study` and `/adventure` there answer 301 to the

@@ -5,6 +5,10 @@ services:
     restart: unless-stopped
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./khe-headers.conf:/etc/nginx/khe-headers.conf:ro
+      - ./share-headers.conf:/etc/nginx/share-headers.conf:ro
+      - ./trips-headers.conf:/etc/nginx/trips-headers.conf:ro
+      - ./stories-headers.conf:/etc/nginx/stories-headers.conf:ro
       - /srv/data/sites/khe:/usr/share/nginx/html:ro
       - /srv/data/trips/share:/srv/share/r:ro
       # Created and filled by the khe-trips deploy; it must exist before this

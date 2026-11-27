@@ -1,7 +1,8 @@
 // What the landing and games nginx serve, restated for the fallback copy
 // (estate ADR-016). A header, redirect or SPA-fallback change in
-// services/apps/landing/nginx.conf, services/apps/games/nginx.conf or
-// khe-ai-adventure's web/nginx.conf is mirrored here in the same commit;
+// services/apps/landing/nginx.conf, services/apps/games/nginx.conf, the
+// header files they include or khe-ai-adventure's web/nginx.conf is mirrored
+// here in the same commit;
 // test/nginx-drift.test.mjs compares the header values.
 
 const PERMISSIONS_POLICY =
