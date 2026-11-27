@@ -155,6 +155,13 @@ base branch against the PR tree. The edge fallback's Worker tests
   One is needed only for changes outside the paths filter or when CI is
   down, and then it is `gh workflow run deploy.yml` (inputs `mode`, `stack`,
   `force_recreate`, `dry_run`).
+- **Static app deploys publish through `scripts/publish-static.sh`** from
+  this checkout on the runner: khe-study, khe-trips and khe-sites copy their
+  builds with it, which renames a staged copy in entry by entry and keeps
+  the bind-mounted directory. A change to it reaches the runner only with a pull, since it is
+  outside `deploy.yml`'s paths filter: dispatch `deploy.yml` with `dry_run`.
+  khe-bunny-tales keeps its own swap: its staged tree hard-links the audio
+  store, which a copy would duplicate.
 - **Rolling back an estate app** is a git change here. Pin every image of
   the app to the same `sha-<full commit>@sha256:<digest>` and push. The pin
   job skips a `sha-` pin, so the rollback stays until the operator returns
