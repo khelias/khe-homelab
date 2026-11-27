@@ -12,7 +12,7 @@ Direction and priorities for the homelab — what it should become, beyond curre
 - **Healthcheck cleanup** — standardise `start_period`, replace trivial checks
   with real probes.
 - **Immich: unused feature surface** — audited 2026-08-03, Tier 1 (multilingual
-  CLIP, fullsize renders, 1080p transcode) landed. Still open, roughly in order:
+  CLIP, fullsize renders, video transcoding) landed. Still open, roughly in order:
   - **Config secrets have nowhere to live.** `immich.config.json` is committed
     to a public repo and `IMMICH_CONFIG_FILE` locks the admin UI, so SMTP and
     OAuth cannot be enabled at all until the file is rendered at deploy time
@@ -67,7 +67,7 @@ The sections above come first.
 - **Automated rebuild day.** Once a quarter, a workflow builds the whole
   homelab from git and the R2 backups on an empty VM, checks the services
   come up, and records time-to-restore. The number and its trend go on the
-  public architecture page (`khe.ee/architecture`, planned in `khe-meta`).
+  public architecture page (`khe.ee/architecture`).
   - *Why here:* the pieces exist. The VM is created by cloud-init, a push
     is the deploy, and `restore-verify.yml` already restores one Postgres
     dump from R2 every week. This extends that from one database to the
@@ -76,8 +76,8 @@ The sections above come first.
     the estate roadmap in `khe-meta`, then the bootstrap script from the
     medium-term list above. Time the manual run; that is the first number.
   - *Waits for:* the rehearsal fixes, and room to run a second VM. The host
-    has 32GB and the Docker VM takes 16GB, which leaves about 8GB for a
-    second VM, so a full parallel rebuild needs the RAM upgrade, a reduced
+    has 32GB, of which docker-vm takes 16GB and agent-vm 8GB, so a full
+    parallel rebuild needs the RAM upgrade, a reduced
     stack, or a short-lived cloud VM.
   - *Risk and cost:* a rebuild VM must never talk to the live Cloudflare
     tunnel, Telegram bot or house devices, so it runs with isolated

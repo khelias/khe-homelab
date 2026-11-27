@@ -182,8 +182,9 @@ out of the payload), push, set it back to `active` at once, then check with
 are intact. The live required checks of a repo are what
 `gh api repos/khelias/<repo>/branches/main/protection --jq .required_status_checks.contexts`
 returns; a repo on the pull request route (`pr: true` in the workspace's
-`repos/repos.yaml`, so far `khe-sites`) requires its CI check and the
-"Personal-data scan", and putting the protection back must keep both.
+`repos/repos.yaml`: khe-sites and khe-stories) requires its CI check and the
+"Personal-data scan", through classic protection in khe-sites and a ruleset
+in khe-stories (`gh api repos/khelias/khe-stories/rules/branches/main`), and putting the protection back must keep both.
 
 For `khe-homelab` the VM checkout then has to follow. Do not re-clone
 the VM checkout, because the gitignored `.env` files would go with it. Check

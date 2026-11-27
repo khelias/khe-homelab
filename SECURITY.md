@@ -120,8 +120,9 @@ the required `validate.yml` check:
   account token of role Viewer in `~/.config/khe/grafana-token` (mode 600,
   never in git). It talks plain http to Grafana's published port, which the
   LAN and the Tailscale subnet route reach (see Network exposure). Loki itself has `auth_enabled: false` and
-  is reachable only on the `observability` Docker network, from Grafana and
-  from Uptime Kuma, which probes it there; Kuma's login is behind Access from
+  is reachable only on the `observability` Docker network: Alloy pushes to
+  it, Grafana reads it, the ruler sends to Alertmanager, and Uptime Kuma
+  probes it; Kuma's login is behind Access from
   outside.
 - **Public Actions logs** get only aggregate output: `ops-status.yml` prints
   the snapshot's summary, and the snapshot itself goes to Loki.

@@ -50,7 +50,7 @@ file in every session is wasteful; the entries are independent.
 
 - **Wildcard `*.khe.ee` Let's Encrypt cert** via Cloudflare DNS-01 (auto-renew).
 - **Proxy hosts**: one per AdGuard rewrite: `khe.ee`, `dash`, `vault`,
-  `photos`, `status`, `home`, `swipe`, `trips`.
+  `photos`, `status`, `home`, `swipe`, `trips`, `stories`.
 - **The upload-heavy host** (photos) has unlimited body size + 600s
   timeouts. Applies to LAN clients only; the CF
   tunnel does not route through NPM (see Cloudflare Tunnel section).
@@ -69,8 +69,8 @@ file in every session is wasteful; the entries are independent.
   Express`. **NPM's per-host tuning (unlimited body, 600s timeout) therefore
   applies to LAN traffic only** - split-horizon DNS sends LAN clients to NPM,
   external clients bypass it entirely.
-- Access policies (email OTP) protect: `dash.khe.ee`, `trips.khe.ee`,
-  `draft.khe.ee`. For `dash` and `trips` only from outside: on the LAN and
+- Access policies (email OTP) protect `dash`, `trips`, `status`, `stories`,
+  `draft` and `makett`. For `dash`, `trips`, `status` and `stories` only from outside: on the LAN and
   over Tailscale their AdGuard rewrite sends clients to NPM, so Access never
   sees them.
 - `khe.ee` is fully public (landing page).
@@ -113,7 +113,8 @@ token in [cloudflare.md](../infrastructure/cloudflare.md#workers-routes)).
 - **Sync.** `edge-fallback.yml` runs hourly on the homelab runner:
   `scripts/edge-fallback-stage.sh` copies `/srv/data/sites/khe`,
   `/srv/data/trips/share`, `/srv/data/trips/demo`, `/srv/data/games/launcher`,
-  `/srv/data/games/study` and the pinned `adventure-web` image's build into
+  `/srv/data/games/study`, `/srv/data/stories/public` without its `audio/`,
+  and the pinned `adventure-web` image's build into
   `.stage/`, and each site is deployed only when its tree or the Worker
   changed (hash in `~/.cache/khe-edge-fallback/` on the runner). A deploy
   reaches the copy within the hour; nothing syncs while the homelab is down.

@@ -69,7 +69,7 @@ base branch against the PR tree. The edge fallback's Worker tests
 3. **Pin image versions**, no `:latest`. Images the estate builds itself
    (`ghcr.io/khelias/*`, [estate ADR-008](https://github.com/khelias/khe-architecture/blob/main/decisions/008-container-images.md)) are pinned as
    `:main@sha256:<digest>`. The app's CI publishes them and then opens a pin
-   PR here through a per-repo GitHub App (`khe-adventure-pins`) with
+   PR here through a per-repo GitHub App (`khe-adventure-pins`, `khe-stories-pins`) with
    auto-merge; Renovate is disabled for them (`renovate.json`). An App PR is
    safe to automerge because `validate.yml` lets the App change nothing but
    its own `:main@` digests, one line for one line, and
@@ -190,8 +190,8 @@ base branch against the PR tree. The edge fallback's Worker tests
 - **Operations go through `workflow_dispatch`** on the homelab runner:
   `ops-status.yml` refreshes the status snapshot ([runbook](docs/runbook.md)),
   `deploy.yml` deploys, `retire-stack.yml` removes what a stack deleted from
-  git leaves on the VM (`apply=false` to see the list). Dispatching `deploy.yml`
-  and `retire-stack.yml` with `apply=false` is the agent's; `apply=true`
+  git leaves on the VM (`apply=false` to see the list). Dispatching `deploy.yml`,
+  and `retire-stack.yml` with `apply=false`, is the agent's; `apply=true`
   deletes volumes and stays the operator's
   ([estate ADR-023](https://github.com/khelias/khe-architecture/blob/main/decisions/023-agent-pushes-where-its-session-allows.md)). A workflow never
   takes a shell command as input; that would be SSH under another name.
