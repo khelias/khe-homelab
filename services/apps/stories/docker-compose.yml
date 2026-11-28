@@ -33,7 +33,7 @@ services:
   # ADR-008). Its state (paired devices, the queue) is in a local volume, not
   # NFS and not backed up: losing it means pairing the phones again.
   stories-api:
-    image: ghcr.io/khelias/khe-stories-server:main@sha256:77739e54ca102506e7eb56f8f6d029b65507501c587242b1051811d6545962d2
+    image: ghcr.io/khelias/khe-stories-server:main@sha256:fab9c46891d3469f2cd5cd5c3048c9ca6d765509cfa5b2d80f78e77d51bd2549
     container_name: stories-api
     restart: unless-stopped
     environment:
