@@ -4,7 +4,7 @@ services:
   # ever exposing it externally.
   # Loki datasource is auto-provisioned from config/provisioning/.
   grafana:
-    image: grafana/grafana:13.3.1@sha256:1c88285f1dd391a62232c010e6c224846e6a73bdc583b3365be2eba614b7919e
+    image: grafana/grafana:13.3.2@sha256:1b8b4d34bde1e7c95dd639523a0dab6481f4d4e4b9727022c66f28cf3c708060
     container_name: grafana
     restart: unless-stopped
     ports:
