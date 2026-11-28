@@ -53,7 +53,8 @@ check) runs the pin App guard, `scripts/verify-estate-pins.sh`, `bash -n` on
 each `scripts/*.sh` and `scripts/validate-compose.sh`, every script from the
 base branch against the PR tree. The edge fallback's Worker tests
 (`node --test infrastructure/edge-fallback/test/`, no install needed) run in
-`edge-fallback.yml` before every deploy and in the workspace commit gate.
+`edge-fallback.yml` before every deploy and in the workspace commit gate, which
+also runs `scripts/publish-static-test.sh`.
 
 ## Rules
 
@@ -155,10 +156,11 @@ base branch against the PR tree. The edge fallback's Worker tests
   One is needed only for changes outside the paths filter or when CI is
   down, and then it is `gh workflow run deploy.yml` (inputs `mode`, `stack`,
   `force_recreate`, `dry_run`).
-- **Static app deploys publish through `scripts/publish-static.sh`** from
-  this checkout on the runner: khe-study, khe-trips and khe-sites copy their
-  builds with it, which renames a staged copy in entry by entry and keeps
-  the bind-mounted directory. A change to it reaches the runner only with a pull, since it is
+- **`scripts/publish-static.sh` publishes static app builds** from this
+  checkout on the runner: it renames a staged copy in entry by entry and keeps
+  the bind-mounted directory. It is written for khe-study, khe-trips and
+  khe-sites; until their workflow change lands, their deploys still empty the
+  directory and copy the build themselves. A change to it reaches the runner only with a pull, since it is
   outside `deploy.yml`'s paths filter: dispatch `deploy.yml` with `dry_run`.
   khe-bunny-tales keeps its own swap: its staged tree hard-links the audio
   store, which a copy would duplicate.

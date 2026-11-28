@@ -41,7 +41,8 @@ the failure mode.
 - Every request goes to the tunnel first and gets its answer unchanged; the
   copy answers only on a 5xx, a timeout (5 s) or no connection, with
   `X-KHE-Fallback: 1`.
-- Never from the copy: `khe.ee/healthz`, `games.khe.ee/adventure/api/*` and
+- Never from the copy: `khe.ee/healthz`, `games.khe.ee/healthz`,
+  `games.khe.ee/adventure/api/*` and
   any request that is not GET or HEAD. With the homelab down they fail, so
   UptimeRobot (on `https://khe.ee/healthz`) still sees the outage.
 - Fail open: once the free quota (100,000 requests a day) is spent, requests

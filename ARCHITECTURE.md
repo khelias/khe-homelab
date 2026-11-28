@@ -13,7 +13,7 @@ The drawn diagram is on [khe.ee/architecture](https://khe.ee/architecture/).
 
 Two independent paths to the same containers:
 - **External**: the internet reaches each container directly through Cloudflare Tunnel, on its public hostname. CF Access OTP gates the private apps. Subject to Cloudflare's 100MB upload limit.
-- **LAN / Tailscale**: LAN devices, and Tailscale devices through the subnet route to `192.168.0.0/24`, ask AdGuard Home, whose split-horizon DNS rewrites the LAN-served hostnames to `192.168.0.11`, so they hit Nginx Proxy Manager (LAN-only) with the wildcard `*.khe.ee` cert and no upload limit. `draft`, games and pages have no LAN shortcut and always go through Cloudflare; `dash`, `trips` and `stories` are Access-gated only from outside.
+- **LAN / Tailscale**: LAN devices, and Tailscale devices through the subnet route to `192.168.0.0/24`, ask AdGuard Home, whose split-horizon DNS rewrites the LAN-served hostnames to `192.168.0.11`, so they hit Nginx Proxy Manager (LAN-only) with the wildcard `*.khe.ee` cert and no upload limit. `draft`, games and pages have no LAN shortcut and always go through Cloudflare; `dash`, `trips`, `stories` and `status` are Access-gated only from outside.
 
 Proxmox VE (192.168.0.10) is the hypervisor; the Docker VM (192.168.0.11) runs every service, in five stacks:
 
@@ -38,7 +38,7 @@ Fast storage (NVMe, 2TB) holds the VM root + DB volumes; bulk storage (ZFS mirro
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/immich.svg" width="22" /> | **Immich** | `photos.khe.ee` | Photo library with ML tagging (Google Photos replacement) |
 | | **immich-swipe** | `swipe.khe.ee` (LAN + Tailscale) | Swipe-style photo triage frontend for Immich; not on the Cloudflare Tunnel |
 | <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/vaultwarden.svg" width="22" /> | **Vaultwarden** | `vault.khe.ee` | Password manager with Passkey support |
-| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/uptime-kuma.svg" width="22" /> | **Uptime Kuma** | `status.khe.ee` | Service monitoring and alerts |
+| <img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/uptime-kuma.svg" width="22" /> | **Uptime Kuma** | `status.khe.ee` | Service monitoring and alerts (CF Access protected) |
 | 🎮 | **games hub** | `games.khe.ee` | Launcher, khe-study (`/study/`) and khe-ai-adventure (`/adventure/`), auto-deployed from GitHub |
 | 🗺️ | **trips** | `trips.khe.ee` | Private family trip atlas, CF Access protected, own GitHub runner |
 | 🌙 | **stories** | `stories.khe.ee` | Unejänku, the family's bedtime stories app, CF Access protected; khe-bunny-tales' runner deploys it, audio in `/srv/data/stories/audio`; `stories-api` under `/api/` takes the children's story requests |

@@ -106,8 +106,8 @@ token in [cloudflare.md](../infrastructure/cloudflare.md#workers-routes)).
 
 - **Is it serving?** A response from the copy carries `X-KHE-Fallback: 1`:
   `curl -sI https://khe.ee/ | grep -i x-khe-fallback`, from outside the home
-  network (inside it `khe.ee` goes to NPM). `https://khe.ee/healthz` and
-  `/adventure/api/*` never come from the copy, so they fail during an outage.
+  network (inside it `khe.ee` goes to NPM). `https://khe.ee/healthz`,
+  `https://games.khe.ee/healthz` and `/adventure/api/*` never come from the copy, so they fail during an outage.
   In fallback the adventure game shows "AI unavailable": the copy's
   `config.js` has no API secret and the proxy is down anyway.
 - **Sync.** `edge-fallback.yml` runs hourly on the homelab runner:

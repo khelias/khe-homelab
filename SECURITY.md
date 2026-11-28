@@ -267,7 +267,7 @@ Independent layers, each a way in with its own control:
 
 - **External access, Cloudflare Tunnel.** Cloudflare terminates TLS and
   forwards to the containers over an outbound-only tunnel. The private apps
-  (the dashboard, trips, stories, the pages editor) sit behind Cloudflare
+  (the dashboard, status, trips, stories, the pages editor) sit behind Cloudflare
   Access with email OTP.
 - **Remote admin, Tailscale.** The Docker VM is a Tailscale subnet router
   for the LAN, so a Tailscale device reaches the Proxmox UI, AdGuard, NPM
